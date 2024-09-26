@@ -1,0 +1,11 @@
+# Excluir la carpeta .vs (Visual Studio)
+.vs
+
+# Excluir la carpeta bin (directorios de compilación)
+RMD/bin/
+
+# Excluir la carpeta obj (archivos temporales de compilación)
+RMD/obj/
+
+# Excluir la carpeta Properties/PublishProfiles (perfiles de publicación)
+RMD/Properties/PublishProfiles/FolderProfile.pubxml.user
