@@ -1,12 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
 using RMD.Extensions;
 using RMD.Interface.Vidal;
 using RMD.Models.Responses;
 using RMD.Models.Vidal.ByVMP;
-using RMD.Service.Vidal.ByVMP;
-using System.Data;
 using System.Net;
 
 namespace RMD.Controllers.Vidal.ByVMP
@@ -41,7 +38,7 @@ namespace RMD.Controllers.Vidal.ByVMP
                 }
 
                 // Retornar el modelo encontrado con el mensaje de éxito
-                return Ok(ResponseFromService<VMPModel>.Success(vmpEntry, "VMP retrieved successfully."));
+                return Ok(ResponseFromService<VMPEntry>.Success(vmpEntry, "VMP retrieved successfully."));
             }
             catch (Exception ex)
             {

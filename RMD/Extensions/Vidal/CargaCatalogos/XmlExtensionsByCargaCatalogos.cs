@@ -24,8 +24,8 @@ namespace RMD.Extensions.Vidal.CargaCatalogos
                         IdVMP = (int)entry.Element(ns + "id"),
                         Name = (string)entry.Element(ns + "name"),
                         ActivePrinciples = (string)entry.Element(ns + "activePrinciples"),
-                        IdRoute = (int)entry.Element(ns + "route").Attribute("id"),
-                        RouteName = (string)entry.Element(ns + "route"),
+                        //IdRoute = (int)entry.Element(ns + "route").Attribute("id"),
+                        //RouteName = (string)entry.Element(ns + "route"),
                         GalenicFormVidalId = (int)entry.Element(ns + "galenicForm").Attribute("vidalId"),
                         GalenicForm = (string)entry.Element(ns + "galenicForm"),
                         RegulatoryGenericPrescription = (bool)entry.Element(ns + "regulatoryGenericPrescription"),
@@ -44,9 +44,14 @@ namespace RMD.Extensions.Vidal.CargaCatalogos
                                          Title = (string)l.Attribute("title")
                                      })
                                      .Where(link => link.Title != "DOCUMENTS" && link.Title != "OPT_DOCUMENT" // Excluir los "DOCUMENTS" y "OPT_DOCUMENT"
-                                                 && (link.Title != "VTM" || vmp.IdVTM == 0) // Si ya tenemos el VTM en el modelo, no agregarlo a los links
-                                                 && (link.Title != "ROUTE" || vmp.IdRoute == 0)
-                                                 && (link.Title != "VMP" || vmp.IdRoute == 0)) // Si ya tenemos la Route en el modelo, no agregarlo a los links
+                                                 && (link.Title != "VTM" ) // Si ya tenemos el VTM en el modelo, no agregarlo a los links
+                                                 && (link.Title != "ROUTE" )
+                                                 && (link.Title != "VMP" )
+                                                 && (link.Title != "ALDS" )
+                                                 && (link.Title != "PRESCRIBABLES" )
+
+                                                 && (link.Title != "PRODUCTS" )
+                                                 ) // Si ya tenemos la Route en el modelo, no agregarlo a los links
                                      .ToList();
 
                     // Crear el VMPModelLink que encapsula el VMPModel y los links
@@ -363,6 +368,226 @@ namespace RMD.Extensions.Vidal.CargaCatalogos
                 return new List<VTMModel>();
             }
         }
+
+        public static List<ATCClassificationModel> ParseATCClassificationXmlToModelList(this string xmlContent)
+        {
+            try
+            {
+                XNamespace atom = "http://www.w3.org/2005/Atom";
+                XNamespace ns = "http://api.vidal.net/-/spec/vidal-api/1.0/";
+
+                var document = XDocument.Parse(xmlContent);
+                var atcClassificationList = new List<ATCClassificationModel>();
+
+                var atcEntries = document.Descendants(atom + "entry");
+
+                foreach (var entry in atcEntries)
+                {
+                    var idElement = entry.Element(ns + "id");
+                    var nameElement = entry.Element(ns + "name");
+                    var codeElement = entry.Element(ns + "code");
+                    var updatedElement = entry.Element(atom + "updated");
+
+                    // Verificación de valores nulos o faltantes
+                    if (idElement == null || nameElement == null || updatedElement == null)
+                    {
+                        // Si faltan estos elementos esenciales, salta al siguiente entry
+                        continue;
+                    }
+
+                    var atc = new ATCClassificationModel
+                    {
+                        IdATC = int.TryParse(idElement.Value, out var idAtc) ? idAtc : 0, // Verificación segura de int
+                        Name = nameElement.Value,
+                        Code = codeElement?.Value ?? string.Empty, // Code puede ser opcional
+                        UpdatedDate = DateTime.TryParse(updatedElement.Value, out var updatedDate) ? updatedDate : DateTime.MinValue,
+                        // Para ParentId, obtenemos la última parte del href
+                        ParentId = entry.Elements(atom + "link")
+                                .Where(l => (string)l.Attribute("title") == "PARENT")
+                                .Select(l => int.TryParse(((string)l.Attribute("href")).Split('/').Last(), out var parentId) ? parentId : 0)
+                                .FirstOrDefault(),
+
+                        // Para ChildId, obtenemos la penúltima parte del href antes de "children"
+                        ChildId = entry.Elements(atom + "link")
+                                .Where(l => (string)l.Attribute("title") == "CHILDREN")
+                                .Select(l =>
+                                {
+                                    var hrefParts = ((string)l.Attribute("href"))?.Split('/');
+                                    return hrefParts != null && hrefParts.Length > 1 && int.TryParse(hrefParts[^2], out var childId)
+                                        ? childId
+                                        : 0;
+                                })
+                                .FirstOrDefault()
+                    };
+
+                    atcClassificationList.Add(atc);
+                }
+
+                return atcClassificationList;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al analizar el XML de ATC Classification: {ex.Message}");
+                return new List<ATCClassificationModel>();
+            }
+        }
+
+
+
+
+
+        public static List<IdBaseDestinoModel> ParseVidalIdsToModelList(this string xmlContent, int idDestino)
+        {
+            try
+            {
+                XNamespace atom = "http://www.w3.org/2005/Atom";
+                XNamespace ns = "http://api.vidal.net/-/spec/vidal-api/1.0/";
+
+                var idBaseList = new List<IdBaseDestinoModel>();
+                var document = XDocument.Parse(xmlContent);
+                var entries = document.Descendants(atom + "entry");
+
+                foreach (var entry in entries)
+                {
+                    // Extraer el valor de <id> dentro del espacio de nombres atom
+                    var idElement = entry.Element(atom + "id");
+                    if (idElement != null)
+                    {
+                        var idStr = idElement.Value;
+
+                        // Obtener el valor después de la última diagonal
+                        var idBaseStr = idStr.Split('/').Last();
+
+                        // Intentar convertir el valor extraído a entero
+                        if (int.TryParse(idBaseStr, out int idBase))
+                        {
+                            var model = new IdBaseDestinoModel
+                            {
+                                IdBase = idBase,
+                                IdDestino = idDestino
+                            };
+
+                            idBaseList.Add(model);
+                        }
+                    }
+                }
+
+                return idBaseList;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al analizar el XML: {ex.Message}");
+                return new List<IdBaseDestinoModel>();
+            }
+        }
+
+        public static List<UCDVModel> ParseUCDVXmlToModelList(this string xmlContent)
+        {
+            try
+            {
+                XNamespace atom = "http://www.w3.org/2005/Atom";
+                XNamespace ns = "http://api.vidal.net/-/spec/vidal-api/1.0/";
+
+                var document = XDocument.Parse(xmlContent);
+                var ucdvList = new List<UCDVModel>();
+
+                var ucdvEntries = document.Descendants(atom + "entry");
+
+                foreach (var entry in ucdvEntries)
+                {
+                    var ucdv = new UCDVModel
+                    {
+                        IdUCDV = int.Parse(entry.Element(ns + "id")?.Value ?? "0"), // Verifica si el valor existe, si no, usa 0
+                        Name = entry.Element(ns + "name")?.Value ?? string.Empty, // Si no hay nombre, utiliza string vacío
+                        IdconditioningUnit = int.Parse(entry.Element(ns + "conditioningUnit")?.Attribute("vidalId")?.Value ?? "0"), // Verifica si el valor existe
+                        Quantity = decimal.Parse(entry.Element(ns + "quantity")?.Value ?? "0"), // Verifica si el valor existe
+                        QuantityUnitId = int.Parse(entry.Element(ns + "quantityUnit")?.Attribute("vidalId")?.Value ?? "0"), // Verifica si el atributo vidalId existe
+                        QuantityUnit = entry.Element(ns + "quantityUnit")?.Value ?? string.Empty, // Si no hay unidad, utiliza string vacío
+                        GalenicFormId = int.Parse(entry.Element(ns + "galenicForm")?.Attribute("vidalId")?.Value ?? "0"), // Verifica si el atributo vidalId existe
+                        GalenicForm = entry.Element(ns + "galenicForm")?.Value ?? string.Empty // Si no hay forma galénica, utiliza string vacío
+                    };
+
+                    ucdvList.Add(ucdv);
+                }
+
+                return ucdvList;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al analizar el XML: {ex.Message}");
+                return new List<UCDVModel>();
+            }
+        }
+
+        public static List<UCDModel> ParseUCDXmlToModelList(this string xmlContent)
+        {
+            try
+            {
+                XNamespace atom = "http://www.w3.org/2005/Atom";
+                XNamespace ns = "http://api.vidal.net/-/spec/vidal-api/1.0/";
+
+                var document = XDocument.Parse(xmlContent);
+                var ucdEntries = document.Descendants(atom + "entry");
+
+                return ucdEntries.Select(entry => new UCDModel
+                {
+                    IdUCD = (int)entry.Element(ns + "id"),
+                    Summary = (string)entry.Element(atom + "summary"),
+                    Name = (string)entry.Element(ns + "name"),
+                    MarketStatusName = (string)entry.Element(ns + "marketStatus")?.Attribute("name"),
+                    MarketStatus = (string)entry.Element(ns + "marketStatus"),
+                    SafetyAlert = (bool?)entry.Element(ns + "safetyAlert") ?? false,
+                    Updated = (DateTime)entry.Element(atom + "updated"),
+                    VmpDescription = (string)entry.Element(ns + "vmp"),
+                    VmpId = (int?)entry.Element(ns + "vmp")?.Attribute("vidalId")
+                }).ToList();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al analizar el XML: {ex.Message}");
+                return new List<UCDModel>();
+            }
+        }
+
+        public static List<SideEffectModel> ParseSideEffectsXmlToModelList(this string xmlContent)
+        {
+            try
+            {
+                XNamespace atom = "http://www.w3.org/2005/Atom";
+                XNamespace ns = "http://api.vidal.net/-/spec/vidal-api/1.0/";
+
+                var document = XDocument.Parse(xmlContent);
+                var sideEffectList = new List<SideEffectModel>();
+
+                var entries = document.Descendants(atom + "entry");
+
+                foreach (var entry in entries)
+                {
+                    var sideEffect = new SideEffectModel
+                    {
+                        IdSideEffect = (int)entry.Element(ns + "id"),
+                        Name = (string)entry.Element(ns + "name"),
+                        ApparatusName = (string)entry.Element(ns + "apparatus"),
+                        ApparatusId = (int?)entry.Element(ns + "apparatus")?.Attribute("vidalId"),
+                        Updated = (DateTime)entry.Element(atom + "updated")
+                    };
+
+                    sideEffectList.Add(sideEffect);
+                }
+
+                return sideEffectList;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al analizar el XML: {ex.Message}");
+                return new List<SideEffectModel>();
+            }
+        }
+
+
+
+
+
 
     }
 }

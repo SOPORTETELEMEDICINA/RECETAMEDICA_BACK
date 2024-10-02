@@ -11,23 +11,28 @@ namespace RMD.Controllers.Pacientes
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class PacientesController(IPacienteService pacienteService) : ControllerBase
+    public class PacientesController(IPacienteService pacienteService, IHttpContextAccessor httpContextAccessor) : ControllerBase
     {
         private readonly IPacienteService _pacienteService = pacienteService;
+        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
         [HttpGet("ByIdUsuario/{idUsuario}")]
         [Authorize]
         [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetPacienteByIdUsuario(Guid idUsuario)
         {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
             try
             {
                 var paciente = await _pacienteService.GetPacienteByIdUsuarioAsync(idUsuario);
                 if (paciente == null)
                 {
-                    return Ok(ResponseFromService<UsuarioPaciente>.Success(new UsuarioPaciente(), "No se encontró el paciente con el ID de usuario especificado."));
+                    return Ok(ResponseFromService<PacienteConsultaRequest>.Success(new PacienteConsultaRequest(), "No se encontró el paciente con el ID de usuario especificado."));
                 }
-                var response = ResponseFromService<UsuarioPaciente>.Success(paciente, "Paciente obtenido con éxito.");
+                var response = ResponseFromService<PacienteConsultaRequest>.Success(paciente, "Paciente obtenido con éxito.");
                 return Ok(response);
             }
             catch (Exception ex)
@@ -41,14 +46,18 @@ namespace RMD.Controllers.Pacientes
         [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetPacienteByIdPaciente(Guid idPaciente)
         {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
             try
             {
                 var paciente = await _pacienteService.GetPacienteByIdPacienteAsync(idPaciente);
                 if (paciente == null)
                 {
-                    return Ok(ResponseFromService<UsuarioPaciente>.Success(new UsuarioPaciente(), "No se encontró el paciente con el ID de paciente especificado."));
+                    return Ok(ResponseFromService<PacienteConsultaRequest>.Success(new PacienteConsultaRequest(), "No se encontró el paciente con el ID de paciente especificado."));
                 }
-                var response = ResponseFromService<UsuarioPaciente>.Success(paciente, "Paciente obtenido con éxito.");
+                var response = ResponseFromService<PacienteConsultaRequest>.Success(paciente, "Paciente obtenido con éxito.");
                 return Ok(response);
             }
             catch (Exception ex)
@@ -57,19 +66,24 @@ namespace RMD.Controllers.Pacientes
             }
         }
 
+
         [HttpGet("ByName/{nombreBusqueda}")]
         [Authorize]
         [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetPacienteByName(string nombreBusqueda)
         {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
             try
             {
                 var pacientes = await _pacienteService.GetPacienteByNameAsync(nombreBusqueda);
                 if (pacientes == null || !pacientes.Any())
                 {
-                    return Ok(ResponseFromService<IEnumerable<UsuarioPaciente>>.Success(new List<UsuarioPaciente>(), "No se encontraron pacientes con el nombre especificado."));
+                    return Ok(ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(new List<PacienteConsultaRequest>(), "No se encontraron pacientes con el nombre especificado."));
                 }
-                var response = ResponseFromService<IEnumerable<UsuarioPaciente>>.Success(pacientes, "Pacientes obtenidos con éxito.");
+                var response = ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(pacientes, "Pacientes obtenidos con éxito.");
                 return Ok(response);
             }
             catch (Exception ex)
@@ -80,9 +94,14 @@ namespace RMD.Controllers.Pacientes
 
         [HttpGet("entidad/{idEntidad}")]
         [Authorize]
+        [Obsolete]
         [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetPacientesByEntidadNacimiento(int idEntidad)
         {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
             try
             {
                 var pacientes = await _pacienteService.GetPacientesByEntidadNacimientoAsync(idEntidad);
@@ -99,34 +118,19 @@ namespace RMD.Controllers.Pacientes
             }
         }
 
-        [HttpPost]
+        [HttpGet("BySucursal/{idSucursal}")]
         [Authorize]
         [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<IActionResult> CreatePaciente([FromBody] PacienteCreateConListas pacienteRequest)
+        public async Task<IActionResult> GetPacientesBySucursal(Guid idSucursal)
         {
             try
             {
-                // Obtener el IdUsuario solicitante del token JWT
-                var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
-                if (string.IsNullOrEmpty(idUsuarioSolicitante))
+                var pacientes = await _pacienteService.GetPacientesBySucursalAsync(idSucursal);
+                if (pacientes == null || !pacientes.Any())
                 {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "No se pudo obtener el IdUsuario del token."));
+                    return Ok(ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(new List<PacienteConsultaRequest>(), "No se encontraron pacientes para la sucursal especificada."));
                 }
-
-                // Convertir a GUID
-                if (!Guid.TryParse(idUsuarioSolicitante, out var idUsuarioSolicitanteGuid))
-                {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "IdUsuario no válido."));
-                }
-
-                // Llamar al servicio para crear el paciente
-                var result = await _pacienteService.CreatePacienteAsync(pacienteRequest, idUsuarioSolicitanteGuid);
-                if (!result)
-                {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Error al crear el paciente."));
-                }
-
-                var response = ResponseFromService<string>.Success(null, "Paciente creado con éxito.");
+                var response = ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(pacientes, "Pacientes obtenidos con éxito.");
                 return Ok(response);
             }
             catch (Exception ex)
@@ -135,6 +139,86 @@ namespace RMD.Controllers.Pacientes
             }
         }
 
+        [HttpGet("ByGEMP/{idGEMP}")]
+        [Authorize]
+        [ServiceFilter(typeof(ValidateTokenFilter))]
+        public async Task<IActionResult> GetPacientesByGEMP(Guid idGEMP)
+        {
+            try
+            {
+                var pacientes = await _pacienteService.GetPacientesByGEMPAsync(idGEMP);
+                if (pacientes == null || !pacientes.Any())
+                {
+                    return Ok(ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(new List<PacienteConsultaRequest>(), "No se encontraron pacientes para el grupo empresarial especificado."));
+                }
+                var response = ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(pacientes, "Pacientes obtenidos con éxito.");
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
+            }
+        }
+
+        [HttpGet("ByMedico/{idMedico}")]
+        [Authorize]
+        [ServiceFilter(typeof(ValidateTokenFilter))]
+        public async Task<IActionResult> GetPacientesByMedico(Guid idMedico)
+        {
+            try
+            {
+                var pacientes = await _pacienteService.GetPacientesByMedicoAsync(idMedico);
+                if (pacientes == null || !pacientes.Any())
+                {
+                    return Ok(ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(new List<PacienteConsultaRequest>(), "No se encontraron pacientes para el médico especificado."));
+                }
+                var response = ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(pacientes, "Pacientes obtenidos con éxito.");
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
+            }
+        }
+
+
+        [HttpPost]
+        [Authorize]
+        [ServiceFilter(typeof(ValidateTokenFilter))]
+        public async Task<IActionResult> CreatePaciente([FromBody] PacienteCreateConListas pacienteRequest)
+        {
+            try
+            {
+                if (!IsUserAuthorized())
+                {
+                    return Forbid("No tiene permisos para realizar esta acción.");
+                }
+
+                var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
+                if (string.IsNullOrEmpty(idUsuarioSolicitante))
+                {
+                    return BadRequest("No se pudo obtener el IdUsuario del token.");
+                }
+
+                if (!Guid.TryParse(idUsuarioSolicitante, out var idUsuarioSolicitanteGuid))
+                {
+                    return BadRequest("IdUsuario no válido.");
+                }
+
+                // Llamar al servicio para crear el paciente
+                var result = await _pacienteService.CreatePacienteAsync(pacienteRequest, idUsuarioSolicitanteGuid);
+                if (!result)
+                {
+                    return BadRequest("Error al crear el paciente.");
+                }
+
+                return Ok("Paciente creado con éxito.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
+            }
+        }
 
         [HttpPut("{id}")]
         [Authorize]
@@ -147,7 +231,7 @@ namespace RMD.Controllers.Pacientes
                 var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
                 if (string.IsNullOrEmpty(idUsuarioSolicitante))
                 {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "No se pudo obtener el IdUsuario del token."));
+                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Token Invalido."));
                 }
 
                 // Convertir a GUID
@@ -175,7 +259,6 @@ namespace RMD.Controllers.Pacientes
             }
         }
 
-
         [HttpGet("entidades-federativas")]
         [Authorize]
         [ServiceFilter(typeof(ValidateTokenFilter))]
@@ -197,6 +280,56 @@ namespace RMD.Controllers.Pacientes
                 return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
             }
         }
+
+        [HttpDelete("{idPaciente}")]
+        [Authorize]
+        [ServiceFilter(typeof(ValidateTokenFilter))]
+        public async Task<IActionResult> EliminarPaciente(Guid idPaciente)
+        {
+            try
+            {
+                if (!IsUserAuthorized())
+                {
+                    return Forbid("No tiene permisos para realizar esta acción.");
+                }
+
+                var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
+                if (string.IsNullOrEmpty(idUsuarioSolicitante))
+                {
+                    return BadRequest("No se pudo obtener el IdUsuario del token.");
+                }
+
+                if (!Guid.TryParse(idUsuarioSolicitante, out var idUsuarioSolicitanteGuid))
+                {
+                    return BadRequest("IdUsuario no válido.");
+                }
+
+                var result = await _pacienteService.EliminarPacienteAsync(idPaciente, idUsuarioSolicitanteGuid);
+                if (!result)
+                {
+                    return BadRequest("Error al eliminar el paciente.");
+                }
+
+                return Ok("Paciente eliminado con éxito.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
+            }
+        }
+
+
+        private bool IsUserAuthorized()
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            var roleIdClaim = user?.FindFirst("IdRol")?.Value?.ToUpper();  // Convertir a mayúsculas
+
+            // Validar si el IdRol del token es uno de los permitidos
+            return roleIdClaim == "7905213C-B0CB-4D42-A997-20094EF41F9C" ||
+                   roleIdClaim == "DE5DFDDC-F6CC-4B7F-B805-286732501E57";
+        }
+
+
 
     }
 }

@@ -20,12 +20,12 @@ namespace RMD.Controllers.Vidal.CargaCatalogos
             _cargaCatalogosService = cargaCatalogosService;
         }
 
-        [HttpGet("vmps")]
-        public async Task<IActionResult> GetVMPs()
+        [HttpPost("load-catalogs")]
+        public async Task<IActionResult> LoadCatalogs()
         {
             try
             {
-                var result = await _cargaCatalogosService.GetAllVMPsAsync();
+                var result = await _cargaCatalogosService.ReloadCatalogs();
 
                 if (result.Data == null) // Si falla la operación
                 {
@@ -42,139 +42,231 @@ namespace RMD.Controllers.Vidal.CargaCatalogos
             }
         }
 
-        [HttpGet("products")]
-        public async Task<IActionResult> GetProducts()
-        {
-            try
-            {
-                var result = await _cargaCatalogosService.GetAllProductsAsync();
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Internal server error: {ex.Message}"));
-            }
-        }
+        //[HttpGet("vmps")]
+        //public async Task<IActionResult> GetVMPs()
+        //{
+        //    try
+        //    {
+        //        var result = await _cargaCatalogosService.GetAllVMPsAsync();
 
-        [HttpGet("packages")]
-        public async Task<IActionResult> GetPackages()
-        {
-            try
-            {
-                var result = await _cargaCatalogosService.GetAllPackagesAsync();
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Internal server error: {ex.Message}"));
-            }
-        }
+        //        if (result.Data == null) // Si falla la operación
+        //        {
+        //            return StatusCode((int)HttpStatusCode.InternalServerError, result);
+        //        }
 
-        [HttpGet("units")]
-        public async Task<IActionResult> GetUnits()
-        {
-            try
-            {
-                var result = await _cargaCatalogosService.GetAllUnitsAsync();
+        //        // Retorna el resultado de éxito
+        //        return Ok(result);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // En caso de un error no controlado
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Internal server error: {ex.Message}"));
+        //    }
+        //}
 
-                if (result.Data == null)
-                {
-                    return StatusCode((int)HttpStatusCode.InternalServerError, result);
-                }
+        //[HttpGet("products")]
+        //public async Task<IActionResult> GetProducts()
+        //{
+        //    try
+        //    {
+        //        var result = await _cargaCatalogosService.GetAllProductsAsync();
+        //        return Ok(result);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Internal server error: {ex.Message}"));
+        //    }
+        //}
 
-                // Retorna el resultado de éxito
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Internal server error: {ex.Message}"));
-            }
-        }
+        //[HttpGet("packages")]
+        //public async Task<IActionResult> GetPackages()
+        //{
+        //    try
+        //    {
+        //        var result = await _cargaCatalogosService.GetAllPackagesAsync();
+        //        return Ok(result);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Internal server error: {ex.Message}"));
+        //    }
+        //}
 
-        [HttpGet("allergies")]
-        public async Task<IActionResult> GetAllergies()
-        {
-            try
-            {
-                var result = await _cargaCatalogosService.GetAllAllergiesAsync();
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error interno del servidor: {ex.Message}"));
-            }
-        }
+        //[HttpGet("units")]
+        //public async Task<IActionResult> GetUnits()
+        //{
+        //    try
+        //    {
+        //        var result = await _cargaCatalogosService.GetAllUnitsAsync();
+
+        //        if (result.Data == null)
+        //        {
+        //            return StatusCode((int)HttpStatusCode.InternalServerError, result);
+        //        }
+
+        //        // Retorna el resultado de éxito
+        //        return Ok(result);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Internal server error: {ex.Message}"));
+        //    }
+        //}
+
+        //[HttpGet("allergies")]
+        //public async Task<IActionResult> GetAllergies()
+        //{
+        //    try
+        //    {
+        //        var result = await _cargaCatalogosService.GetAllAllergiesAsync();
+        //        return Ok(result);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error interno del servidor: {ex.Message}"));
+        //    }
+        //}
 
 
-        [HttpGet("molecules")]
-        public async Task<IActionResult> GetMolecules()
-        {
-            try
-            {
-                var result = await _cargaCatalogosService.GetAllMoleculesAsync();
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error interno del servidor: {ex.Message}"));
-            }
-        }
+        //[HttpGet("molecules")]
+        //public async Task<IActionResult> GetMolecules()
+        //{
+        //    try
+        //    {
+        //        var result = await _cargaCatalogosService.GetAllMoleculesAsync();
+        //        return Ok(result);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error interno del servidor: {ex.Message}"));
+        //    }
+        //}
 
-        [HttpGet("routes")]
-        public async Task<IActionResult> GetRoutes()
-        {
-            try
-            {
-                var result = await _cargaCatalogosService.GetAllRoutesAsync();
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error interno del servidor: {ex.Message}"));
-            }
-        }
+        //[HttpGet("routes")]
+        //public async Task<IActionResult> GetRoutes()
+        //{
+        //    try
+        //    {
+        //        var result = await _cargaCatalogosService.GetAllRoutesAsync();
+        //        return Ok(result);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error interno del servidor: {ex.Message}"));
+        //    }
+        //}
 
-        [HttpGet("cim10")]
-        public async Task<IActionResult> GetCIM10()
-        {
-            try
-            {
-                var result = await _cargaCatalogosService.GetAllCIM10Async();
+        //[HttpGet("cim10")]
+        //public async Task<IActionResult> GetCIM10()
+        //{
+        //    try
+        //    {
+        //        var result = await _cargaCatalogosService.GetAllCIM10Async();
 
-                if (result.Data == null) // Si falla la operación
-                {
-                    return StatusCode((int)HttpStatusCode.InternalServerError, result);
-                }
+        //        if (result.Data == null) // Si falla la operación
+        //        {
+        //            return StatusCode((int)HttpStatusCode.InternalServerError, result);
+        //        }
 
-                // Retorna el resultado de éxito
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                // En caso de un error no controlado
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Internal server error: {ex.Message}"));
-            }
-        }
+        //        // Retorna el resultado de éxito
+        //        return Ok(result);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // En caso de un error no controlado
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Internal server error: {ex.Message}"));
+        //    }
+        //}
 
-        [HttpGet("vtms")]
-        public async Task<IActionResult> GetVTMs()
-        {
-            try
-            {
-                var result = await _cargaCatalogosService.GetAllVTMsAsync();
+        //[HttpGet("vtms")]
+        //public async Task<IActionResult> GetVTMs()
+        //{
+        //    try
+        //    {
+        //        var result = await _cargaCatalogosService.GetAllVTMsAsync();
 
-                if (result.Data == null)
-                {
-                    return StatusCode((int)HttpStatusCode.InternalServerError, result);
-                }
+        //        if (result.Data == null)
+        //        {
+        //            return StatusCode((int)HttpStatusCode.InternalServerError, result);
+        //        }
 
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Internal server error: {ex.Message}"));
-            }
-        }
+        //        return Ok(result);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Internal server error: {ex.Message}"));
+        //    }
+        //}
 
+        //[HttpGet("atc-classifications")]
+        //public async Task<IActionResult> GetATCClassifications()
+        //{
+        //    try
+        //    {
+        //        var result = await _cargaCatalogosService.GetAllATCClassificationsAsync();
+
+        //        if (result.Data == null)
+        //        {
+        //            return StatusCode((int)HttpStatusCode.InternalServerError, result);
+        //        }
+
+        //        return Ok(result);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Internal server error: {ex.Message}"));
+        //    }
+        //}
+
+        //[HttpGet("ucdvs")]
+        //public async Task<IActionResult> GetUCDVs()
+        //{
+        //    try
+        //    {
+        //        var result = await _cargaCatalogosService.GetAllUCDVsAsync();
+
+        //        if (result.Data == null)
+        //        {
+        //            return StatusCode((int)HttpStatusCode.InternalServerError, result);
+        //        }
+
+        //        return Ok(result);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Internal server error: {ex.Message}"));
+        //    }
+        //}
+
+        //[HttpGet("ucds")]
+        //public async Task<IActionResult> GetUCDs()
+        //{
+        //    var result = await _cargaCatalogosService.GetAllUCDsAsync();
+
+        //    if (result.Data == null)
+        //    {
+        //        return StatusCode(500, result);
+        //    }
+
+        //    return Ok(result);
+        //}
+
+        //[HttpGet("side-effects")]
+        //public async Task<IActionResult> GetSideEffects()
+        //{
+        //    try
+        //    {
+        //        var result = await _cargaCatalogosService.GetAllSideEffectsAsync();
+        //        if (result.Data == null)
+        //        {
+        //            return StatusCode((int)System.Net.HttpStatusCode.InternalServerError, result);
+        //        }
+        //        return Ok(result);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(System.Net.HttpStatusCode.InternalServerError, $"Internal server error: {ex.Message}"));
+        //    }
+        //}
     }
 }

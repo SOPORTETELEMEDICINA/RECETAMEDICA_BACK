@@ -1,4 +1,5 @@
 ﻿using RMD.Models.Consulta;
+using RMD.Models.Shared;
 using System.Xml.Linq;
 
 namespace RMD.Extensions.Consulta
@@ -42,40 +43,7 @@ namespace RMD.Extensions.Consulta
             return cim10Entries;
         }
 
-        public static List<AllergyEntry> ParseAllergyXml(this string xmlContent)
-        {
-            var allergyEntries = new List<AllergyEntry>();
-            var xmlDoc = XDocument.Parse(xmlContent);
-            XNamespace ns = "http://api.vidal.net/-/spec/vidal-api/1.0/";
-            XNamespace atomNs = "http://www.w3.org/2005/Atom";
-
-            foreach (var entry in xmlDoc.Descendants(atomNs + "entry"))
-            {
-                var allergyEntry = new AllergyEntry
-                {
-                    Title = entry.Element(atomNs + "title")?.Value ?? string.Empty,
-                    Id = entry.Element(atomNs + "id")?.Value ?? string.Empty,
-                    VidalId = entry.Element(ns + "id")?.Value ?? string.Empty,
-                    Name = entry.Element(ns + "name")?.Value ?? string.Empty,
-                    Updated = DateTime.TryParse(entry.Element(atomNs + "updated")?.Value, out DateTime updated) ? updated : DateTime.MinValue
-                };
-
-                foreach (var link in entry.Elements(atomNs + "link"))
-                {
-                    allergyEntry.RelatedLinks.Add(new RelatedLink
-                    {
-                        Relation = link.Attribute("rel")?.Value ?? string.Empty,
-                        Type = link.Attribute("type")?.Value ?? string.Empty,
-                        Href = link.Attribute("href")?.Value ?? string.Empty,
-                        Title = link.Attribute("title")?.Value ?? string.Empty
-                    });
-                }
-
-                allergyEntries.Add(allergyEntry);
-            }
-
-            return allergyEntries;
-        }
+      
 
         public static string ParseToXml(this PrescriptionModel model)
         {

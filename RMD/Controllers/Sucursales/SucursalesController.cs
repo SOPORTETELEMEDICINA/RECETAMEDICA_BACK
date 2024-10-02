@@ -2,7 +2,9 @@
 using Microsoft.AspNetCore.Mvc;
 using RMD.Extensions;
 using RMD.Interface.Sucursales;
+using RMD.Models.Responses;
 using RMD.Models.Sucursales;
+using System.Net;
 
 namespace RMD.Controllers.Sucursales
 {
@@ -13,58 +15,110 @@ namespace RMD.Controllers.Sucursales
     public class SucursalesController : ControllerBase
     {
         private readonly ISucursalService _sucursalService;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public SucursalesController(ISucursalService sucursalService)
+        public SucursalesController(ISucursalService sucursalService, IHttpContextAccessor httpContextAccessor)
         {
             _sucursalService = sucursalService;
+            _httpContextAccessor = httpContextAccessor;
         }
 
-        /// <summary>
-        /// Gets a branch by its ID.
-        /// </summary>
-        /// <param name="id">The ID of the branch.</param>
-        /// <returns>The requested branch.</returns>
+
+        [HttpPost]
+        public async Task<ActionResult<ResponseFromService<bool>>> CreateSucursal([FromBody] CreateSucursalModel model)
+        {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
+
+            var result = await _sucursalService.CreateSucursalAsync(model);
+            if (!result)
+            {
+                return BadRequest(ResponseFromService<bool>.Failure(HttpStatusCode.BadRequest, "Error al crear la sucursal."));
+            }
+            return Ok(ResponseFromService<bool>.Success(true, "Sucursal creada exitosamente."));
+        }
+
+        [HttpPut("{id}")]
+        public async Task<ActionResult<ResponseFromService<bool>>> UpdateSucursal(Guid id, [FromBody] UpdateSucursalModel model)
+        {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
+
+            var result = await _sucursalService.UpdateSucursalAsync(id, model);
+            if (!result)
+            {
+                return BadRequest(ResponseFromService<bool>.Failure(HttpStatusCode.BadRequest, "Error al actualizar la sucursal."));
+            }
+            return Ok(ResponseFromService<bool>.Success(true, "Sucursal actualizada exitosamente."));
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<ResponseFromService<bool>>> DeleteSucursal(Guid id)
+        {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
+
+            var result = await _sucursalService.DeleteSucursalAsync(id);
+            if (!result)
+            {
+                return BadRequest(ResponseFromService<bool>.Failure(HttpStatusCode.BadRequest, "Error al eliminar la sucursal."));
+            }
+            return Ok(ResponseFromService<bool>.Success(true, "Sucursal eliminada (lógicamente) exitosamente."));
+        }
+
         [HttpGet("{id}")]
-        public async Task<ActionResult<Sucursal>> GetSucursalById(Guid id)
+        public async Task<ActionResult<ResponseFromService<SucursalDomicilioModel>>> GetSucursalById(Guid id)
         {
-            var sucursal = await _sucursalService.GetSucursalByIdAsync(id);
-            if (sucursal == null)
+            try
             {
-                return NotFound();
+                var sucursal = await _sucursalService.GetSucursalByIdSucursalAsync(id);
+                return Ok(ResponseFromService<SucursalDomicilioModel>.Success(sucursal, "Sucursal encontrada exitosamente."));
             }
-            return Ok(sucursal);
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ResponseFromService<SucursalDomicilioModel>.Failure(HttpStatusCode.NotFound, ex.Message));
+            }
         }
 
-        /// <summary>
-        /// Gets branches by GEMP ID.
-        /// </summary>
-        /// <param name="idGEMP">The GEMP ID.</param>
-        /// <returns>A list of branches.</returns>
         [HttpGet("gemp/{idGEMP}")]
-        public async Task<ActionResult<IEnumerable<Sucursal>>> GetSucursalesByGEMP(Guid idGEMP)
+        public async Task<ActionResult<ResponseFromService<IEnumerable<SucursalDomicilioModel>>>> GetSucursalesByGEMP(Guid idGEMP)
         {
-            var sucursales = await _sucursalService.GetSucursalesByGEMPAsync(idGEMP);
+            var sucursales = await _sucursalService.GetSucursalesByIdGEMPAsync(idGEMP);
             if (sucursales == null || !sucursales.Any())
             {
-                return NotFound();
+                return NotFound(ResponseFromService<IEnumerable<SucursalDomicilioModel>>.Failure(HttpStatusCode.NotFound, "No se encontraron sucursales para este grupo empresarial."));
             }
-            return Ok(sucursales);
+
+            return Ok(ResponseFromService<IEnumerable<SucursalDomicilioModel>>.Success(sucursales, "Sucursales encontradas exitosamente."));
         }
 
-        /// <summary>
-        /// Gets branches by settlement ID.
-        /// </summary>
-        /// <param name="idAsentamiento">The settlement ID.</param>
-        /// <returns>A list of branches.</returns>
-        [HttpGet("asentamiento/{idAsentamiento}")]
-        public async Task<ActionResult<IEnumerable<Sucursal>>> GetSucursalesByAsentamiento(int idAsentamiento)
+        [HttpGet("gemp/{idGEMP}/asentamiento/{idAsentamiento}")]
+        public async Task<ActionResult<ResponseFromService<IEnumerable<SucursalDomicilioModel>>>> GetSucursalesByGEMPAndAsentamiento(Guid idGEMP, int idAsentamiento)
         {
-            var sucursales = await _sucursalService.GetSucursalesByAsentamientoAsync(idAsentamiento);
+            var sucursales = await _sucursalService.GetSucursalesByIdGEMPAndIdAsentamientoAsync(idGEMP, idAsentamiento);
             if (sucursales == null || !sucursales.Any())
             {
-                return NotFound();
+                return NotFound(ResponseFromService<IEnumerable<SucursalDomicilioModel>>.Failure(HttpStatusCode.NotFound, "No se encontraron sucursales para el grupo empresarial y asentamiento especificados."));
             }
-            return Ok(sucursales);
+
+            return Ok(ResponseFromService<IEnumerable<SucursalDomicilioModel>>.Success(sucursales, "Sucursales encontradas exitosamente."));
         }
+
+        private bool IsUserAuthorized()
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            var roleIdClaim = user?.FindFirst("IdRol")?.Value?.ToUpper();  // Convertir a mayúsculas
+
+            // Validar si el IdRol del token es uno de los permitidos
+            return roleIdClaim == "7905213C-B0CB-4D42-A997-20094EF41F9C" ||
+                   roleIdClaim == "DE5DFDDC-F6CC-4B7F-B805-286732501E57";
+        }
+
     }
 }

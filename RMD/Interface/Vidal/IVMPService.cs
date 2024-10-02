@@ -1,14 +1,12 @@
 ﻿using RMD.Models.Consulta;
-using RMD.Models.Responses;
 using RMD.Models.Vidal.ByVMP;
-using System.Data;
 
 namespace RMD.Interface.Vidal
 {
     public interface IVMPService
     {
        
-        Task<VMPModel> GetVMPById(int id);
+        Task<VMPEntry> GetVMPById(int id);
 
         /******************************/
         //Task<List<VMPEntry>> GetAllVMPsAsync();

@@ -7,7 +7,7 @@ namespace RMD.Interface.Vidal
     public interface IProductService
     {
         
-        Task<ProductModel> GetProductByIdAsync(int productId);
+        Task<ProductById> GetProductByIdAsync(int productId);
         //Task<List<Product>> GetAllProductsAsync();
         //Task<ProductById> GetProductByIdAsync(int productId);
         Task<List<ProductPackage>> GetProductPackagesAsync(int productId);

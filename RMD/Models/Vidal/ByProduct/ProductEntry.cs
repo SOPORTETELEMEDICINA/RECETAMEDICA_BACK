@@ -1,4 +1,6 @@
-﻿namespace RMD.Models.Vidal.ByProduct
+﻿using RMD.Models.Shared;
+
+namespace RMD.Models.Vidal.ByProduct
 {
     public class ProductEntry
     {

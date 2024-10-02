@@ -15,27 +15,69 @@ namespace RMD.Controllers.Medicos
     {
         private readonly IMedicoService _medicoService = medicoService;
 
-        [HttpGet("ByIdMedico/{id}")]
+        [HttpGet("ByIdMedico/{idMedico}")]
         [Authorize]
         [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<IActionResult> GetMedicoByIdMedico(Guid id)
+        public async Task<IActionResult> GetMedicoByIdMedico(Guid idMedico)
         {
             try
             {
-                var medico = await _medicoService.GetMedicoByIdMedicoAsync(id);
+                var medico = await _medicoService.GetMedicoByIdMedicoAsync(idMedico);
                 if (medico == null)
                 {
                     return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "Médico no encontrado."));
                 }
 
-                var response = ResponseFromService<UsuarioMedico>.Success(medico, "Médico obtenido con éxito.");
-                return Ok(response);
+                return Ok(ResponseFromService<MedicoConsultaRequest>.Success(medico, "Médico obtenido con éxito."));
             }
             catch (Exception ex)
             {
                 return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
             }
         }
+
+        [HttpGet("BySucursal/{idSucursal}")]
+        [Authorize]
+        [ServiceFilter(typeof(ValidateTokenFilter))]
+        public async Task<IActionResult> GetMedicosBySucursal(Guid idSucursal)
+        {
+            try
+            {
+                var medicos = await _medicoService.GetMedicosBySucursalAsync(idSucursal);
+                if (!medicos.Any())
+                {
+                    return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "No se encontraron médicos para la sucursal especificada."));
+                }
+
+                return Ok(ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Success(medicos, "Médicos obtenidos con éxito."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
+            }
+        }
+
+        [HttpGet("ByGEMP/{idGEMP}")]
+        [Authorize]
+        [ServiceFilter(typeof(ValidateTokenFilter))]
+        public async Task<IActionResult> GetMedicosByGEMP(Guid idGEMP)
+        {
+            try
+            {
+                var medicos = await _medicoService.GetMedicosByGEMPAsync(idGEMP);
+                if (!medicos.Any())
+                {
+                    return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "No se encontraron médicos para el GEMP especificado."));
+                }
+
+                return Ok(ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Success(medicos, "Médicos obtenidos con éxito."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
+            }
+        }
+
 
         [HttpGet("ByIdUsuario/{id}")]
         [Authorize]
@@ -50,7 +92,7 @@ namespace RMD.Controllers.Medicos
                     return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "Médico no encontrado."));
                 }
 
-                var response = ResponseFromService<UsuarioMedico>.Success(medico, "Médico obtenido con éxito.");
+                var response = ResponseFromService<MedicoConsultaRequest>.Success(medico, "Médico obtenido con éxito.");
                 return Ok(response);
             }
             catch (Exception ex)
@@ -72,7 +114,7 @@ namespace RMD.Controllers.Medicos
                     return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "Médico no encontrado."));
                 }
 
-                var response = ResponseFromService<UsuarioMedico>.Success(medico, "Médico obtenido con éxito.");
+                var response = ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Success(medico, "Médico obtenido con éxito.");
                 return Ok(response);
             }
             catch (Exception ex)
@@ -88,10 +130,8 @@ namespace RMD.Controllers.Medicos
         {
             try
             {
-                // Obtener el IdRol del token JWT
                 var idRol = User.FindFirstValue("IdRol");
 
-                // Convertir a GUID
                 if (!Guid.TryParse(idRol, out Guid idRolGuid))
                 {
                     return BadRequest("IdRol no es válido.");
@@ -103,14 +143,14 @@ namespace RMD.Controllers.Medicos
                     return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Error al crear el médico."));
                 }
 
-                var response = ResponseFromService<string>.Success(null, "Médico creado con éxito.");
-                return Ok(response);
+                return Ok(ResponseFromService<string>.Success(null, "Médico creado con éxito."));
             }
             catch (Exception ex)
             {
                 return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
             }
         }
+
 
         [HttpPut]
         [Authorize]
@@ -119,30 +159,56 @@ namespace RMD.Controllers.Medicos
         {
             try
             {
-                // Obtener el IdUsuario del token JWT
                 var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
 
-                // Convertir a GUID
                 if (!Guid.TryParse(idUsuarioSolicitante, out Guid idUsuarioSolicitanteGuid))
                 {
                     return BadRequest("IdUsuario no es válido.");
                 }
 
-                // Llamar al servicio para actualizar el médico
                 var result = await _medicoService.UpdateMedicoAsync(medico, idUsuarioSolicitanteGuid);
                 if (!result)
                 {
                     return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Error al actualizar el médico."));
                 }
 
-                var response = ResponseFromService<string>.Success(null, "Médico actualizado con éxito.");
-                return Ok(response);
+                return Ok(ResponseFromService<string>.Success(null, "Médico actualizado con éxito."));
             }
             catch (Exception ex)
             {
                 return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
             }
         }
+
+        [HttpDelete("{idMedico}")]
+        [Authorize]
+        [ServiceFilter(typeof(ValidateTokenFilter))]
+        public async Task<IActionResult> DeleteMedico(Guid idMedico)
+        {
+            try
+            {
+                var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
+
+                if (!Guid.TryParse(idUsuarioSolicitante, out Guid idUsuarioSolicitanteGuid))
+                {
+                    return BadRequest("IdUsuario no es válido.");
+                }
+
+                var result = await _medicoService.DeleteMedicoAsync(idMedico, idUsuarioSolicitanteGuid);
+                if (!result)
+                {
+                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Error al eliminar el médico."));
+                }
+
+                return Ok(ResponseFromService<string>.Success(null, "Médico eliminado con éxito."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
+            }
+        }
+
+
 
         [HttpPost("pacientes-por-sucursal")]
         [Authorize]

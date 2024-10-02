@@ -36,7 +36,7 @@ namespace RMD.Controllers.Vidal.ByProduct
                 }
 
                 // Retornar el producto usando ResponseFromService
-                return Ok(ResponseFromService<ProductModel>.Success(product, "Producto recuperado exitosamente."));
+                return Ok(ResponseFromService<ProductById>.Success(product, "Producto recuperado exitosamente."));
             }
             catch (Exception ex)
             {

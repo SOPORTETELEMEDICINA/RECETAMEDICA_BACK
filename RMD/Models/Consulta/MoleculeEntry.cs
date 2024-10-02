@@ -1,4 +1,6 @@
-﻿namespace RMD.Models.Consulta
+﻿using RMD.Models.Shared;
+
+namespace RMD.Models.Consulta
 {
     public class MoleculeEntry
     {

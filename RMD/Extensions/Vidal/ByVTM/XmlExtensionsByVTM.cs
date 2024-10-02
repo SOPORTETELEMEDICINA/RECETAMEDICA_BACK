@@ -1,5 +1,6 @@
 ﻿
 using RMD.Models.Consulta;
+using RMD.Models.Shared;
 using RMD.Models.Vidal.ByVTM;
 using System.Xml.Linq;
 

@@ -48,43 +48,43 @@ namespace RMD.Extensions.Vidal.ByVMP
             }
         }
 
-        //public static VMPEntry ParseVMPByIdXml(this string xmlContent)
-        //{
-        //    var document = XDocument.Parse(xmlContent);
-        //    var entryElement = document.Root.Element("{http://www.w3.org/2005/Atom}entry");
+        public static VMPEntry ParseVMPByIdXml(this string xmlContent)
+        {
+            var document = XDocument.Parse(xmlContent);
+            var entryElement = document.Root.Element("{http://www.w3.org/2005/Atom}entry");
 
-        //    if (entryElement == null)
-        //    {
-        //        return null;
-        //    }
+            if (entryElement == null)
+            {
+                return null;
+            }
 
-        //    var vidalNamespace = "http://api.vidal.net/-/spec/vidal-api/1.0/";
-        //    var vmpEntry = new VMPEntry
-        //    {
-        //        IdVmp = (int)entryElement.Element(XName.Get("id", vidalNamespace)),
-        //        Name = (string)entryElement.Element(XName.Get("name", vidalNamespace)),
-        //        ActivePrinciples = (string)entryElement.Element(XName.Get("activePrinciples", vidalNamespace)),
-        //        RouteId = (int)entryElement.Element(XName.Get("route", vidalNamespace)).Attribute("id"),
-        //        RouteValue = (string)entryElement.Element(XName.Get("route", vidalNamespace)),
-        //        GalenicFormId = (int)entryElement.Element(XName.Get("galenicForm", vidalNamespace)).Attribute("vidalId"),
-        //        GalenicFormValue = (string)entryElement.Element(XName.Get("galenicForm", vidalNamespace)),
-        //        RegulatoryGenericPrescription = bool.Parse((string)entryElement.Element(XName.Get("regulatoryGenericPrescription", vidalNamespace)))
-        //    };
+            var vidalNamespace = "http://api.vidal.net/-/spec/vidal-api/1.0/";
+            var vmpEntry = new VMPEntry
+            {
+                IdVmp = (int)entryElement.Element(XName.Get("id", vidalNamespace)),
+                Name = (string)entryElement.Element(XName.Get("name", vidalNamespace)),
+                ActivePrinciples = (string)entryElement.Element(XName.Get("activePrinciples", vidalNamespace)),
+                RouteId = (int)entryElement.Element(XName.Get("route", vidalNamespace)).Attribute("id"),
+                RouteValue = (string)entryElement.Element(XName.Get("route", vidalNamespace)),
+                GalenicFormId = (int)entryElement.Element(XName.Get("galenicForm", vidalNamespace)).Attribute("vidalId"),
+                GalenicFormValue = (string)entryElement.Element(XName.Get("galenicForm", vidalNamespace)),
+                RegulatoryGenericPrescription = bool.Parse((string)entryElement.Element(XName.Get("regulatoryGenericPrescription", vidalNamespace)))
+            };
 
-        //    // Buscar en los enlaces para encontrar IdVTM
-        //    foreach (var link in entryElement.Elements("{http://www.w3.org/2005/Atom}link"))
-        //    {
-        //        var href = (string)link.Attribute("href");
-        //        if (href.Contains("/vtm/"))
-        //        {
-        //            var idStr = href.Split('/').Last();
-        //            vmpEntry.IdVTM = int.Parse(idStr);
-        //            break;
-        //        }
-        //    }
+            // Buscar en los enlaces para encontrar IdVTM
+            foreach (var link in entryElement.Elements("{http://www.w3.org/2005/Atom}link"))
+            {
+                var href = (string)link.Attribute("href");
+                if (href.Contains("/vtm/"))
+                {
+                    var idStr = href.Split('/').Last();
+                    vmpEntry.IdVTM = int.Parse(idStr);
+                    break;
+                }
+            }
 
-        //    return vmpEntry;
-        //}
+            return vmpEntry;
+        }
 
         public static List<VMPProductEntry> ParseVMPProductXml(this string xmlContent)
         {

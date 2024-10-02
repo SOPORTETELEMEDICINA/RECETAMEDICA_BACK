@@ -6,8 +6,8 @@ using RMD.Interface.Consulta;
 using RMD.Interface.Pacientes;
 using RMD.Interface.Vidal;
 using RMD.Models.Consulta;
+using RMD.Models.Pacientes;
 using RMD.Models.Responses;
-using RMD.Models.Vidal.ByUnit;
 using RMD.Models.Vidal.ByVMP;
 using System.Net;
 
@@ -22,7 +22,9 @@ namespace RMD.Controllers.Consulta
         IPackageService packageService,
         IProductService productService,
         IMoleculeService moleculeService,
-        IVMPService vmpService
+        IVMPService vmpService,
+        IHttpContextAccessor httpContextAccessor
+
             ) : ControllerBase
     {
         private readonly IConsultaService _consultaService = consultaService;
@@ -33,33 +35,183 @@ namespace RMD.Controllers.Consulta
         private readonly IMoleculeService _moleculeService = moleculeService;
         private readonly IVMPService _vmpService = vmpService;
 
-        [HttpGet("VmpByName")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<IActionResult> GetVmpByName(string name)
+        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+
+        [HttpPost("AllergyByName")]
+        public async Task<IActionResult> GetAllergiesByName(string name)
         {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
             try
             {
-                var vmpEntries = await _vmpService.GetVmpByName(name);
+                var allergies = await _consultaService.GetAllergiesByNameAsync(name);
 
-                if (!vmpEntries?.Any() ?? true)
+                if (!allergies.Any())
                 {
-                    return Ok(ResponseFromService<List<VmpEntry>>.Success(new List<VmpEntry>(), "No se encontraron entradas."));
+                    return Ok(ResponseFromService<IEnumerable<RequestSearchAllergy>>.Success(new List<RequestSearchAllergy>(), "No allergies found."));
                 }
 
-                return Ok(ResponseFromService<List<VmpEntry>>.Success(vmpEntries, "Entradas encontradas con éxito."));
+                return Ok(ResponseFromService<IEnumerable<RequestSearchAllergy>>.Success(allergies, "Allergies retrieved successfully."));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener las alergias: {ex.Message}"));
             }
         }
+
+        [HttpPost("MoleculeByName")]
+        public async Task<IActionResult> GetMoleculeByName(string name)
+        {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
+            try
+            {
+                var molecules = await _consultaService.GetMoleculeByNameAsync(name);
+
+                if (!molecules.Any())
+                {
+                    return Ok(ResponseFromService<IEnumerable<RequestSearchMolecules>>.Success(new List<RequestSearchMolecules>(), "No allergies found."));
+                }
+
+                return Ok(ResponseFromService<IEnumerable<RequestSearchMolecules>>.Success(molecules, "Allergies retrieved successfully."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener las alergias: {ex.Message}"));
+            }
+        }
+
+        [HttpPost("VMPByName")]
+        public async Task<IActionResult> GetVMPByName(string name)
+        {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
+            try
+            {
+                var vmps = await _consultaService.GetVMPByNameAsync(name);
+
+                if (!vmps.Any())
+                {
+                    return Ok(ResponseFromService<IEnumerable<RequestSearchVMP>>.Success(new List<RequestSearchVMP>(), "No allergies found."));
+                }
+
+                return Ok(ResponseFromService<IEnumerable<RequestSearchVMP>>.Success(vmps, "Allergies retrieved successfully."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener las alergias: {ex.Message}"));
+            }
+        }
+
+        [HttpPost("ProductByName")]
+        public async Task<IActionResult> GetProductsByName(string name)
+        {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
+            try
+            {
+                var products = await _consultaService.GetProductsByNameAsync(name);
+
+                if (!products.Any())
+                {
+                    return Ok(ResponseFromService<IEnumerable<RequestSearchProducts>>.Success(new List<RequestSearchProducts>(), "No allergies found."));
+                }
+
+                return Ok(ResponseFromService<IEnumerable<RequestSearchProducts>>.Success(products, "Allergies retrieved successfully."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener las alergias: {ex.Message}"));
+            }
+        }
+
+        [HttpPost("PackagesByName")]
+        public async Task<IActionResult> GetPackagesByName(string name)
+        {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
+            try
+            {
+                var packages = await _consultaService.GetPackagesByNameAsync(name);
+
+                if (!packages.Any())
+                {
+                    return Ok(ResponseFromService<IEnumerable<RequestSearchPackage>>.Success(new List<RequestSearchPackage>(), "No allergies found."));
+                }
+
+                return Ok(ResponseFromService<IEnumerable<RequestSearchPackage>>.Success(packages, "Allergies retrieved successfully."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener las alergias: {ex.Message}"));
+            }
+        }
+
+        [HttpPost("CIM10ByName")]
+        public async Task<IActionResult> GeCIM10ByName(string name)
+        {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
+            try
+            {
+                var packages = await _consultaService.GetCIM10sByNameAsync(name);
+
+                if (!packages.Any())
+                {
+                    return Ok(ResponseFromService<IEnumerable<RequestSearchCIM10>>.Success(new List<RequestSearchCIM10>(), "No allergies found."));
+                }
+
+                return Ok(ResponseFromService<IEnumerable<RequestSearchCIM10>>.Success(packages, "Allergies retrieved successfully."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener las alergias: {ex.Message}"));
+            }
+        }
+
+        //[HttpGet("VmpByName")]
+        //[Authorize]
+        //[ServiceFilter(typeof(ValidateTokenFilter))]
+        //public async Task<IActionResult> GetVmpByName(string name)
+        //{
+        //    try
+        //    {
+        //        var vmpEntries = await _vmpService.GetVmpByName(name);
+
+        //        if (!vmpEntries?.Any() ?? true)
+        //        {
+        //            return Ok(ResponseFromService<List<VmpEntry>>.Success(new List<VmpEntry>(), "No se encontraron entradas."));
+        //        }
+
+        //        return Ok(ResponseFromService<List<VmpEntry>>.Success(vmpEntries, "Entradas encontradas con éxito."));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
+        //    }
+        //}
 
         [HttpGet("VmpUnit")]
         [AllowAnonymous]
         [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> SearchUnitvmp(string link)
         {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
             try
             {
                 var units = await _vmpService.GetVmpUnitsByLinkAsync(link);
@@ -76,33 +228,37 @@ namespace RMD.Controllers.Consulta
             }
         }
 
-        [HttpGet("ProductByName")]
-        [AllowAnonymous]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<IActionResult> GetProductsByName(string name)
-        {
-            try
-            {
-                var productEntries = await _productService.GetProductsByName(name);
+        //[HttpGet("ProductByName")]
+        //[AllowAnonymous]
+        //[ServiceFilter(typeof(ValidateTokenFilter))]
+        //public async Task<IActionResult> GetProductsByName(string name)
+        //{
+        //    try
+        //    {
+        //        var productEntries = await _productService.GetProductsByName(name);
 
-                if (!productEntries?.Any() ?? true)
-                {
-                    return Ok(ResponseFromService<List<Models.Vidal.ByProduct.ProductEntry>>.Success(new List<Models.Vidal.ByProduct.ProductEntry>(), "No se encontraron productos."));
-                }
+        //        if (!productEntries?.Any() ?? true)
+        //        {
+        //            return Ok(ResponseFromService<List<Models.Vidal.ByProduct.ProductEntry>>.Success(new List<Models.Vidal.ByProduct.ProductEntry>(), "No se encontraron productos."));
+        //        }
 
-                return Ok(ResponseFromService<List<Models.Vidal.ByProduct.ProductEntry>>.Success(productEntries, "Productos encontrados con éxito."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
-            }
-        }
+        //        return Ok(ResponseFromService<List<Models.Vidal.ByProduct.ProductEntry>>.Success(productEntries, "Productos encontrados con éxito."));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
+        //    }
+        //}
 
         [HttpGet("ProductUnit")]
         [AllowAnonymous]
         [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> SearchUnitProduct(string link)
         {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
             try
             {
                 var units = await _productService.GetProductUnitsByLinkAsync(link);
@@ -120,32 +276,36 @@ namespace RMD.Controllers.Consulta
             }
         }
 
-        [HttpGet("PackeByName")]
-        [AllowAnonymous]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<ActionResult<List<PackageEntry>>> GetPackagesByName([FromQuery] string name)
-        {
-            try
-            {
-                var packages = await _packageService.GetPackagesByName(name);
-                if (!packages?.Any() ?? true)
-                {
-                    return Ok(ResponseFromService<List<PackageEntry>>.Success(new List<PackageEntry>(), "No se encontraron paquetes."));
-                }
+        //[HttpGet("PackeByName")]
+        //[AllowAnonymous]
+        //[ServiceFilter(typeof(ValidateTokenFilter))]
+        //public async Task<ActionResult<List<PackageEntry>>> GetPackagesByName([FromQuery] string name)
+        //{
+        //    try
+        //    {
+        //        var packages = await _packageService.GetPackagesByName(name);
+        //        if (!packages?.Any() ?? true)
+        //        {
+        //            return Ok(ResponseFromService<List<PackageEntry>>.Success(new List<PackageEntry>(), "No se encontraron paquetes."));
+        //        }
 
-                return Ok(ResponseFromService<List<PackageEntry>>.Success(packages, "Paquetes encontrados con éxito."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
-            }
-        }
+        //        return Ok(ResponseFromService<List<PackageEntry>>.Success(packages, "Paquetes encontrados con éxito."));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
+        //    }
+        //}
 
         [HttpGet("PackageUnit")]
         [AllowAnonymous]
         [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> SearchUnitPackage(string link)
         {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
             try
             {
                 var units = await _packageService.GetPackageUnitsByLinkAsync(link);
@@ -163,55 +323,43 @@ namespace RMD.Controllers.Consulta
             }
         }
 
-        [HttpGet("Cim10ByName")]
-        [AllowAnonymous]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<IActionResult> GetCim10ByName(string name)
-        {
-            try
-            {
-                var cim10Entries = await _consultaService.GetCim10ByName(name);
+        //[HttpGet("Cim10ByName")]
+        //[AllowAnonymous]
+        //[ServiceFilter(typeof(ValidateTokenFilter))]
+        //public async Task<IActionResult> GetCim10ByName(string name)
+        //{
+        //    if (!IsUserAuthorized())
+        //    {
+        //        return Forbid("No tiene permisos para realizar esta acción.");
+        //    }
+        //    try
+        //    {
+        //        var cim10Entries = await _consultaService.GetCim10ByName(name);
 
-                if (!cim10Entries?.Any() ?? true)
-                {
-                    return Ok(ResponseFromService<List<Cim10Entry>>.Success(new List<Cim10Entry>(), "No se encontraron entradas."));
-                }
+        //        if (!cim10Entries?.Any() ?? true)
+        //        {
+        //            return Ok(ResponseFromService<List<Cim10Entry>>.Success(new List<Cim10Entry>(), "No se encontraron entradas."));
+        //        }
 
-                return Ok(ResponseFromService<List<Cim10Entry>>.Success(cim10Entries, "Entradas encontradas con éxito."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
-            }
-        }
+        //        return Ok(ResponseFromService<List<Cim10Entry>>.Success(cim10Entries, "Entradas encontradas con éxito."));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
+        //    }
+        //}
 
-        [HttpGet("AllergysByName")]
-        [AllowAnonymous]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<IActionResult> GetAllergiesByName(string name)
-        {
-            try
-            {
-                var allergyEntries = await _consultaService.GetAllergiesByName(name);
 
-                if (!allergyEntries?.Any() ?? true)
-                {
-                    return Ok(ResponseFromService<List<AllergyEntry>>.Success(new List<AllergyEntry>(), "No se encontraron alergias."));
-                }
-
-                return Ok(ResponseFromService<List<AllergyEntry>>.Success(allergyEntries, "Alergias encontradas con éxito."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
-            }
-        }
 
         [HttpPost("Analisis")]
         [Authorize]
         [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> AnalyzePrescription([FromBody] PrescriptionModel request)
         {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
             if (request == null)
             {
                 return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Datos de solicitud inválidos."));
@@ -231,36 +379,37 @@ namespace RMD.Controllers.Consulta
             }
         }
 
+        //[HttpGet("MoleculesByName")]
+        //[Authorize]
+        //[ServiceFilter(typeof(ValidateTokenFilter))]
+        //public async Task<IActionResult> GetMoleculesByName(string name)
+        //{
+        //    try
+        //    {
+        //        var moleculeEntries = await _moleculeService.GetMoleculesByName(name);
 
+        //        if (!moleculeEntries?.Any() ?? true)
+        //        {
+        //            return Ok(ResponseFromService<List<MoleculeEntry>>.Success(new List<MoleculeEntry>(), "No se encontraron moléculas."));
+        //        }
 
+        //        return Ok(ResponseFromService<List<MoleculeEntry>>.Success(moleculeEntries, "Moléculas encontradas con éxito."));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
+        //    }
+        //}
 
-        [HttpGet("MoleculesByName")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<IActionResult> GetMoleculesByName(string name)
-        {
-            try
-            {
-                var moleculeEntries = await _moleculeService.GetMoleculesByName(name);
-
-                if (!moleculeEntries?.Any() ?? true)
-                {
-                    return Ok(ResponseFromService<List<MoleculeEntry>>.Success(new List<MoleculeEntry>(), "No se encontraron moléculas."));
-                }
-
-                return Ok(ResponseFromService<List<MoleculeEntry>>.Success(moleculeEntries, "Moléculas encontradas con éxito."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
-            }
-        }
-
-        [HttpGet("AsentamientoByNames")]
+        [HttpPost("AsentamientoByNames")]
         [Authorize]
         [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> SearchAsentamiento([FromQuery] AsentamientoSearchModel searchModel)
         {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
             try
             {
                 var results = await _catalogoService.BuscarAsentamientosAsync(searchModel);
@@ -277,26 +426,40 @@ namespace RMD.Controllers.Consulta
             }
         }
 
-        [HttpGet("PacienteByName")]
+        [HttpPost("PacienteByName")]
         [Authorize]
         [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> SearchPacienteByName(string pacientName)
         {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
             try
             {
                 var pacientes = await _pacienteService.GetPacienteByNameAsync(pacientName);
 
                 if (!pacientes?.Any() ?? true)
                 {
-                    return Ok(ResponseFromService<IEnumerable<Models.Pacientes.UsuarioPaciente>>.Success(new List<Models.Pacientes.UsuarioPaciente>(), "No se encontraron pacientes."));
+                    return Ok(ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(new List<PacienteConsultaRequest>(), "No se encontraron pacientes."));
                 }
 
-                return Ok(ResponseFromService<IEnumerable<Models.Pacientes.UsuarioPaciente>>.Success(pacientes, "Pacientes encontrados con éxito."));
+                return Ok(ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(pacientes, "Pacientes encontrados con éxito."));
             }
             catch (Exception ex)
             {
                 return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Se produjo un error en el servidor: {ex.Message}"));
             }
+        }
+
+        private bool IsUserAuthorized()
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            var roleIdClaim = user?.FindFirst("IdRol")?.Value?.ToUpper();  // Convertir a mayúsculas
+
+            // Validar si el IdRol del token es uno de los permitidos
+            return roleIdClaim == "7905213C-B0CB-4D42-A997-20094EF41F9C" ||
+                   roleIdClaim == "DE5DFDDC-F6CC-4B7F-B805-286732501E57";
         }
     }
 }

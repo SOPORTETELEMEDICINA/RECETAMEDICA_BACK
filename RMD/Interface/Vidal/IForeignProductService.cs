@@ -1,4 +1,4 @@
-﻿using RMD.Models.Vidal.ByForeignProduct;
+﻿using RMD.Models.Vidal;
 
 namespace RMD.Interface.Vidal
 {

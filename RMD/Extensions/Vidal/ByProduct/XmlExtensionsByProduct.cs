@@ -2,6 +2,7 @@
 using RMD.Models.Vidal;
 using RMD.Models.Vidal.ByRoute;
 using System.Xml.Linq;
+using RMD.Models.Shared;
 
 namespace RMD.Extensions.Vidal.ByProduct
 {

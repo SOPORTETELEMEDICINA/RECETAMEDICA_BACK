@@ -19,44 +19,57 @@ namespace RMD.Service.Medicos
         private readonly string _appKey = configuration["VidalApi:AppKey"] ?? throw new ArgumentNullException(nameof(_appKey));
 
 
-        public async Task<UsuarioMedico> GetMedicoByIdUsuarioAsync(Guid idUsuario)
+        public async Task<MedicoConsultaRequest> GetMedicoByIdUsuarioAsync(Guid idUsuario)
         {
-            var idUsuarioParam = new SqlParameter("@IdUsuario", SqlDbType.UniqueIdentifier)
-            {
-                Value = idUsuario
-            };
+            var idUsuarioParam = new SqlParameter("@IdUsuario", idUsuario);
 
-            var result = await _context.UsuarioMedico
+            var result = await _context.MedicoConsultaRequest
                 .FromSqlRaw("EXEC Medicos_GetMedicoByIdUsuario @IdUsuario", idUsuarioParam)
-                .AsNoTracking()
-                .FirstOrDefaultAsync();
+                .ToListAsync(); // Ejecuta la consulta sin intentar componerla
 
-            return result;
+            return result.FirstOrDefault(); // Retorna el primer resultado
         }
 
-        public async Task<UsuarioMedico> GetMedicoByIdMedicoAsync(Guid idMedico)
+        public async Task<MedicoConsultaRequest> GetMedicoByIdMedicoAsync(Guid idMedico)
         {
-            var idMedicoParam = new SqlParameter("@IdMedico", SqlDbType.UniqueIdentifier)
-            {
-                Value = idMedico
-            };
+            var idMedicoParam = new SqlParameter("@IdMedico", idMedico);
 
-            var result = await _context.UsuarioMedico
+            var medico = await _context.MedicoConsultaRequest
                 .FromSqlRaw("EXEC Medicos_GetMedicoByIdMedico @IdMedico", idMedicoParam)
-                .AsNoTracking()
-                .FirstOrDefaultAsync();
+                .ToListAsync(); // Ejecuta la consulta
 
-            return result;
+            return medico.FirstOrDefault(); // Retorna el primer resultado
         }
 
-        public async Task<UsuarioMedico> GetMedicoByNameAsync(string nombreBusqueda)
+        public async Task<IEnumerable<MedicoConsultaRequest>> GetMedicosBySucursalAsync(Guid idSucursal)
+        {
+            var idSucursalParam = new SqlParameter("@IdSucursal", idSucursal);
+
+            var medicos = await _context.MedicoConsultaRequest
+                .FromSqlRaw("EXEC Medicos_GetMedicosBySucursal @IdSucursal", idSucursalParam)
+                .ToListAsync(); // Ejecuta la consulta y retorna la lista completa
+
+            return medicos;
+        }
+
+        public async Task<IEnumerable<MedicoConsultaRequest>> GetMedicosByGEMPAsync(Guid idGEMP)
+        {
+            var idGEMPParam = new SqlParameter("@IdGEMP", idGEMP);
+
+            var medicos = await _context.MedicoConsultaRequest
+                .FromSqlRaw("EXEC Medicos_GetMedicosByGEMP @IdGEMP", idGEMPParam)
+                .ToListAsync(); // Ejecuta la consulta y retorna la lista completa
+
+            return medicos;
+        }
+
+        public async Task<IEnumerable<MedicoConsultaRequest>> GetMedicoByNameAsync(string nombreBusqueda)
         {
             var nombreParam = new SqlParameter("@NombreBusqueda", nombreBusqueda);
 
-            var result = await _context.UsuarioMedico
-                .FromSqlRaw("EXEC Medico_GetMedicoByName @NombreBusqueda", nombreParam)
-                .AsNoTracking()
-                .FirstOrDefaultAsync();
+            var result = await _context.MedicoConsultaRequest
+                .FromSqlRaw("EXEC Medicos_GetMedicoByName @NombreBusqueda", nombreParam)
+                .ToListAsync(); // Ejecuta la consulta y evita composiciones
 
             return result;
         }
@@ -88,7 +101,6 @@ namespace RMD.Service.Medicos
                 var outputMessage = outputMessageParam.Value.ToString();
                 Console.WriteLine($"Resultado del SP: {outputMessage}");
 
-                // Si el SP no cambia filas pero devuelve un mensaje de éxito
                 return rowsAffected > 0 || outputMessage.Contains("éxito");
             }
             catch (SqlException sqlEx)
@@ -104,6 +116,7 @@ namespace RMD.Service.Medicos
         }
 
 
+
         public async Task<bool> UpdateMedicoAsync(Medico medico, Guid idUsuarioSolicitante)
         {
             var medicoTable = new List<Medico> { medico }.ToDataTable(); // Convierte la lista a DataTable
@@ -116,10 +129,36 @@ namespace RMD.Service.Medicos
 
             var idUsuarioSolicitanteParam = new SqlParameter("@IdUsuarioSolicitante", idUsuarioSolicitante);
 
-            var rowsAffected = await _context.Database.ExecuteSqlRawAsync("EXEC Medicos_UpdateMedico @MedicoTable, @IdUsuarioSolicitante", medicoParam, idUsuarioSolicitanteParam);
+            var rowsAffected = await _context.Database.ExecuteSqlRawAsync(
+                "EXEC Medicos_UpdateMedico @MedicoTable, @IdUsuarioSolicitante",
+                medicoParam, idUsuarioSolicitanteParam
+            );
 
             return rowsAffected > 0;
         }
+
+        public async Task<bool> DeleteMedicoAsync(Guid idMedico, Guid idUsuarioSolicitante)
+        {
+            var idMedicoParam = new SqlParameter("@IdMedico", idMedico);
+            var idUsuarioSolicitanteParam = new SqlParameter("@IdUsuarioSolicitante", idUsuarioSolicitante);
+
+            var outputMessageParam = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 500)
+            {
+                Direction = ParameterDirection.Output
+            };
+
+            var rowsAffected = await _context.Database.ExecuteSqlRawAsync(
+                "EXEC Medicos_DeleteMedico @IdMedico, @IdUsuarioSolicitante, @OutputMessage OUTPUT",
+                idMedicoParam, idUsuarioSolicitanteParam, outputMessageParam
+            );
+
+            var outputMessage = outputMessageParam.Value.ToString();
+            Console.WriteLine($"Resultado del SP: {outputMessage}");
+
+            return rowsAffected > 0 || outputMessage.Contains("éxito");
+        }
+
+
 
         public async Task<IEnumerable<PacientePorSucursalListModel>> GetPacientesBySucursalListAsync(Guid idUsuario)
         {

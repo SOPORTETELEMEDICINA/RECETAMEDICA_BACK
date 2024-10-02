@@ -4,7 +4,7 @@ using RMD.Extensions;
 using RMD.Interface.Vidal;
 using RMD.Models.Responses;
 using RMD.Models.Vidal.ByIndication;
-using RMD.Service.Vidal.ByForeignProduct;
+using RMD.Service.Vidal;
 using System.Net;
 
 namespace RMD.Controllers.Vidal.ByIndication

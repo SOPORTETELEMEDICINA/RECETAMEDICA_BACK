@@ -24,9 +24,7 @@
         public string CodigoPostal { get; set; } = string.Empty;
         public int IdMunicipio { get; set; }
         public string Municipio { get; set; } = string.Empty;
-        public int IdCiudad { get; set; }
         public string Ciudad { get; set; } = string.Empty;
-        public int IdEntidad { get; set; }
         public string Estado { get; set; } = string.Empty;
     }
 }

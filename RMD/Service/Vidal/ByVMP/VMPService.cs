@@ -37,49 +37,49 @@ namespace RMD.Service.Vidal.ByVMP
             _startPage = configuration["VidalApi:StartPage"] ?? throw new ArgumentNullException(nameof(_startPage));
             _context = context;
         }
-        
-       
-
-
-        public async Task<VMPModel> GetVMPById(int id)
-        {
-            try
-            {
-                // Ejecutar el procedimiento almacenado Vidal_VMP para obtener el VMP por Id
-                var vmpParam = new SqlParameter("@IdVMP", id);
-
-                // Ejecutar el SP y obtener los resultados en una lista de VMPEntry
-                var vmpEntry = await _context.VMPs
-                    .FromSqlRaw("EXEC Vidal_VMPById @IdVMP", vmpParam)
-                    .FirstOrDefaultAsync();
-
-                if (vmpEntry == null)
-                {
-                    throw new Exception($"No se encontró un VMP con el Id {id}");
-                }
-
-                return vmpEntry;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}");
-                throw new Exception("Error al obtener el VMP por Id. Por favor, intente de nuevo más tarde.");
-            }
-        }
 
 
 
 
-        //public async Task<VMPEntry> GetVMPById(int id)
+        //public async Task<VMPModel> GetVMPById(int id)
         //{
-        //    var requestUrl = $"{_baseUrl}/vmp/{id}?app_id={_appId}&app_key={_appKey}";
-        //    var response = await _httpClient.GetAsync(requestUrl);
+        //    try
+        //    {
+        //        // Ejecutar el procedimiento almacenado Vidal_VMP para obtener el VMP por Id
+        //        var vmpParam = new SqlParameter("@IdVMP", id);
 
-        //    response.EnsureSuccessStatusCode();
+        //        // Ejecutar el SP y obtener los resultados en una lista de VMPEntry
+        //        var vmpEntry = await _context.VMPs
+        //            .FromSqlRaw("EXEC Vidal_VMPById @IdVMP", vmpParam)
+        //            .FirstOrDefaultAsync();
 
-        //    var xmlContent = await response.Content.ReadAsStringAsync();
-        //    return xmlContent.ParseVMPByIdXml();
+        //        if (vmpEntry == null)
+        //        {
+        //            throw new Exception($"No se encontró un VMP con el Id {id}");
+        //        }
+
+        //        return vmpEntry;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine($"Error: {ex.Message}");
+        //        throw new Exception("Error al obtener el VMP por Id. Por favor, intente de nuevo más tarde.");
+        //    }
         //}
+
+
+
+
+        public async Task<VMPEntry> GetVMPById(int id)
+        {
+            var requestUrl = $"{_baseUrl}/vmp/{id}?app_id={_appId}&app_key={_appKey}";
+            var response = await _httpClient.GetAsync(requestUrl);
+
+            response.EnsureSuccessStatusCode();
+
+            var xmlContent = await response.Content.ReadAsStringAsync();
+            return xmlContent.ParseVMPByIdXml();
+        }
 
         public async Task<List<VMPProductEntry>> GetProductsByVMPId(int vmpId)
         {

@@ -4,9 +4,13 @@ namespace RMD.Interface.Sucursales
 {
     public interface ISucursalService
     {
-        Task<Sucursal> GetSucursalByIdAsync(Guid id);
-        Task<IEnumerable<Sucursal>> GetSucursalesByGEMPAsync(Guid idGEMP);
-        Task<IEnumerable<Sucursal>> GetSucursalesByAsentamientoAsync(int idAsentamiento);
+        Task<bool> CreateSucursalAsync(CreateSucursalModel model);
+        Task<bool> UpdateSucursalAsync(Guid idSucursal, UpdateSucursalModel model);
+        Task<bool> DeleteSucursalAsync(Guid idSucursal);
+        Task<SucursalDomicilioModel> GetSucursalByIdSucursalAsync(Guid idSucursal);
+        Task<IEnumerable<SucursalDomicilioModel>> GetSucursalesByIdGEMPAsync(Guid idGEMP);
+        Task<IEnumerable<SucursalDomicilioModel>> GetSucursalesByIdGEMPAndIdAsentamientoAsync(Guid idGEMP, int idAsentamiento);
+
     }
 
 }

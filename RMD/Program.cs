@@ -24,10 +24,7 @@ using RMD.Service.Pacientes;
 using RMD.Service.Recetas;
 using RMD.Service.Sucursales;
 using RMD.Service.Usuarios;
-using RMD.Service.Vidal.ByAllergy;
-using RMD.Service.Vidal.ByATC;
-using RMD.Service.Vidal.ByCIM10;
-using RMD.Service.Vidal.ByForeignProduct;
+using RMD.Service.Vidal;
 using RMD.Service.Vidal.ByIndication;
 using RMD.Service.Vidal.ByIndicationGroup;
 using RMD.Service.Vidal.ByMolecule;
@@ -75,6 +72,10 @@ builder.Services.AddDbContext<DashboardDbContext>(options =>
 
 builder.Services.AddDbContext<VidalDbContext>(options =>
     options.UseSqlServer(connectionString));
+
+builder.Services.AddDbContext<ConsultaDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
 
 // Registro de servicios
 builder.Services.AddScoped<ICatalogoService, CatalogoService>();

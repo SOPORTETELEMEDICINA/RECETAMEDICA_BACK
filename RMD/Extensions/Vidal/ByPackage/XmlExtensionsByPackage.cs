@@ -1,4 +1,5 @@
 ﻿using RMD.Models.Consulta;
+using RMD.Models.Shared;
 using RMD.Models.Vidal.ByPackage;
 using System.Xml.Linq;
 

@@ -1,16 +1,10 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using RMD.Data;
-using RMD.Extensions;
 using RMD.Extensions.Vidal.ByProduct;
 using RMD.Interface.Vidal;
-using RMD.Models.Responses;
-using RMD.Models.Vidal;
 using RMD.Models.Vidal.ByProduct;
-using RMD.Models.Vidal.ByRoute;
-using System.Data;
 using System.Diagnostics;
-using System.Net;
 using System.Xml;
 
 namespace RMD.Service.Vidal.ByProduct
@@ -39,30 +33,30 @@ namespace RMD.Service.Vidal.ByProduct
             _context = context;
         }
 
-        
-        public async Task<ProductModel> GetProductByIdAsync(int productId)
-        {
-            try
-            {
-                // Llamar al SP para obtener el producto por IdProduct
-                var product = await _context.Productos
-                    .FromSqlRaw("EXEC Vidal_GetProductById @IdProduct", new SqlParameter("@IdProduct", productId))
-                    .FirstOrDefaultAsync();
 
-                if (product == null)
-                {
-                    return null;
-                }
+        //public async Task<ProductModel> GetProductByIdAsync(int productId)
+        //{
+        //    try
+        //    {
+        //        // Llamar al SP para obtener el producto por IdProduct
+        //        var product = await _context.Productos
+        //            .FromSqlRaw("EXEC Vidal_GetProductById @IdProduct", new SqlParameter("@IdProduct", productId))
+        //            .FirstOrDefaultAsync();
 
-                return product;
-            }
-            catch (Exception ex)
-            {
-                // Manejar excepciones
-                Console.WriteLine($"Error al obtener producto por ID: {ex.Message}");
-                throw;
-            }
-        }
+        //        if (product == null)
+        //        {
+        //            return null;
+        //        }
+
+        //        return product;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // Manejar excepciones
+        //        Console.WriteLine($"Error al obtener producto por ID: {ex.Message}");
+        //        throw;
+        //    }
+        //}
 
         //public async Task<ProductModel> GetProductByIdAsync(int productId)
         //{
@@ -150,20 +144,20 @@ namespace RMD.Service.Vidal.ByProduct
         //}
 
 
-        //public async Task<ProductById> GetProductByIdAsync(int productId)
-        //{
-        //    var url = $"{_baseUrl}/product/{productId}?app_id={_appId}&app_key={_appKey}";
-        //    var response = await _httpClient.GetAsync(url);
+        public async Task<ProductById> GetProductByIdAsync(int productId)
+        {
+            var url = $"{_baseUrl}/product/{productId}?app_id={_appId}&app_key={_appKey}";
+            var response = await _httpClient.GetAsync(url);
 
-        //    if (!response.IsSuccessStatusCode)
-        //    {
-        //        // Manejar error de la respuesta
-        //        return null;
-        //    }
+            if (!response.IsSuccessStatusCode)
+            {
+                // Manejar error de la respuesta
+                return null;
+            }
 
-        //    var xmlContent = await response.Content.ReadAsStringAsync();
-        //    return xmlContent.ParseProductByIdXml();
-        //}
+            var xmlContent = await response.Content.ReadAsStringAsync();
+            return xmlContent.ParseProductByIdXml();
+        }
 
         public async Task<List<ProductPackage>> GetProductPackagesAsync(int productId)
         {

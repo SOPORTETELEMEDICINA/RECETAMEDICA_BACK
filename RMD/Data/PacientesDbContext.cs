@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using RMD.Models.Consulta;
 using RMD.Models.Pacientes;
 
 namespace RMD.Data
@@ -21,6 +20,11 @@ namespace RMD.Data
         public DbSet<PacienteCreate> PacienteCreate { get; set; }
 
         public DbSet<EntidadNacimiento> EntidadNacimiento { get; set; }
+
+        // DbSets para alergias, moléculas y CIM10
+        public DbSet<AllergyModel> AllergyModels { get; set; }
+        public DbSet<MoleculeModel> MoleculeModels { get; set; }
+        public DbSet<CIM10Model> CIM10Models { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -66,6 +70,31 @@ namespace RMD.Data
                 entity.Property(e => e.Patologias).HasMaxLength(999999999);
             });
 
+            // Configuración para AllergyModel
+            modelBuilder.Entity<AllergyModel>(entity =>
+            {
+                entity.HasKey(e => e.IdAllergy);  // Clave primaria
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.VidalUpdateDate).IsRequired();
+            });
+
+            // Configuración para MoleculeModel
+            modelBuilder.Entity<MoleculeModel>(entity =>
+            {
+                entity.HasKey(e => e.IdMolecule);  // Clave primaria
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.SafetyAlert).HasMaxLength(50);
+                entity.Property(e => e.VidalUpdateDate).IsRequired();
+            });
+
+            // Configuración para CIM10Model
+            modelBuilder.Entity<CIM10Model>(entity =>
+            {
+                entity.HasKey(e => e.IdCIM10);  // Clave primaria
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.Code).HasMaxLength(50);
+                entity.Property(e => e.UpdatedDate).IsRequired();
+            });
             // Configuración para PacienteCreate
             modelBuilder.Entity<PacienteCreate>().HasNoKey();  // Modelo sin clave primaria
         }

@@ -4,8 +4,8 @@ https://go.microsoft.com/fwlink/?LinkID=208121.
 -->
 <Project>
   <PropertyGroup>
-    <_PublishTargetUrl>C:\Users\guz_b\source\repos\RMD\RMD\bin\Release\net8.0\publish\</_PublishTargetUrl>
-    <History>True|2024-07-16T04:16:45.6535561Z;</History>
+    <_PublishTargetUrl>C:\Users\guz_b\source\repos\RECETAMEDICA_BACK\RMD\bin\Release\net8.0\publish\</_PublishTargetUrl>
+    <History>True|2024-10-02T05:39:59.5363675Z||;True|2024-10-01T23:39:55.1879369-06:00||;True|2024-10-01T19:58:33.8567368-06:00||;True|2024-10-01T19:58:07.7905174-06:00||;True|2024-10-01T19:57:58.4071157-06:00||;True|2024-10-01T15:20:07.8218457-06:00||;True|2024-10-01T15:19:44.8296908-06:00||;True|2024-09-29T15:16:55.3652751-06:00||;True|2024-09-29T01:06:25.7054226-06:00||;True|2024-07-15T22:16:45.6535561-06:00||;</History>
     <LastFailureDetails />
   </PropertyGroup>
 </Project>

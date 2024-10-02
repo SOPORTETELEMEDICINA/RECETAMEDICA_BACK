@@ -1,7 +1,11 @@
-﻿using RMD.Extensions.Consulta;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using RMD.Data;
+using RMD.Extensions.Consulta;
 using RMD.Extensions.Vidal.ByPackage;
 using RMD.Interface.Consulta;
 using RMD.Models.Consulta;
+using System.Data;
 using System.Diagnostics;
 using System.Text;
 using System.Xml.Linq;
@@ -16,8 +20,9 @@ namespace RMD.Service.Consulta
         private readonly string _appKey;
         private readonly string _startPage;
         private readonly string _pageSize;
+        private readonly ConsultaDbContext _context;
 
-        public ConsultaService(HttpClient httpClient, IConfiguration configuration)
+        public ConsultaService(HttpClient httpClient, IConfiguration configuration, ConsultaDbContext context)
         {
             _httpClient = httpClient;
             _baseUrl = configuration["VidalApi:BaseUrl"] ?? throw new ArgumentNullException(nameof(_baseUrl));
@@ -25,10 +30,148 @@ namespace RMD.Service.Consulta
             _appKey = configuration["VidalApi:AppKey"] ?? throw new ArgumentNullException(nameof(_appKey));
             _pageSize = configuration["VidalApi:SizePage"] ?? throw new ArgumentNullException(nameof(_pageSize));
             _startPage = configuration["VidalApi:StartPage"] ?? throw new ArgumentNullException(nameof(_startPage));
+            _context = context;
 
         }
 
-              
+
+        public async Task<IEnumerable<RequestSearchAllergy>> GetAllergiesByNameAsync(string name)
+        {
+            var nameParam = new SqlParameter("@name", name);
+
+            try
+            {
+                var allergies = await _context.Allergies
+                    .FromSqlRaw("EXEC Consulta_GetAllergyByName @name", nameParam)
+                    .ToListAsync();
+
+                if (allergies == null || allergies.Count == 0)
+                {
+                    return new List<RequestSearchAllergy>(); // Devuelve una lista vacía si no se encuentran resultados
+                }
+
+                return allergies;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al obtener las alergias por nombre: {ex.Message}");
+            }
+        }
+
+        public async Task<IEnumerable<RequestSearchMolecules>> GetMoleculeByNameAsync(string name)
+        {
+            var nameParam = new SqlParameter("@name", name);
+
+            try
+            {
+                var molecules = await _context.Molecules
+                    .FromSqlRaw("EXEC Consulta_GetMoleculesByName @name", nameParam)
+                    .ToListAsync();
+
+                if (molecules == null || molecules.Count == 0)
+                {
+                    return new List<RequestSearchMolecules>(); // Devuelve una lista vacía si no se encuentran resultados
+                }
+
+                return molecules;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al obtener las alergias por nombre: {ex.Message}");
+            }
+        }
+
+        public async Task<IEnumerable<RequestSearchVMP>> GetVMPByNameAsync(string name)
+        {
+            var nameParam = new SqlParameter("@name", name);
+
+            try
+            {
+                var vmps = await _context.VMPS
+                    .FromSqlRaw("EXEC Consulta_GetVMPByName @name", nameParam)
+                    .ToListAsync();
+
+                if (vmps == null || vmps.Count == 0)
+                {
+                    return new List<RequestSearchVMP>(); // Devuelve una lista vacía si no se encuentran resultados
+                }
+
+                return vmps;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al obtener las alergias por nombre: {ex.Message}");
+            }
+        }
+
+        public async Task<IEnumerable<RequestSearchProducts>> GetProductsByNameAsync(string name)
+        {
+            var nameParam = new SqlParameter("@name", name);
+
+            try
+            {
+                var products = await _context.Products
+                    .FromSqlRaw("EXEC Consulta_GetProductsByName @name", nameParam)
+                    .ToListAsync();
+
+                if (products == null || products.Count == 0)
+                {
+                    return new List<RequestSearchProducts>(); // Devuelve una lista vacía si no se encuentran resultados
+                }
+
+                return products;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al obtener las alergias por nombre: {ex.Message}");
+            }
+        }
+
+        public async Task<IEnumerable<RequestSearchPackage>> GetPackagesByNameAsync(string name)
+        {
+            var nameParam = new SqlParameter("@name", name);
+
+            try
+            {
+                var packages = await _context.Packages
+                    .FromSqlRaw("EXEC Consulta_GetPackagesByName @name", nameParam)
+                    .ToListAsync();
+
+                if (packages == null || packages.Count == 0)
+                {
+                    return new List<RequestSearchPackage>(); // Devuelve una lista vacía si no se encuentran resultados
+                }
+
+                return packages;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al obtener las alergias por nombre: {ex.Message}");
+            }
+        }
+
+        public async Task<IEnumerable<RequestSearchCIM10>> GetCIM10sByNameAsync(string name)
+        {
+            var nameParam = new SqlParameter("@name", name);
+
+            try
+            {
+                var cim10s = await _context.CIM10s
+                    .FromSqlRaw("EXEC Consulta_GetCIM10ByName @name", nameParam)
+                    .ToListAsync();
+
+                if (cim10s == null || cim10s.Count == 0)
+                {
+                    return new List<RequestSearchCIM10>(); // Devuelve una lista vacía si no se encuentran resultados
+                }
+
+                return cim10s;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al obtener las alergias por nombre: {ex.Message}");
+            }
+        }
 
         public async Task<List<PackageEntry>> GetPackagesByName(string name)
         {
@@ -41,24 +184,20 @@ namespace RMD.Service.Consulta
             {
                 do
                 {
-                    var requestUrl = $"{_baseUrl}/packages?q={name}&app_id={_appId}&app_key={_appKey}";
+                    var requestUrl = $"{_baseUrl}/packages?q={name}&start-page={startPage}&page-size={pageSize}&app_id={_appId}&app_key={_appKey}";
                     var response = await _httpClient.GetAsync(requestUrl);
 
                     response.EnsureSuccessStatusCode();
 
                     var xmlContent = await response.Content.ReadAsStringAsync();
-                    var packagePage = xmlContent.ParsePackageConsultaXml();  
+                    var packagePage = xmlContent.ParsePackageConsultaXml();
 
-
-                    // Obtener información de paginación
-                    var startIndex = xmlContent.GetOpenSearchValue<int>("startIndex");
                     totalResults = xmlContent.GetOpenSearchValue<int>("totalResults");
-                    var itemsPerPage = xmlContent.GetOpenSearchValue<int>("itemsPerPage");
-
                     packageEntries.AddRange(packagePage);
 
                     startPage++;
                 } while (packageEntries.Count < totalResults);
+
                 return packageEntries;
             }
             catch (Exception ex)
@@ -67,6 +206,7 @@ namespace RMD.Service.Consulta
                 throw new Exception("Ha ocurrido un error inesperado. Por favor, intente de nuevo más tarde.");
             }
         }
+
 
         public async Task<List<Cim10Entry>> GetCim10ByName(string name)
         {
@@ -105,42 +245,7 @@ namespace RMD.Service.Consulta
             }
         }
 
-        public async Task<List<AllergyEntry>> GetAllergiesByName(string name)
-        {
-            var allergyEntries = new List<AllergyEntry>();
-            int startPage = int.Parse(_startPage);
-            int pageSize = int.Parse(_pageSize);
-            var totalResults = 0;
-
-            try
-            {
-                do
-                {
-                    var requestUrl = $"{_baseUrl}/allergies?q={name}&start-page={startPage}&page-size={pageSize}&app_id={_appId}&app_key={_appKey}";
-                    var response = await _httpClient.GetAsync(requestUrl);
-
-                    response.EnsureSuccessStatusCode();
-
-                    var xmlContent = await response.Content.ReadAsStringAsync();
-                    var allergyPage = xmlContent.ParseAllergyXml();
-
-                    // Obtener información de paginación
-                    totalResults = xmlContent.GetOpenSearchValue<int>("totalResults");
-
-                    allergyEntries.AddRange(allergyPage);
-
-                    startPage++;
-                } while (allergyEntries.Count < totalResults);
-
-                Debug.WriteLine("Procesamiento de alergias completo.");
-                return allergyEntries;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error inesperado: {ex.Message}");
-                throw new Exception("Ha ocurrido un error inesperado. Por favor, intente de nuevo más tarde.");
-            }
-        }
+       
 
         public async Task<string> ProcessPrescriptionRequest(PrescriptionModel request)
         {
