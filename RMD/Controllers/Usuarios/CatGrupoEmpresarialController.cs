@@ -1,13 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using RMD.Extensions;
 using RMD.Interface.Usuarios;
-using RMD.Models.Usuarios;
 using RMD.Models.Responses;
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
-using RMD.Extensions;
+using RMD.Models.Usuarios;
 
 namespace RMD.Controllers.Usuarios
 {
@@ -26,6 +20,12 @@ namespace RMD.Controllers.Usuarios
         [HttpGet("GetAllGrupoEmpresarial")]
         public async Task<IActionResult> GetAllGrupoEmpresarial()
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.CatGrupoEmpresarialController.EndpointRolesCatGrupoEmpresarialController["GetAllGrupoEmpresarial"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
+
             try
             {
                 var result = await _grupoEmpresarialService.GetAllGrupoEmpresarial();
@@ -46,6 +46,12 @@ namespace RMD.Controllers.Usuarios
         [HttpGet("GetGrupoEmpresarialById/{id}")]
         public async Task<IActionResult> GetGrupoEmpresarialById(Guid id)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.CatGrupoEmpresarialController.EndpointRolesCatGrupoEmpresarialController["GetGrupoEmpresarialById"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
+
             if (id == Guid.Empty)
             {
                 return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El Id proporcionado no es válido."));
@@ -76,6 +82,12 @@ namespace RMD.Controllers.Usuarios
         [HttpPost("CreateGrupoEmpresarial")]
         public async Task<IActionResult> CreateGrupoEmpresarial([FromBody] CatGrupoEmpresarial grupoEmpresarial)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.CatGrupoEmpresarialController.EndpointRolesCatGrupoEmpresarialController["CreateGrupoEmpresarial"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
+
             if (grupoEmpresarial == null)
             {
                 return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El modelo GrupoEmpresarial proporcionado no es válido."));
@@ -101,6 +113,11 @@ namespace RMD.Controllers.Usuarios
         [HttpPut("UpdateGrupoEmpresarial")]
         public async Task<IActionResult> UpdateGrupoEmpresarial([FromBody] CatGrupoEmpresarial grupoEmpresarial)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.CatGrupoEmpresarialController.EndpointRolesCatGrupoEmpresarialController["UpdateGrupoEmpresarial"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
             if (grupoEmpresarial == null)
             {
                 return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El modelo GrupoEmpresarial proporcionado no es válido."));

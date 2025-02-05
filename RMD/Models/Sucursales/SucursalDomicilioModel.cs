@@ -10,6 +10,7 @@
         public string TelefonoResponsable { get; set; } = string.Empty;
         public string EmailResponsable { get; set; } = string.Empty;
         public string Calle { get; set; } = string.Empty;
+        public int IdAsentamiento { get; set; } 
         public string NombreAsentamiento { get; set; } = string.Empty;
         public string TipoAsentamiento { get; set; } = string.Empty;
         public string Ciudad { get; set; } = string.Empty;

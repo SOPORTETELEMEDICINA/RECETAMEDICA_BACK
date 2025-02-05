@@ -1,15 +1,11 @@
-﻿using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
+﻿using Microsoft.IdentityModel.Tokens;
 using RMD.Data;
 using RMD.Extensions;
 using RMD.Interface.Auth;
 using RMD.Interface.Usuarios;
 using RMD.Models.Login;
 using RMD.Models.Usuarios;
-using System.Data;
 using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using System.Text;
 
 namespace RMD.Service.Auth
@@ -22,58 +18,58 @@ namespace RMD.Service.Auth
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
         private readonly CifradoHelper _cifradoHelper = cifradoHelper;
 
-        // Cambia IActionResult por string (o ajusta la interfaz según lo que necesites)
         public async Task<string> LoginAsync(UserCredentials credentials)
         {
-            // Validación de credenciales
+            // Validar credenciales del usuario
             var isValid = await _usuarioService.ValidateUserCredentialsAsync(credentials.Usr, credentials.Password);
             if (!isValid)
             {
-                return "Credenciales inválidas"; // O lanza una excepción personalizada si lo prefieres
+                return "Credenciales inválidas"; // O lanzar una excepción personalizada
             }
 
             // Obtener información del usuario
             var usuarioDetalle = await _usuarioService.GetUsuarioByUsernameAsync(credentials.Usr);
             if (usuarioDetalle == null)
             {
-                return "Usuario no encontrado"; // O lanza una excepción personalizada
+                return "Usuario no encontrado"; // O lanzar una excepción personalizada
             }
 
-            // Generar token
-            var token = GenerateToken(usuarioDetalle);
+            // Si el usuario no es SuperAdmin, validar que no tenga sesiones activas
+            if (usuarioDetalle.TipoUsuario != "Super Admin")
+            {
+                var tokenActivo = await _context.BlacklistedTokens
+                     .FirstOrDefaultAsync(t => t.IdUsuario == usuarioDetalle.IdUsuario && t.ExpirationDate > DateTime.UtcNow);
 
-            return token; // Devuelve el token como string
+                if (tokenActivo != null)
+                {
+                    // Invalidar el token previo (actualizar su fecha de expiración)
+                    tokenActivo.ExpirationDate = DateTime.Now; // Marca el token como inactivo
+                    await _context.SaveChangesAsync();
+                }
+            }
+
+            // Generar un nuevo token
+            var nuevoToken = GenerateToken(usuarioDetalle);
+
+            return nuevoToken; // Retornar el nuevo token
         }
+
+
 
         public async Task LogoutAsync(string token)
         {
-            var jwtTokenHandler = new JwtSecurityTokenHandler();
-            var key = _configuration["Jwt:Key"] ?? throw new ArgumentNullException(nameof(_configuration), "Jwt:Key is missing in configuration");
+            // Buscar el token en la tabla
+            var tokenEnTabla = await _context.BlacklistedTokens
+                .FirstOrDefaultAsync(t => t.Token == token);
 
-            var tokenValidationParameters = new TokenValidationParameters
+            if (tokenEnTabla != null)
             {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = false,
-                ValidateIssuerSigningKey = true,
-                ValidIssuer = _configuration["Jwt:Issuer"],
-                ValidAudience = _configuration["Jwt:Audience"],
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key))
-            };
-
-            var principal = jwtTokenHandler.ValidateToken(token, tokenValidationParameters, out var validatedToken);
-
-            if (validatedToken is JwtSecurityToken jwtToken)
-            {
-                var expiration = jwtToken.ValidTo;
-                _context.BlacklistedTokens.Add(new BlacklistedToken
-                {
-                    Token = token,
-                    ExpirationDate = expiration
-                });
-                await _context.SaveChangesAsync(); // Added 'await' to eliminate warning
+                // Eliminar el token de la tabla
+                _context.BlacklistedTokens.Remove(tokenEnTabla);
+                await _context.SaveChangesAsync();
             }
         }
+
 
         public async Task<string> RenewTokenAsync()
         {
@@ -99,31 +95,55 @@ namespace RMD.Service.Auth
             var issuer = _configuration["Jwt:Issuer"] ?? throw new ArgumentNullException(nameof(_configuration), "Jwt:Issuer is missing in configuration");
 
             // Obtener el tiempo de expiración del token desde appsettings.json (en horas)
-            var tokenExpirationHours = int.Parse(_configuration["Jwt:TokenExpirationHours"] ?? "24"); // Por defecto, 24 horas si no está configurado
+            var tokenExpirationHours = int.Parse(_configuration["Jwt:TokenExpirationHours"] ?? "24");
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
                 {
                     new Claim(ClaimTypes.Name, usuarioDetalle.Usr),
-                    new Claim(ClaimTypes.Role, usuarioDetalle.TipoUsuario), // Asegúrate de que TipoUsuario es el nombre correcto
-                    new Claim("GEMP", usuarioDetalle.IdGEMP?.ToString() ?? string.Empty),  // Convertir Guid? a string
-                    new Claim("IdSucursal", usuarioDetalle.IdSucursal?.ToString() ?? string.Empty), // Convertir Guid? a string
-                    new Claim("IdUsuario", usuarioDetalle.IdUsuario.ToString()),  // Convertir Guid a string
+                    new Claim(ClaimTypes.Role, usuarioDetalle.TipoUsuario),
+                    new Claim("GEMP", usuarioDetalle.IdGEMP?.ToString() ?? string.Empty),
+                    new Claim("IdSucursal", usuarioDetalle.IdSucursal?.ToString() ?? string.Empty),
+                    new Claim("IdUsuario", usuarioDetalle.IdUsuario.ToString()),
                     new Claim("IdRol", usuarioDetalle.IdTipoUsuario.ToString())
                 }),
-                Expires = DateTime.UtcNow.AddHours(tokenExpirationHours), // Usar el tiempo configurado en appsettings.json
+                Expires = DateTime.UtcNow.AddHours(tokenExpirationHours),
                 Audience = audience,
                 Issuer = issuer,
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)), SecurityAlgorithms.HmacSha256Signature)
+                SigningCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+                    SecurityAlgorithms.HmacSha256Signature)
             };
 
+            // Crear y escribir el token
             var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
+            var tokenString = tokenHandler.WriteToken(token);
+
+            // Guardar el token en la tabla BlacklistedTokens
+            _context.BlacklistedTokens.Add(new BlacklistedToken
+            {
+                Id = Guid.NewGuid(),
+                IdUsuario = usuarioDetalle.IdUsuario, // Relaciona el token con el usuario
+                Token = tokenString,
+                ExpirationDate = tokenDescriptor.Expires ?? DateTime.Now.AddHours(tokenExpirationHours)
+            });
+
+            try
+            {
+                _context.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                var innerException = ex.InnerException?.Message;
+                throw new Exception($"Error al guardar el token: {ex.Message}. Detalle interno: {innerException}");
+            }
+
+            return tokenString;
         }
 
 
-        public async Task<string> GeneratePasswordResetTokenAsync(Guid userId)
+        public Task<string> GeneratePasswordResetTokenAsync(Guid userId)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = _configuration["Jwt:Key"] ?? throw new ArgumentNullException(nameof(_configuration), "Jwt:Key is missing in configuration");
@@ -133,17 +153,17 @@ namespace RMD.Service.Auth
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new[]
-                {
+                Subject = new ClaimsIdentity(
+                [
                 new Claim("IdUsuario", userId.ToString()), // Incluir el IdUsuario en el token
                 new Claim("GeneratedAt", DateTime.UtcNow.ToString()) // Agregar la fecha de generación
-            }),
+            ]),
                 Expires = DateTime.UtcNow.AddMinutes(tokenExpirationMinutes), // Token válido por N minutos
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)), SecurityAlgorithms.HmacSha256Signature)
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
+            return Task.FromResult(tokenHandler.WriteToken(token));
         }
 
         public async Task<(bool IsValid, string ErrorMessage, Guid UserId)> ValidateResetTokenAsync(string token)
@@ -212,24 +232,16 @@ namespace RMD.Service.Auth
             }
         }
 
-        // Método para verificar si un token está activo
         public async Task<bool> IsTokenActiveAsync(string token)
         {
-            // Verificar si el token es válido, puedes hacer validaciones adicionales aquí
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.ReadToken(token) as JwtSecurityToken;
+            // Buscar el token en la tabla BlacklistedTokens
+            var tokenEnTabla = await _context.BlacklistedTokens
+                .FirstOrDefaultAsync(t => t.Token == token && t.ExpirationDate > DateTime.UtcNow);
 
-            if (jwtToken == null)
-            {
-                return false;
-            }
-
-            // Aquí puedes agregar lógica adicional para verificar el estado del token
-            // Por ejemplo, revisar una lista de tokens revocados en tu base de datos
-            // o asegurarte de que no ha expirado
-            var expirationDate = jwtToken.ValidTo;
-            return expirationDate > DateTime.UtcNow;
+            // Retorna true si el token existe y no ha expirado
+            return tokenEnTabla != null;
         }
+
 
         public async Task RevokeTokenAsync(string token, DateTime expirationDate)
         {
@@ -243,5 +255,21 @@ namespace RMD.Service.Auth
 
             await _context.SaveChangesAsync();
         }
+
+        public async Task LimpiarTokensExpiradosAsync()
+        {
+            // Buscar todos los tokens cuya fecha de expiración ya ha pasado
+            var tokensExpirados = await _context.BlacklistedTokens
+                .Where(t => t.ExpirationDate <= DateTime.UtcNow)
+                .ToListAsync();
+
+            // Eliminar los tokens encontrados
+            if (tokensExpirados.Any())
+            {
+                _context.BlacklistedTokens.RemoveRange(tokensExpirados);
+                await _context.SaveChangesAsync();
+            }
+        }
+
     }
 }

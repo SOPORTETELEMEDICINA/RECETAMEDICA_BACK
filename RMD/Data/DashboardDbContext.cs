@@ -1,12 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
-using RMD.Models.Dashboard;
+﻿using RMD.Models.Dashboard;
 
 namespace RMD.Data
 {
-    public class DashboardDbContext : DbContext
+    public class DashboardDbContext(DbContextOptions<DashboardDbContext> options) : DbContext(options)
     {
-        public DashboardDbContext(DbContextOptions<DashboardDbContext> options) : base(options) { }
-
         public DbSet<SucursalPacientes> SucursalPacientes { get; set; }
 
         public DbSet<DashBoardKPIPacientesRecetas> MedicoKPIPacientesRecetas { get; set; }

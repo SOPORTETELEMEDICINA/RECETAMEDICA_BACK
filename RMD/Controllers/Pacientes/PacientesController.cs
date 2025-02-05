@@ -1,29 +1,26 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using RMD.Extensions;
+﻿using RMD.Extensions;
 using RMD.Interface.Pacientes;
 using RMD.Models.Pacientes;
 using RMD.Models.Responses;
-using System.Net;
-using System.Security.Claims;
 
 namespace RMD.Controllers.Pacientes
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
+    [ServiceFilter(typeof(ValidateTokenFilter))]
     public class PacientesController(IPacienteService pacienteService, IHttpContextAccessor httpContextAccessor) : ControllerBase
     {
         private readonly IPacienteService _pacienteService = pacienteService;
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
         [HttpGet("ByIdUsuario/{idUsuario}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetPacienteByIdUsuario(Guid idUsuario)
         {
-            if (!IsUserAuthorized())
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["GetPacienteByIdUsuario"].Contains(rol))
             {
-                return Forbid("No tiene permisos para realizar esta acción.");
+                return Forbid("No tiene permisos para acceder a este recurso.");
             }
             try
             {
@@ -42,13 +39,12 @@ namespace RMD.Controllers.Pacientes
         }
 
         [HttpGet("ByIdPaciente/{idPaciente}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetPacienteByIdPaciente(Guid idPaciente)
         {
-            if (!IsUserAuthorized())
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["GetPacienteByIdPaciente"].Contains(rol))
             {
-                return Forbid("No tiene permisos para realizar esta acción.");
+                return Forbid("No tiene permisos para acceder a este recurso.");
             }
             try
             {
@@ -67,62 +63,40 @@ namespace RMD.Controllers.Pacientes
         }
 
 
-        [HttpGet("ByName/{nombreBusqueda}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<IActionResult> GetPacienteByName(string nombreBusqueda)
-        {
-            if (!IsUserAuthorized())
-            {
-                return Forbid("No tiene permisos para realizar esta acción.");
-            }
-            try
-            {
-                var pacientes = await _pacienteService.GetPacienteByNameAsync(nombreBusqueda);
-                if (pacientes == null || !pacientes.Any())
-                {
-                    return Ok(ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(new List<PacienteConsultaRequest>(), "No se encontraron pacientes con el nombre especificado."));
-                }
-                var response = ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(pacientes, "Pacientes obtenidos con éxito.");
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
-        }
-
-        [HttpGet("entidad/{idEntidad}")]
-        [Authorize]
-        [Obsolete]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<IActionResult> GetPacientesByEntidadNacimiento(int idEntidad)
-        {
-            if (!IsUserAuthorized())
-            {
-                return Forbid("No tiene permisos para realizar esta acción.");
-            }
-            try
-            {
-                var pacientes = await _pacienteService.GetPacientesByEntidadNacimientoAsync(idEntidad);
-                if (pacientes == null || !pacientes.Any())
-                {
-                    return Ok(ResponseFromService<IEnumerable<Paciente>>.Success(new List<Paciente>(), "No se encontraron pacientes para la entidad especificada."));
-                }
-                var response = ResponseFromService<IEnumerable<Paciente>>.Success(pacientes, "Pacientes obtenidos con éxito.");
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
-        }
+        //[HttpGet("ByName/{nombreBusqueda}")]
+        //[Authorize]
+        //[ServiceFilter(typeof(ValidateTokenFilter))]
+        //public async Task<IActionResult> GetPacienteByName(string nombreBusqueda)
+        //{
+        //    var rol = User.FindFirstValue(ClaimTypes.Role);
+        //    if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["GetPacienteByName"].Contains(rol))
+        //    {
+        //        return Forbid("No tiene permisos para acceder a este recurso.");
+        //    }
+        //    try
+        //    {
+        //        var pacientes = await _pacienteService.GetPacienteByNameAsync(nombreBusqueda);
+        //        if (pacientes == null || !pacientes.Any())
+        //        {
+        //            return Ok(ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(new List<PacienteConsultaRequest>(), "No se encontraron pacientes con el nombre especificado."));
+        //        }
+        //        var response = ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(pacientes, "Pacientes obtenidos con éxito.");
+        //        return Ok(response);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
+        //    }
+        //}
 
         [HttpGet("BySucursal/{idSucursal}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetPacientesBySucursal(Guid idSucursal)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["GetPacientesBySucursal"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
             try
             {
                 var pacientes = await _pacienteService.GetPacientesBySucursalAsync(idSucursal);
@@ -140,10 +114,13 @@ namespace RMD.Controllers.Pacientes
         }
 
         [HttpGet("ByGEMP/{idGEMP}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetPacientesByGEMP(Guid idGEMP)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["GetPacientesByGEMP"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
             try
             {
                 var pacientes = await _pacienteService.GetPacientesByGEMPAsync(idGEMP);
@@ -161,10 +138,13 @@ namespace RMD.Controllers.Pacientes
         }
 
         [HttpGet("ByMedico/{idMedico}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetPacientesByMedico(Guid idMedico)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["GetPacientesByMedico"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
             try
             {
                 var pacientes = await _pacienteService.GetPacientesByMedicoAsync(idMedico);
@@ -183,17 +163,15 @@ namespace RMD.Controllers.Pacientes
 
 
         [HttpPost]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> CreatePaciente([FromBody] PacienteCreateConListas pacienteRequest)
         {
-            try
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["CreatePaciente"].Contains(rol))
             {
-                if (!IsUserAuthorized())
-                {
-                    return Forbid("No tiene permisos para realizar esta acción.");
-                }
-
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
+            try
+            {                
                 var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
                 if (string.IsNullOrEmpty(idUsuarioSolicitante))
                 {
@@ -220,11 +198,14 @@ namespace RMD.Controllers.Pacientes
             }
         }
 
-        [HttpPut("{id}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<IActionResult> UpdatePaciente(Guid id, [FromBody] PacienteConListas pacienteRequest)
+        [HttpPut]
+        public async Task<IActionResult> UpdatePaciente([FromBody] PacienteConListas pacienteRequest)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["UpdatePaciente"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
             try
             {
                 // Obtener el IdUsuario solicitante del token JWT
@@ -241,7 +222,7 @@ namespace RMD.Controllers.Pacientes
                 }
 
                 // Asignar el ID del paciente que viene en la URL
-                pacienteRequest.IdPaciente = id;
+               // pacienteRequest.IdPaciente = id;
 
                 // Llamar al servicio para actualizar el paciente
                 var result = await _pacienteService.UpdatePacienteAsync(pacienteRequest, idUsuarioSolicitanteGuid);
@@ -260,8 +241,6 @@ namespace RMD.Controllers.Pacientes
         }
 
         [HttpGet("entidades-federativas")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetEntidadesFederativas()
         {
             try
@@ -282,16 +261,15 @@ namespace RMD.Controllers.Pacientes
         }
 
         [HttpDelete("{idPaciente}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> EliminarPaciente(Guid idPaciente)
         {
-            try
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["EliminarPaciente"].Contains(rol))
             {
-                if (!IsUserAuthorized())
-                {
-                    return Forbid("No tiene permisos para realizar esta acción.");
-                }
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
+            try
+            {              
 
                 var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
                 if (string.IsNullOrEmpty(idUsuarioSolicitante))
@@ -319,15 +297,15 @@ namespace RMD.Controllers.Pacientes
         }
 
 
-        private bool IsUserAuthorized()
-        {
-            var user = _httpContextAccessor.HttpContext?.User;
-            var roleIdClaim = user?.FindFirst("IdRol")?.Value?.ToUpper();  // Convertir a mayúsculas
+        //private bool IsUserAuthorized()
+        //{
+        //    var user = _httpContextAccessor.HttpContext?.User;
+        //    var roleIdClaim = user?.FindFirst("IdRol")?.Value?.ToUpper();  // Convertir a mayúsculas
 
-            // Validar si el IdRol del token es uno de los permitidos
-            return roleIdClaim == "7905213C-B0CB-4D42-A997-20094EF41F9C" ||
-                   roleIdClaim == "DE5DFDDC-F6CC-4B7F-B805-286732501E57";
-        }
+        //    // Validar si el IdRol del token es uno de los permitidos
+        //    return roleIdClaim == "7905213C-B0CB-4D42-A997-20094EF41F9C" ||
+        //           roleIdClaim == "DE5DFDDC-F6CC-4B7F-B805-286732501E57";
+        //}
 
 
 

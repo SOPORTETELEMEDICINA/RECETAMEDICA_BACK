@@ -1,12 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity.Data;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using RMD.Interface.Auth;
+﻿using RMD.Interface.Auth;
 using RMD.Interface.Usuarios;
 using RMD.Models.Login;
 using RMD.Models.Responses;
-using System.Net;
 
 namespace RMD.Controllers.Auth
 {
@@ -43,12 +38,14 @@ namespace RMD.Controllers.Auth
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
-            var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+            // Usar la propiedad Authorization para obtener el token
+            var token = Request.Headers.Authorization.ToString().Replace("Bearer ", "");
             await _authService.LogoutAsync(token);
 
             var response = ResponseFromService<string>.Success(null, "Logged out successfully.");
             return Ok(response);
         }
+
 
         [HttpPost("renew")]
         public async Task<IActionResult> RenewToken()

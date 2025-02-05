@@ -1,10 +1,7 @@
-﻿using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
-using RMD.Data;
+﻿using RMD.Data;
 using RMD.Extensions; // Asegúrate de tener las extensiones necesarias para ToDataTable()
 using RMD.Interface.Usuarios;
 using RMD.Models.Usuarios;
-using System.Data;
 
 namespace RMD.Service.Usuarios
 {
@@ -47,28 +44,28 @@ namespace RMD.Service.Usuarios
 
         public async Task<string> CreateGrupoEmpresarial(CatGrupoEmpresarial grupoEmpresarial)
         {
-            var parameter = new SqlParameter("@GrupoEmpresarialData", SqlDbType.Structured)
+            var parameter = new SqlParameter("@GrupoEmpresarial", SqlDbType.Structured)
             {
-                TypeName = "dbo.GrupoEmpresarialType",
+                TypeName = "dbo.CatGrupoEmpresarialType",
                 Value = new List<CatGrupoEmpresarial> { grupoEmpresarial }.ToDataTable()
             };
 
             await _context.Database.ExecuteSqlRawAsync(
-                "EXEC Usuarios_CreateGrupoEmpresarial @GrupoEmpresarialData", parameter);
+                "EXEC Usuarios_CreateGrupoEmpresarial @GrupoEmpresarial", parameter);
 
             return "Operación realizada con éxito.";
         }
 
         public async Task<string> UpdateGrupoEmpresarial(CatGrupoEmpresarial grupoEmpresarial)
         {
-            var parameter = new SqlParameter("@GrupoEmpresarialData", SqlDbType.Structured)
+            var parameter = new SqlParameter("@GrupoEmpresarial", SqlDbType.Structured)
             {
-                TypeName = "dbo.GrupoEmpresarialType",
+                TypeName = "dbo.CatGrupoEmpresarialType",
                 Value = new List<CatGrupoEmpresarial> { grupoEmpresarial }.ToDataTable()
             };
 
             await _context.Database.ExecuteSqlRawAsync(
-                "EXEC Usuarios_UpdateGrupoEmpresarial @GrupoEmpresarialData", parameter);
+                "EXEC Usuarios_UpdateGrupoEmpresarial @GrupoEmpresarial", parameter);
 
             return "Operación realizada con éxito.";
         }

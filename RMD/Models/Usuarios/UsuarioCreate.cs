@@ -15,8 +15,8 @@ namespace RMD.Models.Usuarios
         [Required]
         public Guid IdTipoUsuario { get; set; }
 
-        public Guid? IdGEMP { get; set; }
-        public Guid? IdSucursal { get; set; }
+        public Guid IdGEMP { get; set; }
+        public Guid IdSucursal { get; set; }
 
         [Required]
         [MaxLength(100)]
@@ -37,6 +37,7 @@ namespace RMD.Models.Usuarios
         [MaxLength(15)]
         public string? Movil { get; set; }
 
+        [EmailAddress(ErrorMessage = "El correo no tiene un formato válido.")]
         [MaxLength(100)]
         public string? Email { get; set; }
 

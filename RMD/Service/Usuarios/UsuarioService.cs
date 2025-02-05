@@ -1,11 +1,7 @@
-﻿using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
-using RMD.Data;
+﻿using RMD.Data;
 using RMD.Extensions;
 using RMD.Interface.Usuarios;
 using RMD.Models.Usuarios;
-using System.Data;
-using System.Security.Claims;
 
 namespace RMD.Service.Usuarios
 {
@@ -13,17 +9,18 @@ namespace RMD.Service.Usuarios
     {
         private readonly UsuariosDBContext _context;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly string _username;
-        private readonly Guid _role;
-        private readonly Guid _GEMP;
-        private readonly Guid _IdSucursal;
+        //private readonly string _username;
+        //private readonly Guid _role;
+        //private readonly Guid _GEMP;
+        //private readonly Guid _IdSucursal;
         private readonly Guid _IdUsuario;
-        private static readonly Guid SuperAdminId = Guid.Parse("7905213C-B0CB-4D42-A997-20094EF41F9C");
-        private static readonly Guid MedicoId = Guid.Parse("DE5DFDDC-F6CC-4B7F-B805-286732501E57");
-        private static readonly Guid ResponsableFarmaciaId = Guid.Parse("CD5FF082-0BF4-4848-BA0C-38EDA4921954");
-        private static readonly Guid PacienteId = Guid.Parse("635A6E50-D6B0-4C0C-BC0A-96B617A21BEE");
-        private static readonly Guid EmpleadoFarmaciaId = Guid.Parse("D0E20BC6-C1E8-42C9-B80C-A9C92D55D3E9");
-        private static readonly Guid SupervisorSucursalesId = Guid.Parse("68C87CA4-2499-4A9C-B0DC-EEE99B7078BF");
+        //private static readonly Guid SuperAdminId = Guid.Parse("7905213C-B0CB-4D42-A997-20094EF41F9C");
+        //private static readonly Guid MedicoId = Guid.Parse("DE5DFDDC-F6CC-4B7F-B805-286732501E57");
+        //private static readonly Guid ResponsableFarmaciaId = Guid.Parse("CD5FF082-0BF4-4848-BA0C-38EDA4921954");
+        //private static readonly Guid PacienteId = Guid.Parse("635A6E50-D6B0-4C0C-BC0A-96B617A21BEE");
+        //private static readonly Guid EmpleadoFarmaciaId = Guid.Parse("D0E20BC6-C1E8-42C9-B80C-A9C92D55D3E9");
+        //private static readonly Guid SupervisorSucursalesId = Guid.Parse("68C87CA4-2499-4A9C-B0DC-EEE99B7078BF");
+        //private static readonly Guid ParticularId = Guid.Parse("635A6E50-D6B0-4C0C-BC0A-96B617A21BEE");
         private readonly CifradoHelper _cifradoHelper;
 
         public UsuarioService(IHttpContextAccessor httpContextAccessor, UsuariosDBContext context, CifradoHelper cifradoHelper)
@@ -31,10 +28,10 @@ namespace RMD.Service.Usuarios
             _context = context;
             _httpContextAccessor = httpContextAccessor;
             _cifradoHelper = cifradoHelper;
-            _username = _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.Name);
-            _role = Guid.TryParse(_httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.Role), out var roleGuid) ? roleGuid : Guid.Empty;
-            _GEMP = Guid.TryParse(_httpContextAccessor.HttpContext.User.FindFirst("GEMP")?.Value, out var gempGuid) ? gempGuid : Guid.Empty;
-            _IdSucursal = Guid.TryParse(_httpContextAccessor.HttpContext.User.FindFirst("IdSucursal")?.Value, out var sucursalGuid) ? sucursalGuid : Guid.Empty;
+            //_username = _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.Name);
+            //_role = Guid.TryParse(_httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.Role), out var roleGuid) ? roleGuid : Guid.Empty;
+            //_GEMP = Guid.TryParse(_httpContextAccessor.HttpContext.User.FindFirst("GEMP")?.Value, out var gempGuid) ? gempGuid : Guid.Empty;
+            //_IdSucursal = Guid.TryParse(_httpContextAccessor.HttpContext.User.FindFirst("IdSucursal")?.Value, out var sucursalGuid) ? sucursalGuid : Guid.Empty;
             _IdUsuario = Guid.TryParse(_httpContextAccessor.HttpContext.User.FindFirst("IdUsuario")?.Value, out var usuarioGuid) ? usuarioGuid : Guid.Empty;
 
         }
@@ -48,37 +45,49 @@ namespace RMD.Service.Usuarios
             return results.FirstOrDefault();
         }
 
-        public async Task<IEnumerable<Usuario>> GetUsuariosByAsentamientoAsync(int idAsentamiento)
+        public async Task<IEnumerable<RequestUsuario>> GetUsuariosByGEMPAsync(Guid idGEMP)
         {
-            var results = await _context.Usuarios
-                .FromSqlRaw("EXEC Usuarios_GetUsuariosByAsentamiento @IdAsentamiento", new SqlParameter("@IdAsentamiento", idAsentamiento))
+            var idUsuarioSolicitante = _httpContextAccessor.HttpContext.User.FindFirstValue("IdUsuario");
+            var idRolSolicitante = _httpContextAccessor.HttpContext.User.FindFirstValue("IdRol");
+
+            if (!Guid.TryParse(idUsuarioSolicitante, out var parsedIdUsuario) || !Guid.TryParse(idRolSolicitante, out var parsedIdRol))
+            {
+                throw new ArgumentException("Los valores del usuario o rol solicitante no son válidos.");
+            }
+
+            var parameters = new[]
+            {
+                new SqlParameter("@IdGEMP", idGEMP),
+                new SqlParameter("@IdUsuarioSolicitante", parsedIdUsuario),
+                new SqlParameter("@IdRolSolicitante", parsedIdRol)
+            };
+
+            var results = await _context.RequestUsuario
+                .FromSqlRaw("EXEC Usuarios_GetUsuariosByGEMPNew @IdGEMP, @IdUsuarioSolicitante, @IdRolSolicitante", parameters)
                 .ToListAsync();
 
             return results;
         }
 
-        public async Task<IEnumerable<Usuario>> GetUsuariosByGEMPAsync(Guid idGEMP)
+        public async Task<IEnumerable<RequestUsuario>> GetUsuariosBySucursalAsync(Guid idSucursal)
         {
-            var results = await _context.Usuarios
-                .FromSqlRaw("EXEC Usuarios_GetUsuariosByGEMP @IdGEMP", new SqlParameter("@IdGEMP", idGEMP))
-                .ToListAsync();
+            var idUsuarioSolicitante = _httpContextAccessor.HttpContext.User.FindFirstValue("IdUsuario");
+            var idRolSolicitante = _httpContextAccessor.HttpContext.User.FindFirstValue("IdRol");
 
-            return results;
-        }
+            if (!Guid.TryParse(idUsuarioSolicitante, out var parsedIdUsuario) || !Guid.TryParse(idRolSolicitante, out var parsedIdRol))
+            {
+                throw new ArgumentException("Los valores del usuario o rol solicitante no son válidos.");
+            }
 
-        public async Task<IEnumerable<Usuario>> GetUsuariosBySucursalAsync(Guid idSucursal)
-        {
-            var results = await _context.Usuarios
-                .FromSqlRaw("EXEC Usuarios_GetUsuariosBySucursal @IdSucursal", new SqlParameter("@IdSucursal", idSucursal))
-                .ToListAsync();
+            var parameters = new[]
+            {
+                new SqlParameter("@IdSucursal", idSucursal),
+                new SqlParameter("@IdUsuarioSolicitante", parsedIdUsuario),
+                new SqlParameter("@IdRolSolicitante", parsedIdRol)
+            };
 
-            return results;
-        }
-
-        public async Task<IEnumerable<Usuario>> GetUsuariosByTipoUsuarioAsync(Guid idTipoUsuario)
-        {
-            var results = await _context.Usuarios
-                .FromSqlRaw("EXEC Usuarios_GetUsuariosByTipoUsuario @IdTipoUsuario", new SqlParameter("@IdTipoUsuario", idTipoUsuario))
+            var results = await _context.RequestUsuario
+                .FromSqlRaw("EXEC Usuarios_GetUsuariosBySucursalNew @IdSucursal, @IdUsuarioSolicitante, @IdRolSolicitante", parameters)
                 .ToListAsync();
 
             return results;
@@ -140,7 +149,7 @@ namespace RMD.Service.Usuarios
                 };
 
                 await _context.Database.ExecuteSqlRawAsync(
-                    "EXEC Usuarios_CreateUSR @UsuarioData, @IdUsuario, @IdRol, @IdGemp, @IdSucursal, @OutputMessage OUTPUT, @GeneratedIdUsuario OUTPUT",
+                    "EXEC Usuarios_CreateUSRNew @UsuarioData, @IdUsuario, @IdRol, @IdGemp, @IdSucursal, @OutputMessage OUTPUT, @GeneratedIdUsuario OUTPUT",
                     parameter, idUsuarioParameter, idRolParameter, idGempParameter, idSucursalParameter, outputParameter, generatedIdUsuarioParameter
                 );
 
@@ -165,6 +174,11 @@ namespace RMD.Service.Usuarios
         {
             try
             {
+                // Validación preliminar antes de enviar al SP
+                if (usuario.IdUsuario == null)
+                {
+                    return ("El ID del usuario no puede ser nulo.", false);
+                }
                 // Cifrar la contraseña si fue provista
                 if (!string.IsNullOrEmpty(usuario.Password))
                 {
@@ -183,7 +197,7 @@ namespace RMD.Service.Usuarios
 
                 // Ejecutar el procedimiento almacenado
                 await _context.Database.ExecuteSqlRawAsync(
-                    "EXEC Usuarios_UpdateUsuario @UsuarioTable, @IdUsuarioSolicitante, @OutputMessage OUTPUT",
+                    "EXEC Usuarios_UpdateUsuarioNew @UsuarioTable, @IdUsuarioSolicitante, @OutputMessage OUTPUT",
                     usuarioParam, idUsuarioSolicitanteParam, outputMessageParam
                 );
 
@@ -242,9 +256,9 @@ namespace RMD.Service.Usuarios
             return results.FirstOrDefault();
         }
 
-       
 
-        public async Task<UsuarioDetalle> GetUsuarioByEmailAsync(string email)
+
+        public async Task<UsuarioDetalle?> GetUsuarioByEmailAsync(string email)
         {
             try
             {
@@ -257,23 +271,17 @@ namespace RMD.Service.Usuarios
                     .FromSqlRaw("EXEC Usuaruios_ValidarCorreoUsuario @Email", parameters)
                     .ToListAsync();
 
-                return results.FirstOrDefault();
+                return results.FirstOrDefault(); // FirstOrDefault devuelve null si no hay resultados
             }
             catch (SqlException ex)
             {
-                // Aquí puedes registrar el error o lanzar una excepción personalizada
-                // Puedes utilizar un logger si lo tienes configurado
                 Console.WriteLine($"Error ejecutando el SP: {ex.Message}");
-
-                // Puedes retornar null o lanzar una excepción para manejarlo en capas superiores
-                return null;
+                return null; // Retornar null en caso de error
             }
             catch (Exception ex)
             {
-                // Para capturar cualquier otro tipo de error
                 Console.WriteLine($"Error general: {ex.Message}");
-
-                return null;
+                return null; // Retornar null en caso de error
             }
         }
 
@@ -301,49 +309,6 @@ namespace RMD.Service.Usuarios
             }
         }
 
-        public async Task<string> CrearActualizarImagenFirmaAsync(UsuarioImagenRequest request)
-        {
-            var parametros = new[]
-            {
-            new SqlParameter("@IdUsuario", request.IdUsuario),
-            new SqlParameter("@Imagen", (object)request.Imagen ?? DBNull.Value),
-            new SqlParameter("@Firma", (object)request.Firma ?? DBNull.Value)
-        };
-
-            var outputMessage = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 500)
-            {
-                Direction = ParameterDirection.Output
-            };
-
-            await _context.Database.ExecuteSqlRawAsync(
-                "EXEC UsuarioCrearActualizarImagenFirma @IdUsuario, @Imagen, @Firma, @OutputMessage OUTPUT",
-                [.. parametros, outputMessage]
-            );
-
-            return outputMessage.Value.ToString();
-        }
-
-        public async Task<string?> ObtenerFirmaPorIdUsuarioAsync(Guid idUsuario)
-        {
-            var result = await _context.UsuarioImagenes
-                .FromSqlRaw("EXEC ObtenerFirmaPorIdUsuario @IdUsuario", new SqlParameter("@IdUsuario", idUsuario))
-                .Select(u => u.Firma)
-                .FirstOrDefaultAsync();
-
-            return result;
-        }
-
-        public async Task<string?> ObtenerImagenPorIdUsuarioAsync(Guid idUsuario)
-        {
-            var result = await _context.UsuarioImagenes
-                .FromSqlRaw("EXEC ObtenerImagenPorIdUsuario @IdUsuario", new SqlParameter("@IdUsuario", idUsuario))
-                .Select(u => u.Imagen)
-                .FirstOrDefaultAsync();
-
-            return result;
-        }
-
-
         public async Task<IEnumerable<SucursalResponse>> GetSucursalesByUsuarioAsync(Guid idUsuario)
         {
             var param = new SqlParameter("@IdUsuario", SqlDbType.UniqueIdentifier)
@@ -366,7 +331,7 @@ namespace RMD.Service.Usuarios
                 var idUsuarioParam = new SqlParameter("@IdUsuario", idUsuario);
                 var idUsuarioSolicitanteParam = new SqlParameter("@IdUsuarioSolicitante", idUsuarioSolicitante);
 
-                await _context.Database.ExecuteSqlRawAsync("EXEC Usuarios_InactivarUsuario @IdUsuario, @IdUsuarioSolicitante, @OutputMessage OUTPUT",
+                await _context.Database.ExecuteSqlRawAsync("EXEC Usuarios_InactivarUsuarioNew @IdUsuario, @IdUsuarioSolicitante, @OutputMessage OUTPUT",
                     idUsuarioParam, idUsuarioSolicitanteParam, outputMessageParam);
 
                 var mensaje = outputMessageParam.Value.ToString();
@@ -379,6 +344,7 @@ namespace RMD.Service.Usuarios
                 return ($"Ocurrió un error inesperado: {ex.Message}", false);
             }
         }
+
 
         public async Task<(string mensaje, bool exito)> CambiarPasswordAsync(Guid idUsuario, string nuevaPassword)
         {
@@ -404,6 +370,127 @@ namespace RMD.Service.Usuarios
                 return ($"Ocurrió un error inesperado: {ex.Message}", false);
             }
         }
+
+
+        public async Task<string?> ObtenerFirmaPorIdUsuarioAsync(Guid idUsuario)
+        {
+            var result = await _context.UsuarioImagenes
+                .FromSqlRaw("EXEC Usuarios_ObtenerFirmaPorIdUsuario @IdUsuario", new SqlParameter("@IdUsuario", idUsuario))
+                .Select(u => u.Firma)
+                .FirstOrDefaultAsync();
+
+            return result;
+        }
+
+        public async Task<string> CrearActualizarImagenFirmaAsync(UsuarioImagenRequest request)
+        {
+            if (request == null)
+            {
+                return "Datos inválidos.";
+            }
+
+            // Validar si ambos campos son nulos
+            if (string.IsNullOrEmpty(request.Imagen) && string.IsNullOrEmpty(request.Firma))
+            {
+                return "No se proporcionaron datos para actualizar.";
+            }
+            // Crear una lista para los parámetros
+            var parametros = new List<SqlParameter>
+                {
+                    new("@IdUsuario", request.IdUsuario),
+                    new("@Imagen", (object)request.Imagen ?? DBNull.Value),
+                    new("@Firma", (object)request.Firma ?? DBNull.Value)
+                };
+
+            //var parametros = new[]
+            //{
+            //    new SqlParameter("@IdUsuario", request.IdUsuario),
+            //    new SqlParameter("@Imagen", (object)request.Imagen ?? DBNull.Value),
+            //    new SqlParameter("@Firma", (object)request.Firma ?? DBNull.Value)
+            //};
+
+            var outputMessage = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 500)
+            {
+                Direction = ParameterDirection.Output
+            };
+
+            //await _context.Database.ExecuteSqlRawAsync(
+            //    "EXEC Usuario_CrearActualizarImagenFirma @IdUsuario, @Imagen, @Firma, @OutputMessage OUTPUT",
+            //    parametros.Append(outputMessage).ToArray()
+            //);
+            // Ejecutar el procedimiento almacenado
+            await _context.Database.ExecuteSqlRawAsync(
+                "EXEC Usuario_CrearActualizarImagenFirma @IdUsuario, @Imagen, @Firma, @OutputMessage OUTPUT",
+                 parametros
+            );
+
+            return outputMessage.Value?.ToString() ?? "Operación completada.";
+        }
+
+
+        public async Task<string> EliminarFirmaAsync(Guid idUsuario)
+        {
+            // Crear la lista inicial de parámetros
+            var parametros = new List<SqlParameter>
+            {
+                new("@IdUsuario", idUsuario)
+            };
+
+            // Crear el parámetro de salida
+            var outputMessage = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 500)
+            {
+                Direction = ParameterDirection.Output
+            };
+
+            // Agregar el parámetro de salida a la lista
+            parametros.Add(outputMessage);
+
+            // Ejecutar el procedimiento almacenado
+            await _context.Database.ExecuteSqlRawAsync(
+                "EXEC Usuarios_EliminarFirma @IdUsuario, @OutputMessage OUTPUT",
+                parametros // Pasar la lista directamente
+            );
+
+            // Retornar el mensaje de salida
+            return outputMessage.Value?.ToString() ?? "Operación completada.";
+        }
+
+
+
+        public async Task<string?> ObtenerImagenPorIdUsuarioAsync(Guid idUsuario)
+        {
+            var result = await _context.UsuarioImagenes
+                .FromSqlRaw("EXEC Usuarios_ObtenerImagenPorIdUsuario @IdUsuario", new SqlParameter("@IdUsuario", idUsuario))
+                .Select(u => u.Imagen)
+                .FirstOrDefaultAsync();
+
+            return result;
+        }
+
+
+        public async Task<string> EliminarImagenAsync(Guid idUsuario)
+        {
+            // Crear el array de parámetros directamente
+            var parametros = new[]
+            {
+                new SqlParameter("@IdUsuario", idUsuario),
+                new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 500)
+                {
+                    Direction = ParameterDirection.Output
+                }
+            };
+
+            // Ejecutar el procedimiento almacenado
+            await _context.Database.ExecuteSqlRawAsync(
+                "EXEC Usuarios_EliminarImagen @IdUsuario, @OutputMessage OUTPUT",
+                parametros // Pasar el array directamente
+            );
+
+            // Retornar el mensaje de salida
+            return parametros[1].Value?.ToString() ?? "Operación completada.";
+        }
+
+
 
     }
 

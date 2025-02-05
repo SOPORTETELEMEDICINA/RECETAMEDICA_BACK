@@ -1,12 +1,15 @@
-﻿namespace RMD.Models.Vidal.CargaCatalogos
-{
-    public class CIM10Model
-    {
-        public int IdCIM10 { get; set; }
-        public string Name { get; set; }
-        public string Code { get; set; }
-        public string Summary { get; set; }
-        public DateTime UpdatedDate { get; set; }
-    }
+﻿//namespace RMD.Models.Vidal.CargaCatalogos
+//{
+//    public class CIM10Model
+//    {
+//        public int IdCIM10 { get; set; }
+//        public string Name { get; set; }
+//        public string Code { get; set; }
+//        public string Summary { get; set; }
+//        public DateTime UpdatedDate { get; set; }
+//        // Nuevos campos para los links
+//        public string ALDSLink { get; set; } = string.Empty;   // Link relacionado a ALDS
+//        public string ChildrenLink { get; set; } = string.Empty;  // Link relacionado a CHILDREN
+//    }
 
-}
+//}

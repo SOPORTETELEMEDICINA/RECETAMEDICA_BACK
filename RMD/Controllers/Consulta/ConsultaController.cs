@@ -1,28 +1,21 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using RMD.Extensions;
-using RMD.Interface.Catalogos;
+﻿using RMD.Extensions;
+using RMD.Interface.Catalogo;
 using RMD.Interface.Consulta;
 using RMD.Interface.Pacientes;
-using RMD.Interface.Vidal;
 using RMD.Models.Consulta;
 using RMD.Models.Pacientes;
 using RMD.Models.Responses;
-using RMD.Models.Vidal.ByVMP;
-using System.Net;
 
 namespace RMD.Controllers.Consulta
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
+    [ServiceFilter(typeof(ValidateTokenFilter))]
     public class ConsultaController(
         IConsultaService consultaService,
         ICatalogoService catalogoService,
         IPacienteService pacienteService,
-        IPackageService packageService,
-        IProductService productService,
-        IMoleculeService moleculeService,
-        IVMPService vmpService,
         IHttpContextAccessor httpContextAccessor
 
             ) : ControllerBase
@@ -30,11 +23,6 @@ namespace RMD.Controllers.Consulta
         private readonly IConsultaService _consultaService = consultaService;
         private readonly ICatalogoService _catalogoService = catalogoService;
         private readonly IPacienteService _pacienteService = pacienteService;
-        private readonly IPackageService _packageService = packageService;
-        private readonly IProductService _productService = productService;
-        private readonly IMoleculeService _moleculeService = moleculeService;
-        private readonly IVMPService _vmpService = vmpService;
-
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
         [HttpPost("AllergyByName")]
@@ -50,7 +38,7 @@ namespace RMD.Controllers.Consulta
 
                 if (!allergies.Any())
                 {
-                    return Ok(ResponseFromService<IEnumerable<RequestSearchAllergy>>.Success(new List<RequestSearchAllergy>(), "No allergies found."));
+                    return Ok(ResponseFromService<IEnumerable<RequestSearchAllergy>>.Success([], "No allergies found."));
                 }
 
                 return Ok(ResponseFromService<IEnumerable<RequestSearchAllergy>>.Success(allergies, "Allergies retrieved successfully."));
@@ -85,77 +73,78 @@ namespace RMD.Controllers.Consulta
             }
         }
 
-        [HttpPost("VMPByName")]
-        public async Task<IActionResult> GetVMPByName(string name)
-        {
-            if (!IsUserAuthorized())
-            {
-                return Forbid("No tiene permisos para realizar esta acción.");
-            }
-            try
-            {
-                var vmps = await _consultaService.GetVMPByNameAsync(name);
+        //[HttpPost("VMPByName")]
+        //public async Task<IActionResult> GetVMPByName(string name)
+        //{
+        //    if (!IsUserAuthorized())
+        //    {
+        //        return Forbid("No tiene permisos para realizar esta acción.");
+        //    }
+        //    try
+        //    {
+        //        var vmps = await _consultaService.GetVMPByNameAsync(name);
 
-                if (!vmps.Any())
-                {
-                    return Ok(ResponseFromService<IEnumerable<RequestSearchVMP>>.Success(new List<RequestSearchVMP>(), "No allergies found."));
-                }
+        //        if (!vmps.Any())
+        //        {
+        //            return Ok(ResponseFromService<IEnumerable<RequestSearchVMP>>.Success(new List<RequestSearchVMP>(), "No allergies found."));
+        //        }
 
-                return Ok(ResponseFromService<IEnumerable<RequestSearchVMP>>.Success(vmps, "Allergies retrieved successfully."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener las alergias: {ex.Message}"));
-            }
-        }
+        //        return Ok(ResponseFromService<IEnumerable<RequestSearchVMP>>.Success(vmps, "Allergies retrieved successfully."));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener las alergias: {ex.Message}"));
+        //    }
+        //}
 
-        [HttpPost("ProductByName")]
-        public async Task<IActionResult> GetProductsByName(string name)
-        {
-            if (!IsUserAuthorized())
-            {
-                return Forbid("No tiene permisos para realizar esta acción.");
-            }
-            try
-            {
-                var products = await _consultaService.GetProductsByNameAsync(name);
+        //[HttpPost("ProductByName")]
+        //public async Task<IActionResult> GetProductsByName(string name)
+        //{
+        //    if (!IsUserAuthorized())
+        //    {
+        //        return Forbid("No tiene permisos para realizar esta acción.");
+        //    }
+        //    try
+        //    {
 
-                if (!products.Any())
-                {
-                    return Ok(ResponseFromService<IEnumerable<RequestSearchProducts>>.Success(new List<RequestSearchProducts>(), "No allergies found."));
-                }
+        //        var products = await _consultaService.GetProductsByNameAsync(name);
 
-                return Ok(ResponseFromService<IEnumerable<RequestSearchProducts>>.Success(products, "Allergies retrieved successfully."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener las alergias: {ex.Message}"));
-            }
-        }
+        //        if (!products.Any())
+        //        {
+        //            return Ok(ResponseFromService<IEnumerable<RequestSearchProducts>>.Success(new List<RequestSearchProducts>(), "No allergies found."));
+        //        }
 
-        [HttpPost("PackagesByName")]
-        public async Task<IActionResult> GetPackagesByName(string name)
-        {
-            if (!IsUserAuthorized())
-            {
-                return Forbid("No tiene permisos para realizar esta acción.");
-            }
-            try
-            {
-                var packages = await _consultaService.GetPackagesByNameAsync(name);
+        //        return Ok(ResponseFromService<IEnumerable<RequestSearchProducts>>.Success(products, "Allergies retrieved successfully."));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener las alergias: {ex.Message}"));
+        //    }
+        //}
 
-                if (!packages.Any())
-                {
-                    return Ok(ResponseFromService<IEnumerable<RequestSearchPackage>>.Success(new List<RequestSearchPackage>(), "No allergies found."));
-                }
+        //[HttpPost("PackagesByName")]
+        //public async Task<IActionResult> GetPackagesByName(string name)
+        //{
+        //    if (!IsUserAuthorized())
+        //    {
+        //        return Forbid("No tiene permisos para realizar esta acción.");
+        //    }
+        //    try
+        //    {
+        //        var packages = await _consultaService.GetPackagesByNameAsync(name);
 
-                return Ok(ResponseFromService<IEnumerable<RequestSearchPackage>>.Success(packages, "Allergies retrieved successfully."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener las alergias: {ex.Message}"));
-            }
-        }
+        //        if (!packages.Any())
+        //        {
+        //            return Ok(ResponseFromService<IEnumerable<RequestSearchPackage>>.Success(new List<RequestSearchPackage>(), "No allergies found."));
+        //        }
+
+        //        return Ok(ResponseFromService<IEnumerable<RequestSearchPackage>>.Success(packages, "Allergies retrieved successfully."));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener las alergias: {ex.Message}"));
+        //    }
+        //}
 
         [HttpPost("CIM10ByName")]
         public async Task<IActionResult> GeCIM10ByName(string name)
@@ -181,185 +170,51 @@ namespace RMD.Controllers.Consulta
             }
         }
 
-        //[HttpGet("VmpByName")]
-        //[Authorize]
-        //[ServiceFilter(typeof(ValidateTokenFilter))]
-        //public async Task<IActionResult> GetVmpByName(string name)
-        //{
-        //    try
-        //    {
-        //        var vmpEntries = await _vmpService.GetVmpByName(name);
-
-        //        if (!vmpEntries?.Any() ?? true)
-        //        {
-        //            return Ok(ResponseFromService<List<VmpEntry>>.Success(new List<VmpEntry>(), "No se encontraron entradas."));
-        //        }
-
-        //        return Ok(ResponseFromService<List<VmpEntry>>.Success(vmpEntries, "Entradas encontradas con éxito."));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
-        //    }
-        //}
-
-        [HttpGet("VmpUnit")]
-        [AllowAnonymous]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<IActionResult> SearchUnitvmp(string link)
+        [HttpPost("GetRelaciones")]
+        public async Task<IActionResult> GetIdsFromLink([FromQuery] int Id, [FromQuery] string IdType , [FromQuery] string RelacionType)
         {
-            if (!IsUserAuthorized())
-            {
-                return Forbid("No tiene permisos para realizar esta acción.");
-            }
             try
             {
-                var units = await _vmpService.GetVmpUnitsByLinkAsync(link);
+                // Hacer la consulta al servicio y obtener el resultado como JSON o string vacío
+                var result = await _consultaService.GetIdsFromLink(Id, IdType, RelacionType);
 
-                if (!units?.Any() ?? true)
+                // Validar si el resultado está vacío
+                if (string.IsNullOrEmpty(result) || result == "{}")
                 {
-                    return Ok(ResponseFromService<List<VMPUnitEntry>>.Success(new List<VMPUnitEntry>(), "No se encontraron unidades."));
+                    // Retornar un modelo vacío en lugar de un string vacío
+                    if (RelacionType == "UNITS")
+                    {
+                        return Ok(ResponseFromService<IEnumerable<UnitModel>>.Success(new List<UnitModel>(), "No units found."));
+                    }
+                    else if (RelacionType == "ROUTES")
+                    {
+                        return Ok(ResponseFromService<IEnumerable<RouteModel>>.Success(new List<RouteModel>(), "No routes found."));
+                    }
+                    else
+                    {
+                        return BadRequest("Unknown relation type.");
+                    }
                 }
-                return Ok(ResponseFromService<List<VMPUnitEntry>>.Success(units, "Unidades encontradas con éxito."));
+
+                // Devolver el JSON que ya fue generado en el servicio (puede ser una lista de UNITS o ROUTES)
+                return Ok(result); // Retorna el JSON como string
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener los datos: {ex.Message}"));
             }
         }
-
-        //[HttpGet("ProductByName")]
-        //[AllowAnonymous]
-        //[ServiceFilter(typeof(ValidateTokenFilter))]
-        //public async Task<IActionResult> GetProductsByName(string name)
-        //{
-        //    try
-        //    {
-        //        var productEntries = await _productService.GetProductsByName(name);
-
-        //        if (!productEntries?.Any() ?? true)
-        //        {
-        //            return Ok(ResponseFromService<List<Models.Vidal.ByProduct.ProductEntry>>.Success(new List<Models.Vidal.ByProduct.ProductEntry>(), "No se encontraron productos."));
-        //        }
-
-        //        return Ok(ResponseFromService<List<Models.Vidal.ByProduct.ProductEntry>>.Success(productEntries, "Productos encontrados con éxito."));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
-        //    }
-        //}
-
-        [HttpGet("ProductUnit")]
-        [AllowAnonymous]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<IActionResult> SearchUnitProduct(string link)
-        {
-            if (!IsUserAuthorized())
-            {
-                return Forbid("No tiene permisos para realizar esta acción.");
-            }
-            try
-            {
-                var units = await _productService.GetProductUnitsByLinkAsync(link);
-
-                if (!units?.Any() ?? true)
-                {
-                    return Ok(ResponseFromService<List<Models.Vidal.ByProduct.ProductUnit>>.Success(new List<Models.Vidal.ByProduct.ProductUnit>(), "No se encontraron unidades."));
-                }
-
-                return Ok(ResponseFromService<List<Models.Vidal.ByProduct.ProductUnit>>.Success(units, "Unidades encontradas con éxito."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
-            }
-        }
-
-        //[HttpGet("PackeByName")]
-        //[AllowAnonymous]
-        //[ServiceFilter(typeof(ValidateTokenFilter))]
-        //public async Task<ActionResult<List<PackageEntry>>> GetPackagesByName([FromQuery] string name)
-        //{
-        //    try
-        //    {
-        //        var packages = await _packageService.GetPackagesByName(name);
-        //        if (!packages?.Any() ?? true)
-        //        {
-        //            return Ok(ResponseFromService<List<PackageEntry>>.Success(new List<PackageEntry>(), "No se encontraron paquetes."));
-        //        }
-
-        //        return Ok(ResponseFromService<List<PackageEntry>>.Success(packages, "Paquetes encontrados con éxito."));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
-        //    }
-        //}
-
-        [HttpGet("PackageUnit")]
-        [AllowAnonymous]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<IActionResult> SearchUnitPackage(string link)
-        {
-            if (!IsUserAuthorized())
-            {
-                return Forbid("No tiene permisos para realizar esta acción.");
-            }
-            try
-            {
-                var units = await _packageService.GetPackageUnitsByLinkAsync(link);
-
-                if (!units?.Any() ?? true)
-                {
-                    return Ok(ResponseFromService<List<Models.Vidal.ByPackage.PackageUnit>>.Success(new List<Models.Vidal.ByPackage.PackageUnit>(), "No se encontraron unidades."));
-                }
-
-                return Ok(ResponseFromService<List<Models.Vidal.ByPackage.PackageUnit>>.Success(units, "Unidades encontradas con éxito."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
-            }
-        }
-
-        //[HttpGet("Cim10ByName")]
-        //[AllowAnonymous]
-        //[ServiceFilter(typeof(ValidateTokenFilter))]
-        //public async Task<IActionResult> GetCim10ByName(string name)
-        //{
-        //    if (!IsUserAuthorized())
-        //    {
-        //        return Forbid("No tiene permisos para realizar esta acción.");
-        //    }
-        //    try
-        //    {
-        //        var cim10Entries = await _consultaService.GetCim10ByName(name);
-
-        //        if (!cim10Entries?.Any() ?? true)
-        //        {
-        //            return Ok(ResponseFromService<List<Cim10Entry>>.Success(new List<Cim10Entry>(), "No se encontraron entradas."));
-        //        }
-
-        //        return Ok(ResponseFromService<List<Cim10Entry>>.Success(cim10Entries, "Entradas encontradas con éxito."));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
-        //    }
-        //}
 
 
 
         [HttpPost("Analisis")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> AnalyzePrescription([FromBody] PrescriptionModel request)
         {
             if (!IsUserAuthorized())
             {
                 return Forbid("No tiene permisos para realizar esta acción.");
             }
+
             if (request == null)
             {
                 return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Datos de solicitud inválidos."));
@@ -368,10 +223,14 @@ namespace RMD.Controllers.Consulta
             try
             {
                 // Llamar al servicio para procesar la solicitud
-                var htmlResponse = await _consultaService.ProcessPrescriptionRequest(request); // Se espera que esto devuelva un string
+                var response = await _consultaService.ProcessPrescriptionRequest(request);
 
-                // Devolver el HTML recibido
-                return Content(htmlResponse, "text/html");
+                // Devolver el HTML recibido como contenido principal
+                return Ok(new
+                {
+                    HtmlResponse = response.HtmlResponse,
+                    MedicamentoActivo = response.MedicamentoActivo // Opcionalmente incluir esta lista
+                });
             }
             catch (Exception ex)
             {
@@ -379,31 +238,39 @@ namespace RMD.Controllers.Consulta
             }
         }
 
-        //[HttpGet("MoleculesByName")]
-        //[Authorize]
-        //[ServiceFilter(typeof(ValidateTokenFilter))]
-        //public async Task<IActionResult> GetMoleculesByName(string name)
-        //{
-        //    try
-        //    {
-        //        var moleculeEntries = await _moleculeService.GetMoleculesByName(name);
+        [HttpPost("AnalisisXml")]
+        public async Task<IActionResult> AnalyzePrescriptionXML([FromBody] PrescriptionModel request)
+        {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
 
-        //        if (!moleculeEntries?.Any() ?? true)
-        //        {
-        //            return Ok(ResponseFromService<List<MoleculeEntry>>.Success(new List<MoleculeEntry>(), "No se encontraron moléculas."));
-        //        }
+            if (request == null)
+            {
+                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Datos de solicitud inválidos."));
+            }
 
-        //        return Ok(ResponseFromService<List<MoleculeEntry>>.Success(moleculeEntries, "Moléculas encontradas con éxito."));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
-        //    }
-        //}
+            try
+            {
+                // Llamar al servicio para procesar la solicitud
+                var response = await _consultaService.ProcessPrescriptionXMLRequest(request);
 
-        [HttpPost("AsentamientoByNames")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
+                // Devolver el XML y MedicamentoActivo como respuesta
+                return Ok(new
+                {
+                    XMLResponse = response.XMLResponse.ToString(),
+                    MedicamentoActivo = response.MedicamentoActivo
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Se produjo un error al procesar la solicitud: {ex.Message}"));
+            }
+        }
+
+
+        [HttpGet("AsentamientoByNames")]
         public async Task<IActionResult> SearchAsentamiento([FromQuery] AsentamientoSearchModel searchModel)
         {
             if (!IsUserAuthorized())
@@ -422,22 +289,30 @@ namespace RMD.Controllers.Consulta
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Se produjo un error en el servidor."));
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Se produjo un error en el servidor.{ex}"));
             }
         }
 
         [HttpPost("PacienteByName")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> SearchPacienteByName(string pacientName)
         {
             if (!IsUserAuthorized())
             {
                 return Forbid("No tiene permisos para realizar esta acción.");
             }
+
             try
             {
-                var pacientes = await _pacienteService.GetPacienteByNameAsync(pacientName);
+                var rol = User.FindFirstValue(ClaimTypes.Role);
+
+                // Declarar y asignar el GUID en una sola línea
+                if (!Guid.TryParse(User.FindFirstValue("GEMP"), out Guid finalIdGemp))
+                {
+                    return BadRequest("El GEMP proporcionado no es un GUID válido.");
+                }
+
+                // Llamar al servicio con el `IdGemp` obtenido
+                var pacientes = await _pacienteService.GetPacienteByNameAsync(pacientName, finalIdGemp);
 
                 if (!pacientes?.Any() ?? true)
                 {
@@ -449,6 +324,310 @@ namespace RMD.Controllers.Consulta
             catch (Exception ex)
             {
                 return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Se produjo un error en el servidor: {ex.Message}"));
+            }
+        }
+
+
+        [HttpPost("MedicamentoByName")]
+        public async Task<IActionResult> GetMedicamentoByName(string name)
+        {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
+
+            try
+            {
+                var medicamentos = await _consultaService.GetMedicamentoByNameAsync(name);
+
+                if (!medicamentos.Any())
+                {
+                    return Ok(ResponseFromService<IEnumerable<Medicamentos>>.Success(new List<Medicamentos>(), "No se encontraron medicamentos."));
+                }
+
+                return Ok(ResponseFromService<IEnumerable<Medicamentos>>.Success(medicamentos, "Medicamentos encontrados con éxito."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener los medicamentos: {ex.Message}"));
+            }
+        }
+
+        [HttpPost("RegistrarReceta")]
+        public async Task<IActionResult> RegistrarReceta([FromBody] RecetaRequestModel request)
+        {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
+
+            // Usar la propiedad Authorization para obtener el token
+            var token = Request.Headers.Authorization.ToString().Replace("Bearer ", "");
+
+            if (request == null)
+            {
+                return BadRequest(ResponseFromService<object>.Failure(HttpStatusCode.BadRequest, "La solicitud es inválida."));
+            }
+
+            try
+            {
+                // Registrar receta y obtener el IdReceta generado
+                var idReceta = await _consultaService.RegistrarRecetaAsync(request, token);
+
+                // Retornar mensaje de éxito y el IdReceta en un objeto anónimo
+                return Ok(ResponseFromService<object>.Success(new
+                {
+                    Message = "Receta registrada exitosamente.",
+                    IdReceta = idReceta
+                }));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError,
+                    ResponseFromService<object>.Failure(HttpStatusCode.InternalServerError, $"Error al registrar la receta: {ex.Message}"));
+            }
+        }
+
+        [HttpDelete("EliminarReceta/{idReceta}")]
+        public async Task<IActionResult> EliminarReceta(Guid idReceta)
+        {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
+
+            // Usar la propiedad Authorization para obtener el token
+            var token = Request.Headers.Authorization.ToString().Replace("Bearer ", "");
+            var user = _httpContextAccessor.HttpContext?.User;
+            var idUsuarioToken = user?.FindFirst("IdUsuario")?.Value?.ToUpper();
+            var idRolToken = user?.FindFirst("IdRol")?.Value?.ToUpper();
+
+            try
+            {
+                if (idRolToken == "7905213C-B0CB-4D42-A997-20094EF41F9C")
+                {
+                    await _consultaService.EliminarRecetaAsync(idReceta);
+                    return Ok(ResponseFromService<string>.Success("Receta eliminada exitosamente."));
+                }
+
+                if (!Guid.TryParse(idUsuarioToken, out var idUsuario))
+                {
+                    return StatusCode((int)HttpStatusCode.InternalServerError,
+                    ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Token inválido."));
+                }
+
+                var idMedico = await _consultaService.ObtenerIdMedicoPorUsuarioAsync(idUsuario);
+
+                if (idMedico == null)
+                {
+                    return StatusCode((int)HttpStatusCode.InternalServerError,
+                    ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"No tiene permisos para eliminar esta receta."));
+                }
+
+                var receta = await _consultaService.ObtenerRecetaPorIdAsync(idReceta);
+                if (receta == null)
+                {
+                    return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "La receta no existe."));
+                }
+
+                if (receta.IdMedico == idMedico)
+                {
+                    await _consultaService.EliminarRecetaAsync(idReceta);
+                    return Ok(ResponseFromService<string>.Success("Receta eliminada exitosamente."));
+                }
+
+                return StatusCode((int)HttpStatusCode.InternalServerError,
+                  ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"No tiene permisos para eliminar esta receta."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError,
+                    ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al eliminar la receta: {ex.Message}"));
+            }
+        }
+
+
+        [HttpGet("ConsultarReceta/{idReceta}")]
+        public async Task<IActionResult> ConsultarReceta(Guid idReceta)
+        {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
+
+            
+            var user = _httpContextAccessor.HttpContext?.User;
+            var idUsuarioToken = user?.FindFirst("IdUsuario")?.Value?.ToUpper();
+            var idRolToken = user?.FindFirst("IdRol")?.Value?.ToUpper();
+
+            try
+            {
+                dynamic resultadoFinal = null;
+                // Validar si el usuario es Super Admin
+                if (idRolToken == "7905213C-B0CB-4D42-A997-20094EF41F9C")
+                {
+                    var resultadoRecetaAdmin = await _consultaService.ConsultarRecetaAsync(idReceta, null);
+                    resultadoFinal = resultadoRecetaAdmin;
+                }
+
+                if (!Guid.TryParse(idUsuarioToken, out var idUsuario))
+                {
+                    return StatusCode((int)HttpStatusCode.InternalServerError,
+                        ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Token inválido."));
+                }
+
+                // Obtener el IdMedico asociado al IdUsuario
+                var idMedico = await _consultaService.ObtenerIdMedicoPorUsuarioAsync(idUsuario);
+
+                //if (idMedico == null)
+                //{
+                //    if
+                //    return StatusCode((int)HttpStatusCode.Forbidden,
+                //        ResponseFromService<string>.Failure(HttpStatusCode.Forbidden, "No tiene permisos para consultar esta receta."));
+                //}
+                // Consultar receta si el IdMedico coincide
+                var resultadoRecetaMedico = await _consultaService.ConsultarRecetaAsync(idReceta, idMedico);
+                resultadoFinal = resultadoRecetaMedico;
+                if (resultadoRecetaMedico == null)
+                {
+                    return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "La receta no existe."));
+                }
+                if (resultadoFinal == null)
+                {
+                    return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "La receta no existe."));
+                }
+                return Ok(ResponseFromService<dynamic>.Success(resultadoFinal, "Receta consultada exitosamente."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError,
+                    ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al consultar la receta: {ex.Message}"));
+            }
+        }
+
+
+        [HttpPut("ActualizarReceta")]
+        public async Task<IActionResult> ActualizarReceta([FromBody] RecetaGetRequest request)
+        {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
+
+            var user = _httpContextAccessor.HttpContext?.User;
+            var idUsuarioToken = user?.FindFirst("IdUsuario")?.Value?.ToUpper();
+            var idRolToken = user?.FindFirst("IdRol")?.Value?.ToUpper();
+
+            try
+            {
+                if (!Guid.TryParse(idUsuarioToken, out var idUsuario))
+                {
+                    return StatusCode((int)HttpStatusCode.InternalServerError,
+                        ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Token inválido."));
+                }
+
+                // Validar si el usuario es Super Admin o el médico que creó la receta
+                var idMedico = await _consultaService.ObtenerIdMedicoPorUsuarioAsync(idUsuario);
+                if (idRolToken != "7905213C-B0CB-4D42-A997-20094EF41F9C" && idMedico != request.Receta.IdMedico)
+                {
+                    return Forbid("No tiene permisos para actualizar esta receta.");
+                }
+
+                await _consultaService.ActualizarRecetaAsync(request);
+                return Ok(ResponseFromService<string>.Success("Receta actualizada exitosamente."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError,
+                    ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al actualizar la receta: {ex.Message}"));
+            }
+        }
+
+        [HttpGet("RecetasPorMedico")]
+        public async Task<IActionResult> ObtenerRecetasPorMedico([FromQuery] Guid idSucursal)
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            var idUsuarioToken = user?.FindFirst("IdUsuario")?.Value?.ToUpper();
+
+            if (!Guid.TryParse(idUsuarioToken, out var idUsuario))
+            {
+                return Unauthorized("Token inválido.");
+            }
+
+            try
+            {
+                var idMedico = await _consultaService.ObtenerIdMedicoPorUsuarioAsync(idUsuario);
+
+                if (idMedico == null)
+                {
+                    return Forbid("No tiene permisos para consultar recetas.");
+                }
+
+                var recetas = await _consultaService.ObtenerRecetasPorMedicoAsync(idMedico.Value, idSucursal);
+
+                if (!recetas.Any())
+                {
+                    return Ok(ResponseFromService<IEnumerable<RecetaPacienteModel>>.Success(new List<RecetaPacienteModel>(), "No se encontraron recetas."));
+                }
+
+                return Ok(ResponseFromService<IEnumerable<RecetaPacienteModel>>.Success(recetas, "Recetas obtenidas con éxito."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener las recetas: {ex.Message}"));
+            }
+        }
+
+        [HttpGet("SucursalesPorUsuario")]
+        public async Task<IActionResult> ObtenerSucursalesPorUsuario()
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            var idUsuarioToken = user?.FindFirst("IdUsuario")?.Value?.ToUpper();
+
+            if (!Guid.TryParse(idUsuarioToken, out var idUsuario))
+            {
+                return Unauthorized("Token inválido.");
+            }
+
+            try
+            {
+                var sucursales = await _consultaService.ObtenerSucursalesPorUsuarioAsync(idUsuario);
+
+                if (!sucursales.Any())
+                {
+                    return Ok(ResponseFromService<IEnumerable<SucursalModel>>.Success(new List<SucursalModel>(), "No se encontraron sucursales."));
+                }
+
+                return Ok(ResponseFromService<IEnumerable<SucursalModel>>.Success(sucursales, "Sucursales obtenidas con éxito."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener las sucursales: {ex.Message}"));
+            }
+        }
+
+        [HttpGet("GetReaccionMedicamentoPrevio/{idPaciente}")]
+        public async Task<IActionResult> GetReaccionMedicamentoPrevio(Guid idPaciente)
+        {
+            if (!IsUserAuthorized())
+            {
+                return Forbid("No tiene permisos para realizar esta acción.");
+            }
+
+            try
+            {
+                var reaccionesPrevias = await _consultaService.GetReaccionMedicamentoPrevioAsync(idPaciente);
+
+                if (reaccionesPrevias == null || !reaccionesPrevias.Any())
+                {
+                    return Ok(ResponseFromService<IEnumerable<DetalleRecetaResponse>>.Success(new List<DetalleRecetaResponse>(), "No se encontraron reacciones previas para el paciente."));
+                }
+
+                return Ok(ResponseFromService<IEnumerable<DetalleRecetaResponse>>.Success(reaccionesPrevias, "Reacciones previas encontradas con éxito."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al obtener las reacciones previas del paciente: {ex.Message}"));
             }
         }
 

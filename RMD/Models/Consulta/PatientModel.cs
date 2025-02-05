@@ -2,16 +2,22 @@
 {
     public class PatientModel
     {
-        public string Gender { get; set; } = string.Empty;
-        public DateTime DateOfBirth { get; set; }
-        public float Weight { get; set; }
-        public int Height { get; set; }
-        public string BreastFeeding { get; set; } = string.Empty;
-        public bool Pregnancy { get; set; }
+        public Guid IdPaciente { get; set; }
+        public string Gender { get; set; } = string.Empty; // Género
+        public DateTime DateOfBirth { get; set; } // Fecha de nacimiento
+        public float Weight { get; set; } // Peso
+        public int Height { get; set; } // Altura
+
+        // Lactancia como valor opcional (nullable)
+        public string? BreastFeeding { get; set; }
+
+        // Amenorrea como valor opcional (nullable)
         public int? WeeksOfAmenorrhea { get; set; }
-        public float Creatin { get; set; }
-        public List<string> Molecules { get; set; } = [];
-        public List<string> Allergies { get; set; } = [];
-        public List<string> Pathologies { get; set; } = [];
+        public bool Pregnancy { get; set; } // Embarazo
+        public float Creatin { get; set; } // Creatinina
+
+        public List<string> Molecules { get; set; } = []; // Moléculas
+        public List<string> Allergies { get; set; } = []; // Alergias
+        public List<string> Pathologies { get; set; } = []; // Patologías
     }
 }

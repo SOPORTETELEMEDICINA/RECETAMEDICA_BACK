@@ -12,7 +12,7 @@ namespace RMD.Models.Usuarios
         [MaxLength(50)]
         public string? Usr { get; set; }  // Actualizado a Usuario
 
-        [Required]
+
         [MaxLength(255)]  // Actualizado a 255 caracteres para almacenar contraseñas cifradas
         public string? Password { get; set; }
 
@@ -44,9 +44,9 @@ namespace RMD.Models.Usuarios
         [MaxLength(100)]
         public string? Email { get; set; }
 
-        [Required]
+
         [MaxLength(20)]
-        public string? Status { get; set; }
+        public string? Status { get; set; } = "Activo";
     }
 }
 

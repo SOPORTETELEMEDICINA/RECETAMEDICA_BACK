@@ -7,9 +7,9 @@ namespace RMD.Interface.Sucursales
         Task<bool> CreateSucursalAsync(CreateSucursalModel model);
         Task<bool> UpdateSucursalAsync(Guid idSucursal, UpdateSucursalModel model);
         Task<bool> DeleteSucursalAsync(Guid idSucursal);
-        Task<SucursalDomicilioModel> GetSucursalByIdSucursalAsync(Guid idSucursal);
-        Task<IEnumerable<SucursalDomicilioModel>> GetSucursalesByIdGEMPAsync(Guid idGEMP);
-        Task<IEnumerable<SucursalDomicilioModel>> GetSucursalesByIdGEMPAndIdAsentamientoAsync(Guid idGEMP, int idAsentamiento);
+        Task<SucursalRequest> GetSucursalByIdSucursalAsync(Guid idSucursal);
+        Task<IEnumerable<SucursalRequest>> GetSucursalesByIdGEMPAsync(Guid idGEMP);
+        Task<IEnumerable<SucursalRequest>> GetSucursalesByIdGEMPAndIdAsentamientoAsync(Guid idGEMP, int idAsentamiento);
 
     }
 

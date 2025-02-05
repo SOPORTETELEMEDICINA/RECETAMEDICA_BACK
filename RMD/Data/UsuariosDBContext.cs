@@ -1,17 +1,16 @@
-﻿using Microsoft.EntityFrameworkCore;
-using RMD.Models.Consulta;
-using RMD.Models.Login;
+﻿using RMD.Models.Login;
+using RMD.Models.Sucursales;
 using RMD.Models.Usuarios;
 
 namespace RMD.Data
 {
-    public class UsuariosDBContext : DbContext
+    public class UsuariosDBContext(DbContextOptions<UsuariosDBContext> options) : DbContext(options)
     {
-        public UsuariosDBContext(DbContextOptions<UsuariosDBContext> options) : base(options) { }
-
         public DbSet<CatGrupoEmpresarial> CatGrupoEmpresariales { get; set; }
         public DbSet<TipoUsuario> TipoUsuarios { get; set; }
         public DbSet<Usuario> Usuarios { get; set; }
+        public DbSet<RequestUsuario> RequestUsuario { get; set; }
+        
         public DbSet<UsuarioSucursal> UsuarioSucursales { get; set; }
         public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
         public DbSet<UsuarioDetalle> UsuarioDetalle { get; set; }
@@ -55,18 +54,30 @@ namespace RMD.Data
                 entity.ToTable("Usuarios");
                 entity.HasKey(e => e.IdUsuario);
                 entity.Property(e => e.Usr).IsRequired().HasMaxLength(50);
-                entity.Property(e => e.Password).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.Nombres).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.PrimerApellido).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.Email).HasMaxLength(100);
-                entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
             });
 
             // Configure UsuarioSucursal
+            // Configurar la tabla relacional UsuarioSucursal
             modelBuilder.Entity<UsuarioSucursal>(entity =>
             {
                 entity.ToTable("UsuarioSucursal");
+
+                // Definir clave primaria compuesta
                 entity.HasKey(e => new { e.IdUsuario, e.IdSucursal });
+
+                // Definir las relaciones (Foreign Keys)
+                entity.HasOne<Usuario>()
+                      .WithMany()
+                      .HasForeignKey(e => e.IdUsuario)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne<Sucursal>()
+                      .WithMany()
+                      .HasForeignKey(e => e.IdSucursal)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Configuración para UsuarioDetalle
@@ -100,6 +111,22 @@ namespace RMD.Data
             modelBuilder.Entity<CrearPacienteRequest>(entity =>
             {
                 entity.HasNoKey();  // CrearPacienteRequest es un modelo de solicitud
+            });
+
+            modelBuilder.Entity<RequestUsuario>(entity =>
+            {
+                entity.HasNoKey();  
+            });
+            // Configuración para BlacklistedTokens
+            modelBuilder.Entity<BlacklistedToken>(entity =>
+            {
+                entity.ToTable("BlacklistedTokens"); // Asegúrate de que coincide con el nombre de la tabla en la base de datos
+                entity.HasKey(e => e.Id); // Configura Id como clave primaria
+                entity.Property(e => e.Token)
+                    .IsRequired()
+                    .HasColumnType("nvarchar(max)"); // Permitir valores largos
+                entity.Property(e => e.ExpirationDate)
+                      .IsRequired(); // Asegura que el campo es obligatorio
             });
         }
     }

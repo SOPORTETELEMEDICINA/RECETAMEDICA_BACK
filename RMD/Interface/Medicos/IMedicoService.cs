@@ -6,7 +6,7 @@ namespace RMD.Interface.Medicos
     {
         Task<MedicoConsultaRequest> GetMedicoByIdUsuarioAsync(Guid idUsuario);
         Task<bool> CreateMedicoAsync(MedicoCreate medico, Guid idRol);
-        Task<bool> UpdateMedicoAsync(Medico medico, Guid idRol);
+        Task<string> UpdateMedicoAsync(Medico medico, Guid idUsuarioSolicitante);
         Task<IEnumerable<PacientePorSucursalListModel>> GetPacientesBySucursalListAsync(Guid idUsuario);
         Task<bool> DeleteMedicoAsync(Guid idMedico, Guid idUsuarioSolicitante);
         Task<IEnumerable<MedicoConsultaRequest>> GetMedicoByNameAsync(string nombreBusqueda);

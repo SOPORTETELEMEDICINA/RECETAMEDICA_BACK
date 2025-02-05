@@ -1,34 +1,43 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using RMD.Extensions;
+﻿using RMD.Extensions;
 using RMD.Interface.Pacientes;
 using RMD.Interface.Usuarios;
 using RMD.Models.Responses;
 using RMD.Models.Usuarios;
-using System.Net;
-using System.Security.Claims;
 
 namespace RMD.Controllers.Usuarios
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UsuariosController(IUsuarioService usuarioService, IPacienteService pacienteService) : ControllerBase
+    [Authorize]
+    [ServiceFilter(typeof(ValidateTokenFilter))]
+    public class UsuariosController(IUsuarioService usuarioService
+        //, IPacienteService pacienteService
+        ) : ControllerBase
     {
         private readonly IUsuarioService _usuarioService = usuarioService;
-        private readonly IPacienteService _pacienteService = pacienteService;
+        //private readonly IPacienteService _pacienteService = pacienteService;
 
         [HttpPost("crear")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> CrearUsuario([FromBody] UsuarioCreate usuario)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.UsuariosController.EndpointRolesUsuariosController["CrearUsuario"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
             if (usuario == null)
             {
                 return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Datos inválidos."));
             }
+            if (!ModelState.IsValid)
+            {
+                var errores = string.Join(" | ", ModelState.Values
+                                            .SelectMany(v => v.Errors)
+                                            .Select(e => e.ErrorMessage));
+                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, errores));
+            }
 
             var idRol = User.FindFirstValue("IdRol");
-            var rol = User.FindFirstValue(ClaimTypes.Role);
             var idGemp = User.FindFirstValue("GEMP");
             var idSucursal = User.FindFirstValue("IdSucursal");
 
@@ -54,10 +63,13 @@ namespace RMD.Controllers.Usuarios
         }
 
         [HttpPut("actualizar")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> UpdateUsuario([FromBody] Usuario usuario)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.UsuariosController.EndpointRolesUsuariosController["UpdateUsuario"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
             if (usuario == null)
             {
                 return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Datos inválidos."));
@@ -80,45 +92,69 @@ namespace RMD.Controllers.Usuarios
             return Ok(ResponseFromService<string>.Success(null, mensaje));
         }
 
-        [HttpGet("tipo/{idTipoUsuario}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuariosByTipoUsuario(Guid idTipoUsuario)
-        {
-            var usuarios = await _usuarioService.GetUsuariosByTipoUsuarioAsync(idTipoUsuario);
-            return Ok(ResponseFromService<IEnumerable<Usuario>>.Success(usuarios ?? new List<Usuario>(), usuarios == null || !usuarios.Any() ? "No se encontraron usuarios para el tipo especificado." : ""));
-        }
-
         [HttpGet("gemp/{idGEMP}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuariosByGEMP(Guid idGEMP)
+        public async Task<ActionResult<IEnumerable<RequestUsuario>>> GetUsuariosByGEMP(Guid idGEMP)
         {
-            var usuarios = await _usuarioService.GetUsuariosByGEMPAsync(idGEMP);
-            return Ok(ResponseFromService<IEnumerable<Usuario>>.Success(usuarios ?? new List<Usuario>(), usuarios == null || !usuarios.Any() ? "No se encontraron usuarios para el GEMP especificado." : ""));
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.UsuariosController.EndpointRolesUsuariosController["GetUsuariosByGEMP"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
+            try
+            {
+                // Llamar al servicio para obtener los usuarios
+                var usuarios = await _usuarioService.GetUsuariosByGEMPAsync(idGEMP);
+
+                // Verificar si no se encontraron resultados
+                if (usuarios == null || !usuarios.Any())
+                {
+                    return NotFound(ResponseFromService<IEnumerable<RequestUsuario>>.Failure(HttpStatusCode.NotFound, "No se encontraron usuarios para el GEMP especificado."));
+                }
+
+                return Ok(ResponseFromService<IEnumerable<RequestUsuario>>.Success(usuarios, "Usuarios obtenidos con éxito."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Error interno del servidor."));
+            }
         }
 
         [HttpGet("sucursal/{idSucursal}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuariosBySucursal(Guid idSucursal)
+        public async Task<ActionResult<IEnumerable<RequestUsuario>>> GetUsuariosBySucursal(Guid idSucursal)
         {
-            var usuarios = await _usuarioService.GetUsuariosBySucursalAsync(idSucursal);
-            return Ok(ResponseFromService<IEnumerable<Usuario>>.Success(usuarios ?? new List<Usuario>(), usuarios == null || !usuarios.Any() ? "No se encontraron usuarios para la sucursal especificada." : ""));
-        }
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.UsuariosController.EndpointRolesUsuariosController["GetUsuariosBySucursal"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
+            try
+            {
+                // Llamar al servicio para obtener los usuarios
+                var usuarios = await _usuarioService.GetUsuariosBySucursalAsync(idSucursal);
 
-        [HttpGet("asentamiento/{idAsentamiento}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuariosByAsentamiento(int idAsentamiento)
-        {
-            var usuarios = await _usuarioService.GetUsuariosByAsentamientoAsync(idAsentamiento);
-            return Ok(ResponseFromService<IEnumerable<Usuario>>.Success(usuarios ?? new List<Usuario>(), usuarios == null || !usuarios.Any() ? "No se encontraron usuarios para el asentamiento especificado." : ""));
+                // Verificar si no se encontraron resultados
+                if (usuarios == null || !usuarios.Any())
+                {
+                    return NotFound(ResponseFromService<IEnumerable<RequestUsuario>>.Failure(HttpStatusCode.NotFound, "No se encontraron usuarios para la sucursal especificada."));
+                }
+
+                return Ok(ResponseFromService<IEnumerable<RequestUsuario>>.Success(usuarios, "Usuarios obtenidos con éxito."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Error interno del servidor."));
+            }
         }
 
         [HttpPost("obtener-usuarios")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> ObtenerUsuarios()
         {
             var idUsuario = User.FindFirstValue("IdUsuario");
@@ -135,10 +171,13 @@ namespace RMD.Controllers.Usuarios
         }
 
         [HttpPost("eliminar-usuario/{idUsuario}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> EliminarUsuario(Guid idUsuario)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.UsuariosController.EndpointRolesUsuariosController["EliminarUsuario"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
             var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
 
             if (!Guid.TryParse(idUsuarioSolicitante, out var parsedIdUsuarioSolicitante))
@@ -157,8 +196,6 @@ namespace RMD.Controllers.Usuarios
         }
 
         [HttpPost("cambiar-password")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> CambiarPassword([FromBody] CambiarPasswordRequest request)
         {
             if (request == null || string.IsNullOrEmpty(request.NuevaPassword) || string.IsNullOrEmpty(request.ConfirmacionPassword))
@@ -187,5 +224,93 @@ namespace RMD.Controllers.Usuarios
 
             return Ok(ResponseFromService<string>.Success(null, mensaje));
         }
+
+        [HttpPost("imagen-firma")]
+        public async Task<IActionResult> CrearActualizarImagenFirma([FromBody] UsuarioImagenRequest request)
+        {
+            if (request == null)
+            {
+                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Datos inválidos."));
+            }
+
+            var idUsuario = User.FindFirstValue("IdUsuario");
+            if (!Guid.TryParse(idUsuario, out var parsedIdUsuario))
+            {
+                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "IdUsuario no válido en el token."));
+            }
+
+            // Establecer el IdUsuario desde el token
+            request.IdUsuario = parsedIdUsuario;
+
+            var mensaje = await _usuarioService.CrearActualizarImagenFirmaAsync(request);
+
+            return Ok(ResponseFromService<string>.Success(mensaje, "Operación realizada con éxito."));
+        }
+
+
+        [HttpGet("firma")]
+        public async Task<IActionResult> ObtenerFirma()
+        {
+            var idUsuario = User.FindFirstValue("IdUsuario");
+            if (!Guid.TryParse(idUsuario, out var parsedIdUsuario))
+            {
+                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "IdUsuario no válido en el token."));
+            }
+
+            var firma = await _usuarioService.ObtenerFirmaPorIdUsuarioAsync(parsedIdUsuario);
+            if (string.IsNullOrEmpty(firma))
+            {
+                return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "Firma no encontrada."));
+            }
+
+            return Ok(ResponseFromService<string>.Success(firma, "Firma obtenida con éxito."));
+        }
+
+
+        [HttpDelete("firma")]
+        public async Task<IActionResult> EliminarFirma()
+        {
+            var idUsuario = User.FindFirstValue("IdUsuario");
+            if (!Guid.TryParse(idUsuario, out var parsedIdUsuario))
+            {
+                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "IdUsuario no válido en el token."));
+            }
+
+            var mensaje = await _usuarioService.EliminarFirmaAsync(parsedIdUsuario);
+            return Ok(ResponseFromService<string>.Success(mensaje, "Firma eliminada con éxito."));
+        }
+
+        [HttpGet("imagen")]
+        public async Task<IActionResult> ObtenerImagen()
+        {
+            var idUsuario = User.FindFirstValue("IdUsuario");
+            if (!Guid.TryParse(idUsuario, out var parsedIdUsuario))
+            {
+                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "IdUsuario no válido en el token."));
+            }
+
+            var imagen = await _usuarioService.ObtenerImagenPorIdUsuarioAsync(parsedIdUsuario);
+            if (string.IsNullOrEmpty(imagen))
+            {
+                return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "Imagen no encontrada."));
+            }
+
+            return Ok(ResponseFromService<string>.Success(imagen, "Imagen obtenida con éxito."));
+        }
+
+        [HttpDelete("imagen")]
+        public async Task<IActionResult> EliminarImagen()
+        {
+            var idUsuario = User.FindFirstValue("IdUsuario");
+            if (!Guid.TryParse(idUsuario, out var parsedIdUsuario))
+            {
+                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "IdUsuario no válido en el token."));
+            }
+
+            var mensaje = await _usuarioService.EliminarImagenAsync(parsedIdUsuario);
+            return Ok(ResponseFromService<string>.Success(mensaje, "Imagen eliminada con éxito."));
+        }
+
+
     }
 }

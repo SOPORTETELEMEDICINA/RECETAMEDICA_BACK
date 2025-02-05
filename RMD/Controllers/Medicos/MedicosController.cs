@@ -1,25 +1,27 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using RMD.Extensions;
+﻿using RMD.Extensions;
 using RMD.Interface.Medicos;
 using RMD.Models.Medicos;
 using RMD.Models.Responses;
-using System.Net;
-using System.Security.Claims;
 
 namespace RMD.Controllers.Medicos
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
+    [ServiceFilter(typeof(ValidateTokenFilter))]
     public class MedicosController(IMedicoService medicoService) : ControllerBase
     {
         private readonly IMedicoService _medicoService = medicoService;
 
         [HttpGet("ByIdMedico/{idMedico}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetMedicoByIdMedico(Guid idMedico)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.MedicosController.EndpointRolesMedicosController["GetMedicoByIdMedico"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
+
             try
             {
                 var medico = await _medicoService.GetMedicoByIdMedicoAsync(idMedico);
@@ -37,10 +39,14 @@ namespace RMD.Controllers.Medicos
         }
 
         [HttpGet("BySucursal/{idSucursal}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetMedicosBySucursal(Guid idSucursal)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.MedicosController.EndpointRolesMedicosController["GetMedicosBySucursal"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
+
             try
             {
                 var medicos = await _medicoService.GetMedicosBySucursalAsync(idSucursal);
@@ -58,10 +64,14 @@ namespace RMD.Controllers.Medicos
         }
 
         [HttpGet("ByGEMP/{idGEMP}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetMedicosByGEMP(Guid idGEMP)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.MedicosController.EndpointRolesMedicosController["GetMedicosByGEMP"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
+
             try
             {
                 var medicos = await _medicoService.GetMedicosByGEMPAsync(idGEMP);
@@ -78,12 +88,15 @@ namespace RMD.Controllers.Medicos
             }
         }
 
-
         [HttpGet("ByIdUsuario/{id}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetMedicoByIdUsuario(Guid id)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.MedicosController.EndpointRolesMedicosController["GetMedicoByIdUsuario"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
+
             try
             {
                 var medico = await _medicoService.GetMedicoByIdUsuarioAsync(id);
@@ -92,30 +105,7 @@ namespace RMD.Controllers.Medicos
                     return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "Médico no encontrado."));
                 }
 
-                var response = ResponseFromService<MedicoConsultaRequest>.Success(medico, "Médico obtenido con éxito.");
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
-        }
-
-        [HttpGet("ByName/{nombreBusqueda}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<IActionResult> GetMedicoByName(string nombreBusqueda)
-        {
-            try
-            {
-                var medico = await _medicoService.GetMedicoByNameAsync(nombreBusqueda);
-                if (medico == null)
-                {
-                    return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "Médico no encontrado."));
-                }
-
-                var response = ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Success(medico, "Médico obtenido con éxito.");
-                return Ok(response);
+                return Ok(ResponseFromService<MedicoConsultaRequest>.Success(medico, "Médico obtenido con éxito."));
             }
             catch (Exception ex)
             {
@@ -124,10 +114,14 @@ namespace RMD.Controllers.Medicos
         }
 
         [HttpPost]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> CreateMedico([FromBody] MedicoCreate medico)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.MedicosController.EndpointRolesMedicosController["CreateMedico"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
+
             try
             {
                 var idRol = User.FindFirstValue("IdRol");
@@ -151,28 +145,32 @@ namespace RMD.Controllers.Medicos
             }
         }
 
-
         [HttpPut]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> UpdateMedico([FromBody] Medico medico)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.MedicosController.EndpointRolesMedicosController["UpdateMedico"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
+
             try
             {
                 var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
 
                 if (!Guid.TryParse(idUsuarioSolicitante, out Guid idUsuarioSolicitanteGuid))
                 {
-                    return BadRequest("IdUsuario no es válido.");
+                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "IdUsuario no es válido."));
                 }
 
-                var result = await _medicoService.UpdateMedicoAsync(medico, idUsuarioSolicitanteGuid);
-                if (!result)
+                var resultMessage = await _medicoService.UpdateMedicoAsync(medico, idUsuarioSolicitanteGuid);
+
+                if (resultMessage == "Médico actualizado con éxito.")
                 {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Error al actualizar el médico."));
+                    return Ok(ResponseFromService<string>.Success(null, resultMessage));
                 }
 
-                return Ok(ResponseFromService<string>.Success(null, "Médico actualizado con éxito."));
+                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, resultMessage));
             }
             catch (Exception ex)
             {
@@ -181,10 +179,14 @@ namespace RMD.Controllers.Medicos
         }
 
         [HttpDelete("{idMedico}")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> DeleteMedico(Guid idMedico)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.MedicosController.EndpointRolesMedicosController["DeleteMedico"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
+
             try
             {
                 var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
@@ -201,42 +203,6 @@ namespace RMD.Controllers.Medicos
                 }
 
                 return Ok(ResponseFromService<string>.Success(null, "Médico eliminado con éxito."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
-        }
-
-
-
-        [HttpPost("pacientes-por-sucursal")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
-        public async Task<IActionResult> GetPacientesBySucursal()
-        {
-            try
-            {
-                // Obtener el IdUsuario desde el token
-                var idUsuario = User.FindFirstValue("IdUsuario");
-                if (string.IsNullOrEmpty(idUsuario))
-                {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "No se pudo obtener el IdUsuario del token."));
-                }
-
-                // Convertir el IdUsuario a GUID
-                if (!Guid.TryParse(idUsuario, out var idUsuarioGuid))
-                {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El IdUsuario en el token no es válido."));
-                }
-
-                // Llamar al servicio para obtener los pacientes asociados al IdUsuario
-                var pacientes = await _medicoService.GetPacientesBySucursalListAsync(idUsuarioGuid);
-
-                // Devolver un modelo vacío si no se encontraron pacientes
-                var responsePacientes = pacientes ?? new List<PacientePorSucursalListModel>();
-
-                return Ok(ResponseFromService<IEnumerable<PacientePorSucursalListModel>>.Success(responsePacientes, "Pacientes obtenidos con éxito."));
             }
             catch (Exception ex)
             {

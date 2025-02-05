@@ -1,11 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
-using RMD.Models.Vidal.CargaCatalogos;
+﻿using RMD.Models.CargaCatalogos;
 
 namespace RMD.Data
 {
-    public class VidalDbContext : DbContext
+    public class VidalDbContext(DbContextOptions<VidalDbContext> options) : DbContext(options)
     {
-        public VidalDbContext(DbContextOptions<VidalDbContext> options) : base(options) { }
 
         // Definir las tablas
         public DbSet<VMPModel> VMPs { get; set; }

@@ -1,18 +1,17 @@
-﻿using Microsoft.EntityFrameworkCore;
-using RMD.Models.Pacientes;
+﻿using RMD.Models.Pacientes;
 
 namespace RMD.Data
 {
-    public class PacientesDbContext : DbContext
+    public class PacientesDbContext(DbContextOptions<PacientesDbContext> options) : DbContext(options)
     {
-        public PacientesDbContext(DbContextOptions<PacientesDbContext> options) : base(options) { }
 
         // DbSet para UsuarioPaciente
         public DbSet<UsuarioPaciente> UsuarioPacientes { get; set; }
 
         // DbSet para Paciente
         public DbSet<Paciente> Pacientes { get; set; }
-
+        public DbSet<PacienteConsultaRequest> PacienteConsultaRequest { get; set; }
+        
         // Otros DbSet necesarios
         public DbSet<PacienteRequest> PacienteRequest { get; set; }
 
@@ -97,6 +96,8 @@ namespace RMD.Data
             });
             // Configuración para PacienteCreate
             modelBuilder.Entity<PacienteCreate>().HasNoKey();  // Modelo sin clave primaria
+            modelBuilder.Entity<PacienteConsultaRequest>().HasNoKey();  // Modelo sin clave primaria
+
         }
     }
 }

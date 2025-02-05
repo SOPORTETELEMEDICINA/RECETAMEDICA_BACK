@@ -1,13 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using RMD.Extensions;
 using RMD.Interface.Usuarios;
-using RMD.Models.Usuarios;
 using RMD.Models.Responses;
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
-using RMD.Extensions;
+using RMD.Models.Usuarios;
 
 namespace RMD.Controllers.Usuarios
 {
@@ -26,6 +20,11 @@ namespace RMD.Controllers.Usuarios
         [HttpGet("GetAllTipoUsuario")]
         public async Task<IActionResult> GetAllTipoUsuario()
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.TipoUsuarioController.EndpointRolesTipoUsuarioController["GetAllTipoUsuario"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
             try
             {
                 var result = await _tipoUsuarioService.GetAllTipoUsuario();
@@ -46,6 +45,11 @@ namespace RMD.Controllers.Usuarios
         [HttpGet("GetTipoUsuarioById/{id}")]
         public async Task<IActionResult> GetTipoUsuarioById(Guid id)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.TipoUsuarioController.EndpointRolesTipoUsuarioController["GetTipoUsuarioById"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
             if (id == Guid.Empty)
             {
                 return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El Id proporcionado no es válido."));
@@ -76,6 +80,11 @@ namespace RMD.Controllers.Usuarios
         [HttpPost("CreateTipoUsuario")]
         public async Task<IActionResult> CreateTipoUsuario([FromBody] TipoUsuario tipoUsuario)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.TipoUsuarioController.EndpointRolesTipoUsuarioController["CreateTipoUsuario"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
             if (tipoUsuario == null)
             {
                 return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El modelo TipoUsuario proporcionado no es válido."));
@@ -101,6 +110,11 @@ namespace RMD.Controllers.Usuarios
         [HttpPut("UpdateTipoUsuario")]
         public async Task<IActionResult> UpdateTipoUsuario([FromBody] TipoUsuario tipoUsuario)
         {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            if (!RolesPermissions.TipoUsuarioController.EndpointRolesTipoUsuarioController["UpdateTipoUsuario"].Contains(rol))
+            {
+                return Forbid("No tiene permisos para acceder a este recurso.");
+            }
             if (tipoUsuario == null)
             {
                 return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El modelo TipoUsuario proporcionado no es válido."));

@@ -4,9 +4,9 @@ namespace RMD.Models.Usuarios
 {
     public class UsuarioSucursal
     {
-        [Key]
+        //[Key]
         public Guid IdUsuario { get; set; }
-        [Key]
+        //[Key]
         public Guid IdSucursal { get; set; }
     }
 }

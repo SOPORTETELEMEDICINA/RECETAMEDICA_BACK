@@ -1,24 +1,19 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using RMD.Extensions;
+﻿using RMD.Extensions;
 using RMD.Interface.Dashborad;
 using RMD.Models.Dashboard;
 using RMD.Models.Responses;
-using System.Net;
-using System.Security.Claims;
 
 namespace RMD.Controllers.Dashboard
 {
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [ServiceFilter(typeof(ValidateTokenFilter))]
     public class DashboardController(IDashboardService dashboardService) : ControllerBase
     {
         private readonly IDashboardService _dashboardService = dashboardService;
 
         [HttpPost("sucursales-pacientes")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetSucursalPacientes()
         {
             try
@@ -51,8 +46,6 @@ namespace RMD.Controllers.Dashboard
         }
 
         [HttpPost("GetKPIPacientesRecetas")]
-        [Authorize]
-        [ServiceFilter(typeof(ValidateTokenFilter))]
         public async Task<IActionResult> GetKpiPacientesRecetas()
         {
             try

@@ -25,8 +25,8 @@ namespace RMD.Models.Pacientes
         [MaxLength(999999999)]
         public List<string>? Patologias { get; set; } 
 
-        [Required]
-        public Guid IdMedico { get; set; }
+        //[Required]
+        //public Guid IdMedico { get; set; }
 
     }
 }

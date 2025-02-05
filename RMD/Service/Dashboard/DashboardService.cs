@@ -1,6 +1,4 @@
-﻿using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
-using RMD.Data;
+﻿using RMD.Data;
 using RMD.Interface.Dashborad;
 using RMD.Models.Dashboard;
 

@@ -162,5 +162,214 @@ namespace RMD.Extensions.Consulta
                 Description = entry.Element(XName.Get("description", "vidal"))?.Value
             };
         }
+
+        //public static List<int> ParseXmlForIds(this string xmlContent)
+        //{
+        //    try
+        //    {
+        //        // Definir los namespaces necesarios para el XML
+        //        XNamespace atom = "http://www.w3.org/2005/Atom";
+        //        XNamespace ns = "http://api.vidal.net/-/spec/vidal-api/1.0/";
+
+        //        var document = XDocument.Parse(xmlContent);
+        //        var idList = new List<int>();
+
+        //        // Buscar todas las entradas <entry> en el XML
+        //        var entries = document.Descendants(atom + "entry");
+
+        //        foreach (var entry in entries)
+        //        {
+        //            // Tratar de obtener el <vidal:unitId>
+        //            var unitIdElement = entry.Element(ns + "unitId");
+        //            if (unitIdElement != null && int.TryParse(unitIdElement.Value, out int unitId))
+        //            {
+        //                idList.Add(unitId);
+        //                continue;
+        //            }
+
+        //            // Si no hay <vidal:unitId>, tratar de obtener el <vidal:ref_unit>
+        //            var refUnitElement = entry.Element(ns + "ref_unit");
+        //            if (refUnitElement != null && int.TryParse(refUnitElement.Value, out int refUnitId))
+        //            {
+        //                idList.Add(refUnitId);
+        //                continue;
+        //            }
+
+        //            // Si no hay ninguno de los anteriores, tratar de obtener el <vidal:unit>
+        //            var unitElement = entry.Element(ns + "unit");
+        //            if (unitElement != null && int.TryParse(unitElement.Value, out int unit))
+        //            {
+        //                idList.Add(unit);
+        //                continue;
+        //            }
+
+        //            // Tratar de obtener el <vidal:id> para las rutas
+        //            var routeIdElement = entry.Element(ns + "id");
+        //            if (routeIdElement != null && routeIdElement.Value.StartsWith("vidal://route/"))
+        //            {
+        //                // Extraer solo el número ID después de "vidal://route/"
+        //                var routeIdValue = routeIdElement.Value.Replace("vidal://route/", "");
+        //                if (int.TryParse(routeIdValue, out int routeId))
+        //                {
+        //                    idList.Add(routeId);
+        //                }
+        //                continue;
+        //            }
+
+        //            // Si no hay ninguno de los anteriores, tratar de obtener el <vidal:routeId>
+        //            var vidalRouteIdElement = entry.Element(ns + "routeId");
+        //            if (vidalRouteIdElement != null && int.TryParse(vidalRouteIdElement.Value, out int routeIdFromVidal))
+        //            {
+        //                idList.Add(routeIdFromVidal);
+        //                continue;
+        //            }
+
+        //            // Agregar más condiciones si es necesario para otros tipos de IDs que quieras extraer
+        //        }
+
+        //        return idList;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine($"Error al analizar el XML: {ex.Message}");
+        //        return new List<int>(); // En caso de error, devolver lista vacía
+        //    }
+        //}
+
+
+        public static List<int> ParseXmlForIds(this string xmlContent)
+        {
+            try
+            {
+                // Definir los namespaces necesarios para el XML
+                XNamespace atom = "http://www.w3.org/2005/Atom";
+                XNamespace ns = "http://api.vidal.net/-/spec/vidal-api/1.0/";
+
+                var document = XDocument.Parse(xmlContent);
+                var idList = new List<int>();
+
+                // Buscar todas las entradas <entry> en el XML
+                var entries = document.Descendants(atom + "entry");
+
+                foreach (var entry in entries)
+                {
+                    // Si el <entry> es relacionado con "units", filtrar por la categoría "PRESCRIPTION_UNIT"
+                    var isUnitEntry = entry.Elements(atom + "category")
+                                           .Any(cat => cat.Attribute("term")?.Value == "UNIT");
+
+                    if (isUnitEntry)
+                    {
+                        // Verificar si tiene la categoría "PRESCRIPTION_UNIT"
+                        var hasPrescriptionUnitCategory = entry.Elements(atom + "category")
+                                                               .Any(cat => cat.Attribute("term")?.Value == "PRESCRIPTION_UNIT");
+
+                        if (!hasPrescriptionUnitCategory)
+                        {
+                            continue; // Si no tiene "PRESCRIPTION_UNIT", omitir este entry
+                        }
+                    }
+
+                    // Tratar de obtener el <vidal:unitId>
+                    var unitIdElement = entry.Element(ns + "unitId");
+                    if (unitIdElement != null && int.TryParse(unitIdElement.Value, out int unitId))
+                    {
+                        idList.Add(unitId);
+                        continue;
+                    }
+
+                    // Si no hay <vidal:unitId>, tratar de obtener el <vidal:ref_unit>
+                    var refUnitElement = entry.Element(ns + "ref_unit");
+                    if (refUnitElement != null && int.TryParse(refUnitElement.Value, out int refUnitId))
+                    {
+                        idList.Add(refUnitId);
+                        continue;
+                    }
+
+                    // Si no hay ninguno de los anteriores, tratar de obtener el <vidal:unit>
+                    var unitElement = entry.Element(ns + "unit");
+                    if (unitElement != null && int.TryParse(unitElement.Value, out int unit))
+                    {
+                        idList.Add(unit);
+                        continue;
+                    }
+
+                    // Tratar de obtener el <vidal:id> para las rutas
+                    var routeIdElement = entry.Element(ns + "id");
+                    if (routeIdElement != null && routeIdElement.Value.StartsWith("vidal://route/"))
+                    {
+                        // Extraer solo el número ID después de "vidal://route/"
+                        var routeIdValue = routeIdElement.Value.Replace("vidal://route/", "");
+                        if (int.TryParse(routeIdValue, out int routeId))
+                        {
+                            idList.Add(routeId);
+                        }
+                        continue;
+                    }
+
+                    // Si no hay ninguno de los anteriores, tratar de obtener el <vidal:routeId>
+                    var vidalRouteIdElement = entry.Element(ns + "routeId");
+                    if (vidalRouteIdElement != null && int.TryParse(vidalRouteIdElement.Value, out int routeIdFromVidal))
+                    {
+                        idList.Add(routeIdFromVidal);
+                        continue;
+                    }
+
+                    // Agregar más condiciones si es necesario para otros tipos de IDs que quieras extraer
+                }
+
+                return idList;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al analizar el XML: {ex.Message}");
+                return new List<int>(); // En caso de error, devolver lista vacía
+            }
+        }
+
+        public static List<IndicationModel> ParseXmlForIndications(this string xmlContent)
+        {
+            try
+            {
+                XNamespace atom = "http://www.w3.org/2005/Atom";
+                XNamespace ns = "http://api.vidal.net/-/spec/vidal-api/1.0/";
+
+                var document = XDocument.Parse(xmlContent);
+                var indicationList = new List<IndicationModel>();
+
+                var indicationEntries = document.Descendants(atom + "entry");
+
+                foreach (var entry in indicationEntries)
+                {
+                    // Verificar si contiene la categoría <category term="INDICATION"/>
+                    var hasIndicationCategory = entry.Elements(atom + "category")
+                                                     .Any(cat => cat.Attribute("term")?.Value == "INDICATION");
+
+                    if (!hasIndicationCategory)
+                    {
+                        continue; // Si no tiene la categoría "INDICATION", omitir este entry
+                    }
+
+                    // Crear el modelo de indicación solo si cumple con la condición
+                    var indication = new IndicationModel
+                    {
+                        Id = (int)entry.Element(ns + "id"), // ID de la indicación
+                        Name = (string)entry.Element(ns + "name"), // Nombre de la indicación
+                    };
+
+                    indicationList.Add(indication);
+                }
+
+                return indicationList;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al analizar el XML: {ex.Message}");
+                return new List<IndicationModel>();
+            }
+        }
+
+
+
+
     }
 }

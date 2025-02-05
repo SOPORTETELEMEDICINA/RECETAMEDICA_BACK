@@ -1,10 +1,7 @@
-﻿using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
-using RMD.Data;
+﻿using RMD.Data;
 using RMD.Extensions; // Asegúrate de tener las extensiones necesarias para ToDataTable()
 using RMD.Interface.Usuarios;
 using RMD.Models.Usuarios;
-using System.Data;
 
 namespace RMD.Service.Usuarios
 {

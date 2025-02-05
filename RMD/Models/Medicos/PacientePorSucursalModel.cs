@@ -6,27 +6,33 @@
         public Guid IdPaciente { get; set; }
         public Guid IdTipoUsuario { get; set; }
         public string LogoGEMP { get; set; }
+        public Guid IdGEMP { get; set; } // Ajustado según el SP
+        public Guid IdSucursal { get; set; } // Ajustado según el SP
         public string GEMP { get; set; }
         public string Sucursal { get; set; }
         public string Nombres { get; set; }
         public string PrimerApellido { get; set; }
         public string SegundoApellido { get; set; }
         public string FechaNacimiento { get; set; }
-        public int Edad {  get; set; }
+        public int Edad { get; set; }
         public string Genero { get; set; }
         public int IdEntidad { get; set; }
+        public int IdEntidadNacimiento { get; set; } // Añadido según el SP
         public string EntidadNacimiento { get; set; }
         public string Domicilio { get; set; }
         public int? IdAsentamiento { get; set; }
         public string Asentamiento { get; set; }
+        public int? IdTipoAsentamiento { get; set; } // Añadido según el SP
         public string TipoAsentamiento { get; set; }
         public int? IdCP { get; set; }
         public string CodigoPostal { get; set; }
         public int? IdMunicipio { get; set; }
         public string Municipio { get; set; }
+        public short NoMunicipio { get; set; } // Añadido según el SP
         public int? IdCiudad { get; set; }
         public string Ciudad { get; set; }
-        public string Entidad { get; set; }
+        public string Estado { get; set; } // Añadido según el SP
+        public string Abreviatura { get; set; } // Añadido según el SP
         public string Movil { get; set; }
         public string Email { get; set; }
         public string Patologias { get; set; }
@@ -34,4 +40,5 @@
         public string Molecules { get; set; }
         public string Status { get; set; }
     }
+
 }

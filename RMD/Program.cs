@@ -1,22 +1,24 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using RMD.Data;
 using RMD.Extensions;
 using RMD.Interface.Auth;
-using RMD.Interface.Catalogos;
+using RMD.Interface.CargaCatalogos;
+using RMD.Interface.Catalogo;
+//using RMD.Interface.Catalogos;
 using RMD.Interface.Consulta;
 using RMD.Interface.Dashborad;
 using RMD.Interface.Medicos;
 using RMD.Interface.Pacientes;
+using RMD.Interface.PuntoVenta;
 using RMD.Interface.Recetas;
 using RMD.Interface.Sucursales;
 using RMD.Interface.Usuarios;
-using RMD.Interface.Vidal;
 using RMD.Middleware;
+using RMD.Service;
 using RMD.Service.Auth;
-using RMD.Service.Catalogos;
+using RMD.Service.CargaCatalogos;
 using RMD.Service.Consulta;
 using RMD.Service.Dashboard;
 using RMD.Service.Medicos;
@@ -24,20 +26,8 @@ using RMD.Service.Pacientes;
 using RMD.Service.Recetas;
 using RMD.Service.Sucursales;
 using RMD.Service.Usuarios;
-using RMD.Service.Vidal;
-using RMD.Service.Vidal.ByIndication;
-using RMD.Service.Vidal.ByIndicationGroup;
-using RMD.Service.Vidal.ByMolecule;
-using RMD.Service.Vidal.ByPackage;
-using RMD.Service.Vidal.ByProduct;
-using RMD.Service.Vidal.ByRoute;
-using RMD.Service.Vidal.BySideEffect;
-using RMD.Service.Vidal.ByUCD;
-using RMD.Service.Vidal.ByUCDV;
-using RMD.Service.Vidal.ByUnit;
-using RMD.Service.Vidal.ByVMP;
-using RMD.Service.Vidal.ByVTM;
-using RMD.Service.Vidal.CargaCatalogos;
+using RMD.Services.Catalogo;
+using System.Diagnostics;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -49,8 +39,8 @@ string environment = builder.Configuration["Environment"];
 string connectionString = builder.Configuration.GetConnectionString(environment);
 
 // Configuración de DbContexts con la cadena de conexión seleccionada
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+//builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//    options.UseSqlServer(connectionString));
 
 builder.Services.AddDbContext<UsuariosDBContext>(options =>
     options.UseSqlServer(connectionString));
@@ -75,9 +65,13 @@ builder.Services.AddDbContext<VidalDbContext>(options =>
 
 builder.Services.AddDbContext<ConsultaDbContext>(options =>
     options.UseSqlServer(connectionString));
-
+builder.Services.AddDbContext<PuntoVentaDbContext>(options =>
+    options.UseSqlServer(connectionString));
+builder.Services.AddDbContext<CatalogoDbContext>(options =>
+    options.UseSqlServer(connectionString));
 
 // Registro de servicios
+//builder.Services.AddScoped<ICatalogosService, CatalogosService>();
 builder.Services.AddScoped<ICatalogoService, CatalogoService>();
 builder.Services.AddScoped<ICatGrupoEmpresarialService, CatGrupoEmpresarialService>();
 builder.Services.AddScoped<ITipoUsuarioService, TipoUsuarioService>();
@@ -95,64 +89,66 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient<ICargaCatalogosService, CargaCatalogosService>();
 builder.Services.AddScoped<ICargaCatalogosService, CargaCatalogosService>();
 
-// Registro de servicios para Vidal API
-builder.Services.AddHttpClient<IAllergyService, AllergyService>();
-builder.Services.AddScoped<IAllergyService, AllergyService>();
+//// Registro de servicios para Vidal API
+//builder.Services.AddHttpClient<IAllergyService, AllergyService>();
+//builder.Services.AddScoped<IAllergyService, AllergyService>();
 
-builder.Services.AddHttpClient<IATCService, ATCService>();
-builder.Services.AddScoped<IATCService, ATCService>();
+//builder.Services.AddHttpClient<IATCService, ATCService>();
+//builder.Services.AddScoped<IATCService, ATCService>();
 
 builder.Services.AddHttpClient<IConsultaService, ConsultaService>();
 builder.Services.AddScoped<IConsultaService, ConsultaService>();
+builder.Services.AddScoped<IPuntoVentaService, PuntoVentaService>();
+//builder.Services.AddHttpClient<IForeignProductService, ForeignProductService>();
+//builder.Services.AddScoped<IForeignProductService, ForeignProductService>();
 
-builder.Services.AddHttpClient<IForeignProductService, ForeignProductService>();
-builder.Services.AddScoped<IForeignProductService, ForeignProductService>();
+//builder.Services.AddHttpClient<IIndicationService, IndicationService>();
+//builder.Services.AddScoped<IIndicationService, IndicationService>();
 
-builder.Services.AddHttpClient<IIndicationService, IndicationService>();
-builder.Services.AddScoped<IIndicationService, IndicationService>();
+//builder.Services.AddHttpClient<IIndicationGroupService, IndicationGroupService>();
+//builder.Services.AddScoped<IIndicationGroupService, IndicationGroupService>();
 
-builder.Services.AddHttpClient<IIndicationGroupService, IndicationGroupService>();
-builder.Services.AddScoped<IIndicationGroupService, IndicationGroupService>();
+//builder.Services.AddHttpClient<IMoleculeService, MoleculeService>();
+//builder.Services.AddScoped<IMoleculeService, MoleculeService>();
 
-builder.Services.AddHttpClient<IMoleculeService, MoleculeService>();
-builder.Services.AddScoped<IMoleculeService, MoleculeService>();
+//builder.Services.AddHttpClient<IPackageService, PackageService>();
+//builder.Services.AddScoped<IPackageService, PackageService>();
 
-builder.Services.AddHttpClient<IPackageService, PackageService>();
-builder.Services.AddScoped<IPackageService, PackageService>();
+//builder.Services.AddHttpClient<ICIM10Service, CIM10Service>();
+//builder.Services.AddScoped<ICIM10Service, CIM10Service>();
 
-builder.Services.AddHttpClient<ICIM10Service, CIM10Service>();
-builder.Services.AddScoped<ICIM10Service, CIM10Service>();
+//builder.Services.AddHttpClient<IProductService, ProductService>();
+//builder.Services.AddScoped<IProductService, ProductService>();
 
-builder.Services.AddHttpClient<IProductService, ProductService>();
-builder.Services.AddScoped<IProductService, ProductService>();
+//builder.Services.AddHttpClient<IRouteService, RouteService>();
+//builder.Services.AddScoped<IRouteService, RouteService>();
 
-builder.Services.AddHttpClient<IRouteService, RouteService>();
-builder.Services.AddScoped<IRouteService, RouteService>();
+//builder.Services.AddHttpClient<ISideEffectService, SideEffectService>();
+//builder.Services.AddScoped<ISideEffectService, SideEffectService>();
 
-builder.Services.AddHttpClient<ISideEffectService, SideEffectService>();
-builder.Services.AddScoped<ISideEffectService, SideEffectService>();
+//builder.Services.AddHttpClient<IUCDService, UCDService>();
+//builder.Services.AddScoped<IUCDService, UCDService>();
 
-builder.Services.AddHttpClient<IUCDService, UCDService>();
-builder.Services.AddScoped<IUCDService, UCDService>();
+//builder.Services.AddHttpClient<IUcdvService, UcdvService>();
+//builder.Services.AddScoped<IUcdvService, UcdvService>();
 
-builder.Services.AddHttpClient<IUcdvService, UcdvService>();
-builder.Services.AddScoped<IUcdvService, UcdvService>();
+//builder.Services.AddHttpClient<IUnitService, UnitService>();
+//builder.Services.AddScoped<IUnitService, UnitService>();
 
-builder.Services.AddHttpClient<IUnitService, UnitService>();
-builder.Services.AddScoped<IUnitService, UnitService>();
+//builder.Services.AddHttpClient<IVMPService, VMPService>();
+//builder.Services.AddScoped<IVMPService, VMPService>();
 
-builder.Services.AddHttpClient<IVMPService, VMPService>();
-builder.Services.AddScoped<IVMPService, VMPService>();
+//builder.Services.AddHttpClient<IVTMService, VTMService>();
+//builder.Services.AddScoped<IVTMService, VTMService>();
 
-builder.Services.AddHttpClient<IVTMService, VTMService>();
-builder.Services.AddScoped<IVTMService, VTMService>();
+builder.Services.AddTransient<IEmailService, EmailService>();
 
-builder.Services.AddScoped<IEmailService, EmailService>();
 
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 builder.Services.AddScoped<CifradoHelper>();
 
+builder.Services.AddHostedService<TokenCleanupService>();
 
 builder.Services.AddScoped<ValidateTokenFilter>();
 // Configuración de controladores
@@ -249,7 +245,9 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-var app = builder.Build();
+
+ var app = builder.Build();
+// Usar el middleware de manejo de errores
 
 // Configuración del pipeline de solicitudes HTTP
 if (app.Environment.IsDevelopment())
@@ -275,6 +273,7 @@ else
 // Uso de middlewares
 app.UseMiddleware<ErrorHandlerMiddleware>();
 app.UseMiddleware<RenewTokenMiddleware>();
+app.UseMiddleware<ErrorHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 

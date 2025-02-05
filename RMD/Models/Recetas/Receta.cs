@@ -1,50 +1,24 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
 
 namespace RMD.Models.Recetas
 {
     public class Receta
     {
-        [Key]
         public Guid IdReceta { get; set; }
-
-        [Required]
         public Guid IdMedico { get; set; }
-
-        [Required]
         public Guid IdPaciente { get; set; }
-
-        [Required]
         public decimal PacPeso { get; set; }
-
-        [Required]
         public decimal PacTalla { get; set; }
-
-        [Required]
         public bool PacEmbarazo { get; set; }
-
-        public int? PacSemAmenorrea { get; set; }
-
-        [Required]
+        public int? PacSemAmenorrea { get; set; } // Opcional
         public bool PacLactancia { get; set; }
-
-        public decimal? PacCreatinina { get; set; }
-
-        public bool? PacAlergiaClase { get; set; }
-        public bool? PacAlergiaMolecula { get; set; }
-
-        [MaxLength(50)]
-        public string PacDx1 { get; set; } = string.Empty;
-
-        [MaxLength(50)]
-        public string PacDx2 { get; set; } = string.Empty;
-
-        [MaxLength(50)]
-        public string PacDx3 { get; set; } = string.Empty;
-
-        [MaxLength(50)]
-        public string PacDx4 { get; set; } = string.Empty;
-
-        [MaxLength(50)]
-        public string PacDx5 { get; set; } = string.Empty;
+        public decimal? PacCreatinina { get; set; } // Opcional
+        public string? Alergias { get; set; } // Puede ser null o vacío
+        public string? Molecules { get; set; } // Puede ser null o vacío
+        public string? Patologias { get; set; } // Puede ser null o vacío
+        public Guid IdSucursal { get; set; }
+        public Guid IdGEMP { get; set; }
+        public DateTime FechaCreacion { get; set; }
+        public DateTime FechaUltimaModificacion { get; set; }
     }
 }

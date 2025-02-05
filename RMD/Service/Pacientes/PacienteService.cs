@@ -1,10 +1,9 @@
-﻿using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
+﻿using Newtonsoft.Json;
 using RMD.Data;
 using RMD.Extensions;
 using RMD.Interface.Pacientes;
 using RMD.Models.Pacientes;
-using System.Data;
+using RMD.Models.Sucursales;
 
 namespace RMD.Service.Pacientes
 {
@@ -40,22 +39,50 @@ namespace RMD.Service.Pacientes
 
                     var pacienteConsulta = new PacienteConsultaRequest
                     {
+                        IdUsuario = usuarioPaciente.First().IdUsuario,
+                        IdTipoUsuario = usuarioPaciente.First().IdTipoUsuario,
                         IdPaciente = usuarioPaciente.First().IdPaciente,
                         IdGEMP = usuarioPaciente.First().IdGEMP,
+                        GrupoEmpresarial = usuarioPaciente.First().GrupoEmpresarial,
                         IdSucursal = usuarioPaciente.First().IdSucursal,
+                        Sucursal = usuarioPaciente.First().Sucursal,
+                        Usr = usuarioPaciente.First().Usr,
                         Nombres = usuarioPaciente.First().Nombres,
                         PrimerApellido = usuarioPaciente.First().PrimerApellido,
                         SegundoApellido = usuarioPaciente.First().SegundoApellido,
                         FechaNacimiento = usuarioPaciente.First().FechaNacimiento,
+                        Edad = usuarioPaciente.First().Edad,
                         IdEntidadNacimiento = usuarioPaciente.First().IdEntidadNacimiento,
+                        EntidadNacimiento = usuarioPaciente.First().EntidadNacimiento,
                         Genero = usuarioPaciente.First().Genero,
                         Movil = usuarioPaciente.First().Movil,
                         Email = usuarioPaciente.First().Email,
                         Domicilio = usuarioPaciente.First().Domicilio,
+
+                        // Campos adicionales
+                        IdAsentamiento = usuarioPaciente.First().IdAsentamiento,
+                        Asentamiento = usuarioPaciente.First().Asentamiento,
+                        IdTipoAsentamiento = usuarioPaciente.First().IdTipoAsentamiento,
+                        TipoAsentamiento = usuarioPaciente.First().TipoAsentamiento,
+                        IdCP = usuarioPaciente.First().IdCP,
+                        CodigoPostal = usuarioPaciente.First().CodigoPostal,
+                        IdMunicipio = usuarioPaciente.First().IdMunicipio,
+                        NoMunicipio = usuarioPaciente.First().NoMunicipio,
+                        Municipio = usuarioPaciente.First().Municipio,
+                        IdCiudad = usuarioPaciente.First().IdCiudad,
+                        Ciudad = usuarioPaciente.First().Ciudad,
+                        IdEntidad = usuarioPaciente.First().IdEntidad,
+                        Estado = usuarioPaciente.First().Estado,
+                        Abreviatura = usuarioPaciente.First().Abreviatura,
+                        Firma = usuarioPaciente.First().Firma,
+                        Imagen = usuarioPaciente.First().Imagen,
+
+                        // Listas de datos serializados
                         Alergias = alergias,
                         Molecules = molecules,
                         Patologias = patologias
                     };
+
 
                     return pacienteConsulta;
                 }
@@ -73,7 +100,6 @@ namespace RMD.Service.Pacientes
                 throw new Exception($"Error al obtener el paciente: {ex.Message}");
             }
         }
-
 
         public async Task<PacienteConsultaRequest> GetPacienteByIdPacienteAsync(Guid idPaciente)
         {
@@ -97,18 +123,45 @@ namespace RMD.Service.Pacientes
 
                     var pacienteConsulta = new PacienteConsultaRequest
                     {
+                        IdUsuario = usuarioPaciente.First().IdUsuario,
+                        IdTipoUsuario = usuarioPaciente.First().IdTipoUsuario,
                         IdPaciente = usuarioPaciente.First().IdPaciente,
                         IdGEMP = usuarioPaciente.First().IdGEMP,
+                        GrupoEmpresarial = usuarioPaciente.First().GrupoEmpresarial,
                         IdSucursal = usuarioPaciente.First().IdSucursal,
+                        Sucursal = usuarioPaciente.First().Sucursal,
+                        Usr = usuarioPaciente.First().Usr,
                         Nombres = usuarioPaciente.First().Nombres,
                         PrimerApellido = usuarioPaciente.First().PrimerApellido,
                         SegundoApellido = usuarioPaciente.First().SegundoApellido,
                         FechaNacimiento = usuarioPaciente.First().FechaNacimiento,
+                        Edad = usuarioPaciente.First().Edad,
                         IdEntidadNacimiento = usuarioPaciente.First().IdEntidadNacimiento,
+                        EntidadNacimiento = usuarioPaciente.First().EntidadNacimiento,
                         Genero = usuarioPaciente.First().Genero,
                         Movil = usuarioPaciente.First().Movil,
                         Email = usuarioPaciente.First().Email,
                         Domicilio = usuarioPaciente.First().Domicilio,
+
+                        // Campos adicionales
+                        IdAsentamiento = usuarioPaciente.First().IdAsentamiento,
+                        Asentamiento = usuarioPaciente.First().Asentamiento,
+                        IdTipoAsentamiento = usuarioPaciente.First().IdTipoAsentamiento,
+                        TipoAsentamiento = usuarioPaciente.First().TipoAsentamiento,
+                        IdCP = usuarioPaciente.First().IdCP,
+                        CodigoPostal = usuarioPaciente.First().CodigoPostal,
+                        IdMunicipio = usuarioPaciente.First().IdMunicipio,
+                        NoMunicipio = usuarioPaciente.First().NoMunicipio,
+                        Municipio = usuarioPaciente.First().Municipio,
+                        IdCiudad = usuarioPaciente.First().IdCiudad,
+                        Ciudad = usuarioPaciente.First().Ciudad,
+                        IdEntidad = usuarioPaciente.First().IdEntidad,
+                        Estado = usuarioPaciente.First().Estado,
+                        Abreviatura = usuarioPaciente.First().Abreviatura,
+                        Firma = usuarioPaciente.First().Firma,
+                        Imagen = usuarioPaciente.First().Imagen,
+
+                        // Listas de datos serializados
                         Alergias = alergias,
                         Molecules = molecules,
                         Patologias = patologias
@@ -140,18 +193,19 @@ namespace RMD.Service.Pacientes
         }
 
         // Este método devuelve una lista de UsuarioPaciente basado en la búsqueda por nombre
-        public async Task<IEnumerable<PacienteConsultaRequest>> GetPacienteByNameAsync(string nombreBusqueda)
+        public async Task<IEnumerable<PacienteConsultaRequest>> GetPacienteByNameAsync(string nombreBusqueda, Guid IdGemp)
         {
             var nombreParam = new SqlParameter("@NombreBusqueda", nombreBusqueda);
+            var idGempParam = new SqlParameter("@IdGemp", IdGemp); // Asegurarte de usar idGempParam
 
-            var usuariosPacientes = await _context.UsuarioPacientes
-                .FromSqlRaw("EXEC Paciente_GetPacienteByName @NombreBusqueda", nombreParam)
+            var usuarioPaciente = await _context.UsuarioPacientes
+                .FromSqlRaw("EXEC Paciente_GetPacienteByName @NombreBusqueda, @IdGemp", nombreParam, idGempParam)
                 .AsNoTracking()
                 .ToListAsync();
 
             var resultado = new List<PacienteConsultaRequest>();
 
-            foreach (var paciente in usuariosPacientes)
+            foreach (var paciente in usuarioPaciente)
             {
                 // Enviar las cadenas de IDs directamente al stored procedure
                 var alergias = await ObtenerAlergiasPorIdsAsync(paciente.Alergias);
@@ -161,21 +215,48 @@ namespace RMD.Service.Pacientes
                 // Crear el objeto PacienteConsultaRequest con los detalles obtenidos
                 var pacienteConsulta = new PacienteConsultaRequest
                 {
+                    IdUsuario = paciente.IdUsuario,
+                    IdTipoUsuario = paciente.IdTipoUsuario,
                     IdPaciente = paciente.IdPaciente,
                     IdGEMP = paciente.IdGEMP,
+                    GrupoEmpresarial = paciente.GrupoEmpresarial,
                     IdSucursal = paciente.IdSucursal,
+                    Sucursal = paciente.Sucursal,
+                    Usr = paciente.Usr,
                     Nombres = paciente.Nombres,
                     PrimerApellido = paciente.PrimerApellido,
                     SegundoApellido = paciente.SegundoApellido,
                     FechaNacimiento = paciente.FechaNacimiento,
+                    Edad = paciente.Edad,
                     IdEntidadNacimiento = paciente.IdEntidadNacimiento,
+                    EntidadNacimiento = paciente.EntidadNacimiento,
                     Genero = paciente.Genero,
                     Movil = paciente.Movil,
                     Email = paciente.Email,
                     Domicilio = paciente.Domicilio,
-                    Alergias = alergias,  // Lista de detalles de alergias
-                    Molecules = molecules,  // Lista de detalles de moléculas
-                    Patologias = patologias  // Lista de detalles de CIM10 (patologías)
+
+                    // Campos adicionales
+                    IdAsentamiento = paciente.IdAsentamiento,
+                    Asentamiento = paciente.Asentamiento,
+                    IdTipoAsentamiento = paciente.IdTipoAsentamiento,
+                    TipoAsentamiento = paciente.TipoAsentamiento,
+                    IdCP = paciente.IdCP,
+                    CodigoPostal = paciente.CodigoPostal,
+                    IdMunicipio = paciente.IdMunicipio,
+                    NoMunicipio = paciente.NoMunicipio,
+                    Municipio = paciente.Municipio,
+                    IdCiudad = paciente.IdCiudad,
+                    Ciudad = paciente.Ciudad,
+                    IdEntidad = paciente.IdEntidad,
+                    Estado = paciente.Estado,
+                    Abreviatura = paciente.Abreviatura,
+                    Firma = paciente.Firma,
+                    Imagen = paciente.Imagen,
+
+                    // Listas de datos serializados
+                    Alergias = alergias,
+                    Molecules = molecules,
+                    Patologias = patologias
                 };
 
                 resultado.Add(pacienteConsulta);
@@ -223,26 +304,26 @@ namespace RMD.Service.Pacientes
 
         public async Task<bool> UpdatePacienteAsync(PacienteConListas pacienteRequest, Guid idUsuarioSolicitante)
         {
-            // Convertir las listas a strings con delimitadores
-            var pacienteConStrings = new Paciente
+            // Convertir el modelo a un JSON
+            var pacienteJson = JsonConvert.SerializeObject(new List<Paciente>
             {
-                IdPaciente = pacienteRequest.IdPaciente, // Asegúrate de que el IdPaciente esté presente en PacienteConListas
-                IdUsuario = pacienteRequest.IdUsuario,
-                FechaNacimiento = pacienteRequest.FechaNacimiento,
-                IdEntidadNacimiento = pacienteRequest.IdEntidadNacimiento,
-                Genero = pacienteRequest.Genero,
-                Alergias = string.Join(";", pacienteRequest.Alergias ?? new List<string>()),
-                Molecules = string.Join(";", pacienteRequest.Molecules ?? new List<string>()),
-                Patologias = string.Join(";", pacienteRequest.Patologias ?? new List<string>()),
-                IdMedico = pacienteRequest.IdMedico
-            };
+                new Paciente
+                {
+                    IdPaciente = pacienteRequest.IdPaciente,
+                    IdUsuario = pacienteRequest.IdUsuario,
+                    FechaNacimiento = pacienteRequest.FechaNacimiento,
+                    IdEntidadNacimiento = pacienteRequest.IdEntidadNacimiento,
+                    Genero = pacienteRequest.Genero,
+                    Alergias = string.Join(";", pacienteRequest.Alergias ?? new List<string>()),
+                    Molecules = string.Join(";", pacienteRequest.Molecules ?? new List<string>()),
+                    Patologias = string.Join(";", pacienteRequest.Patologias ?? new List<string>()),
+                    IdMedico = idUsuarioSolicitante
+                }
+            });
 
-            // Convertir el modelo a un DataTable
-            var pacienteTable = new List<Paciente> { pacienteConStrings }.ToDataTable();
-            var parameter = new SqlParameter("@PacienteTable", SqlDbType.Structured)
+            var pacienteJsonParam = new SqlParameter("@PacienteJson", SqlDbType.NVarChar)
             {
-                TypeName = "dbo.PacienteTableType", // Asegúrate de que el tipo coincida con el que tienes en SQL
-                Value = pacienteTable
+                Value = pacienteJson
             };
 
             var idUsuarioSolicitanteParam = new SqlParameter("@IdUsuarioSolicitante", idUsuarioSolicitante);
@@ -252,14 +333,15 @@ namespace RMD.Service.Pacientes
             };
 
             await _context.Database.ExecuteSqlRawAsync(
-                "EXEC Pacientes_UpdatePaciente @PacienteTable, @IdUsuarioSolicitante, @OutputMessage OUTPUT",
-                parameter, idUsuarioSolicitanteParam, outputMessageParam
+                "EXEC Pacientes_UpdatePaciente @PacienteJson, @IdUsuarioSolicitante, @OutputMessage OUTPUT",
+                pacienteJsonParam, idUsuarioSolicitanteParam, outputMessageParam
             );
 
             var outputMessage = outputMessageParam.Value.ToString();
 
             return outputMessage.Contains("actualizado con éxito");
         }
+
 
         public async Task<bool> EliminarPacienteAsync(Guid idPaciente, Guid idUsuarioSolicitante)
         {
@@ -294,14 +376,14 @@ namespace RMD.Service.Pacientes
         {
             var idSucursalParam = new SqlParameter("@IdSucursal", idSucursal);
 
-            var usuariosPacientes = await _context.UsuarioPacientes
+            var usuarioPaciente = await _context.UsuarioPacientes
                 .FromSqlRaw("EXEC Paciente_GetPacientesBySucursal @IdSucursal", idSucursalParam)
                 .AsNoTracking()
                 .ToListAsync();
 
             var resultado = new List<PacienteConsultaRequest>();
 
-            foreach (var paciente in usuariosPacientes)
+            foreach (var paciente in usuarioPaciente)
             {
                 var alergiasIds = paciente.Alergias;
                 var moleculesIds = paciente.Molecules;
@@ -313,22 +395,50 @@ namespace RMD.Service.Pacientes
 
                 var pacienteConsulta = new PacienteConsultaRequest
                 {
+                    IdUsuario = paciente.IdUsuario,
+                    IdTipoUsuario = paciente.IdTipoUsuario,
                     IdPaciente = paciente.IdPaciente,
                     IdGEMP = paciente.IdGEMP,
+                    GrupoEmpresarial = paciente.GrupoEmpresarial,
                     IdSucursal = paciente.IdSucursal,
+                    Sucursal = paciente.Sucursal,
+                    Usr = paciente.Usr,
                     Nombres = paciente.Nombres,
                     PrimerApellido = paciente.PrimerApellido,
                     SegundoApellido = paciente.SegundoApellido,
                     FechaNacimiento = paciente.FechaNacimiento,
+                    Edad = paciente.Edad,
                     IdEntidadNacimiento = paciente.IdEntidadNacimiento,
+                    EntidadNacimiento = paciente.EntidadNacimiento,
                     Genero = paciente.Genero,
                     Movil = paciente.Movil,
                     Email = paciente.Email,
                     Domicilio = paciente.Domicilio,
+
+                    // Campos adicionales
+                    IdAsentamiento = paciente.IdAsentamiento,
+                    Asentamiento = paciente.Asentamiento,
+                    IdTipoAsentamiento = paciente.IdTipoAsentamiento,
+                    TipoAsentamiento = paciente.TipoAsentamiento,
+                    IdCP = paciente.IdCP,
+                    CodigoPostal = paciente.CodigoPostal,
+                    IdMunicipio = paciente.IdMunicipio,
+                    NoMunicipio = paciente.NoMunicipio,
+                    Municipio = paciente.Municipio,
+                    IdCiudad = paciente.IdCiudad,
+                    Ciudad = paciente.Ciudad,
+                    IdEntidad = paciente.IdEntidad,
+                    Estado = paciente.Estado,
+                    Abreviatura = paciente.Abreviatura,
+                    Firma = paciente.Firma,
+                    Imagen = paciente.Imagen,
+
+                    // Listas de datos serializados
                     Alergias = alergias,
                     Molecules = molecules,
                     Patologias = patologias
                 };
+
 
                 resultado.Add(pacienteConsulta);
             }
@@ -338,16 +448,17 @@ namespace RMD.Service.Pacientes
 
         public async Task<IEnumerable<PacienteConsultaRequest>> GetPacientesByGEMPAsync(Guid idGEMP)
         {
-            var idGEMPParam = new SqlParameter("@IdGEMP", idGEMP);
+            var idGEMPParam = new SqlParameter("@IdGEMP", idGEMP.ToString().ToUpper());
 
-            var usuariosPacientes = await _context.UsuarioPacientes
+
+            var usuarioPaciente = await _context.UsuarioPacientes
                 .FromSqlRaw("EXEC Paciente_GetPacientesByGEMP @IdGEMP", idGEMPParam)
                 .AsNoTracking()
                 .ToListAsync();
 
             var resultado = new List<PacienteConsultaRequest>();
 
-            foreach (var paciente in usuariosPacientes)
+            foreach (var paciente in usuarioPaciente)
             {
                 var alergiasIds = paciente.Alergias;
                 var moleculesIds = paciente.Molecules;
@@ -356,25 +467,52 @@ namespace RMD.Service.Pacientes
                 var alergias = await ObtenerAlergiasPorIdsAsync(alergiasIds);
                 var molecules = await ObtenerMoleculesPorIdsAsync(moleculesIds);
                 var patologias = await ObtenerCIM10PorIdsAsync(patologiasIds);
-
                 var pacienteConsulta = new PacienteConsultaRequest
                 {
+                    IdUsuario = paciente.IdUsuario,
+                    IdTipoUsuario = paciente.IdTipoUsuario,
                     IdPaciente = paciente.IdPaciente,
                     IdGEMP = paciente.IdGEMP,
+                    GrupoEmpresarial = paciente.GrupoEmpresarial,
                     IdSucursal = paciente.IdSucursal,
+                    Sucursal = paciente.Sucursal,
+                    Usr = paciente.Usr,
                     Nombres = paciente.Nombres,
                     PrimerApellido = paciente.PrimerApellido,
                     SegundoApellido = paciente.SegundoApellido,
                     FechaNacimiento = paciente.FechaNacimiento,
+                    Edad = paciente.Edad,
                     IdEntidadNacimiento = paciente.IdEntidadNacimiento,
+                    EntidadNacimiento = paciente.EntidadNacimiento,
                     Genero = paciente.Genero,
                     Movil = paciente.Movil,
                     Email = paciente.Email,
                     Domicilio = paciente.Domicilio,
+
+                    // Campos adicionales
+                    IdAsentamiento = paciente.IdAsentamiento,
+                    Asentamiento = paciente.Asentamiento,
+                    IdTipoAsentamiento = paciente.IdTipoAsentamiento,
+                    TipoAsentamiento = paciente.TipoAsentamiento,
+                    IdCP = paciente.IdCP,
+                    CodigoPostal = paciente.CodigoPostal,
+                    IdMunicipio = paciente.IdMunicipio,
+                    NoMunicipio = paciente.NoMunicipio,
+                    Municipio = paciente.Municipio,
+                    IdCiudad = paciente.IdCiudad,
+                    Ciudad = paciente.Ciudad,
+                    IdEntidad = paciente.IdEntidad,
+                    Estado = paciente.Estado,
+                    Abreviatura = paciente.Abreviatura,
+                    Firma = paciente.Firma,
+                    Imagen = paciente.Imagen,
+
+                    // Listas de datos serializados
                     Alergias = alergias,
                     Molecules = molecules,
                     Patologias = patologias
                 };
+
 
                 resultado.Add(pacienteConsulta);
             }
@@ -386,14 +524,14 @@ namespace RMD.Service.Pacientes
         {
             var idMedicoParam = new SqlParameter("@IdMedico", idMedico);
 
-            var usuariosPacientes = await _context.UsuarioPacientes
+            var usuarioPaciente = await _context.UsuarioPacientes
                 .FromSqlRaw("EXEC Paciente_GetPacientesByMedico @IdMedico", idMedicoParam)
                 .AsNoTracking()
                 .ToListAsync();
 
             var resultado = new List<PacienteConsultaRequest>();
 
-            foreach (var paciente in usuariosPacientes)
+            foreach (var paciente in usuarioPaciente)
             {
                 var alergiasIds = paciente.Alergias;
                 var moleculesIds = paciente.Molecules;
@@ -405,18 +543,45 @@ namespace RMD.Service.Pacientes
 
                 var pacienteConsulta = new PacienteConsultaRequest
                 {
+                    IdUsuario = paciente.IdUsuario,
+                    IdTipoUsuario = paciente.IdTipoUsuario,
                     IdPaciente = paciente.IdPaciente,
                     IdGEMP = paciente.IdGEMP,
+                    GrupoEmpresarial = paciente.GrupoEmpresarial,
                     IdSucursal = paciente.IdSucursal,
+                    Sucursal = paciente.Sucursal,
+                    Usr = paciente.Usr,
                     Nombres = paciente.Nombres,
                     PrimerApellido = paciente.PrimerApellido,
                     SegundoApellido = paciente.SegundoApellido,
                     FechaNacimiento = paciente.FechaNacimiento,
+                    Edad = paciente.Edad,
                     IdEntidadNacimiento = paciente.IdEntidadNacimiento,
+                    EntidadNacimiento = paciente.EntidadNacimiento,
                     Genero = paciente.Genero,
                     Movil = paciente.Movil,
                     Email = paciente.Email,
                     Domicilio = paciente.Domicilio,
+
+                    // Campos adicionales
+                    IdAsentamiento = paciente.IdAsentamiento,
+                    Asentamiento = paciente.Asentamiento,
+                    IdTipoAsentamiento = paciente.IdTipoAsentamiento,
+                    TipoAsentamiento = paciente.TipoAsentamiento,
+                    IdCP = paciente.IdCP,
+                    CodigoPostal = paciente.CodigoPostal,
+                    IdMunicipio = paciente.IdMunicipio,
+                    NoMunicipio = paciente.NoMunicipio,
+                    Municipio = paciente.Municipio,
+                    IdCiudad = paciente.IdCiudad,
+                    Ciudad = paciente.Ciudad,
+                    IdEntidad = paciente.IdEntidad,
+                    Estado = paciente.Estado,
+                    Abreviatura = paciente.Abreviatura,
+                    Firma = paciente.Firma,
+                    Imagen = paciente.Imagen,
+
+                    // Listas de datos serializados
                     Alergias = alergias,
                     Molecules = molecules,
                     Patologias = patologias

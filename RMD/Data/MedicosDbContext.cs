@@ -1,12 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
-using RMD.Models.Medicos;
+﻿using RMD.Models.Medicos;
 
 namespace RMD.Data
 {
-    public class MedicosDbContext : DbContext
+    public class MedicosDbContext(DbContextOptions<MedicosDbContext> options) : DbContext(options)
     {
-        public MedicosDbContext(DbContextOptions<MedicosDbContext> options) : base(options) { }
-
         public DbSet<Medico> Medicos { get; set; }
         public DbSet<UsuarioMedico> UsuarioMedico { get; set; }
         public DbSet<MedicoCreate> MedicoCreate { get; set; }  // DbSet agregado
@@ -55,7 +52,10 @@ namespace RMD.Data
             // Configuración para MedicoConsultaRequest
             modelBuilder.Entity<MedicoConsultaRequest>(entity =>
             {
-                entity.HasNoKey();  // Modelo sin clave primaria
+
+                // Configuración de propiedades
+                entity.Property(e => e.IdMedico).IsRequired();
+                entity.Property(e => e.IdUsuario).IsRequired();
                 entity.Property(e => e.CedulaGeneral).HasMaxLength(50);
                 entity.Property(e => e.Universidad).HasMaxLength(100);
                 entity.Property(e => e.Especialidad).HasMaxLength(100);
@@ -71,14 +71,22 @@ namespace RMD.Data
                 entity.Property(e => e.TipoAsentamiento).HasMaxLength(50);
                 entity.Property(e => e.CodigoPostal).HasMaxLength(10);
                 entity.Property(e => e.Municipio).HasMaxLength(150);
+                entity.Property(e => e.NoMunicipio).HasMaxLength(50); // Nuevo campo
                 entity.Property(e => e.Ciudad).HasMaxLength(150);
                 entity.Property(e => e.Estado).HasMaxLength(150);
+                entity.Property(e => e.Abreviatura).HasMaxLength(10); // Nuevo campo
+
+                // Configuración para Firma e Imagen (VARCHAR(MAX))
+                entity.Property(e => e.Firma).HasColumnType("varchar(max)"); // Campo para textos largos
+                entity.Property(e => e.Imagen).HasColumnType("varchar(max)"); // Campo para textos largos
+
             });
 
             // Configuración para MedicoCreate
             modelBuilder.Entity<MedicoCreate>().HasNoKey();  // Modelo sin clave primaria
             modelBuilder.Entity<PacientePorSucursalModel>().HasNoKey();
             modelBuilder.Entity<PacientePorSucursalListModel>().HasNoKey();
+            modelBuilder.Entity<MedicoConsultaRequest>().HasNoKey();
         }
     }
 }

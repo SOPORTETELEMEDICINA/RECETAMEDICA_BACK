@@ -1,10 +1,7 @@
-﻿using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
-using RMD.Data;
+﻿using RMD.Data;
 using RMD.Extensions;
 using RMD.Interface.Medicos;
 using RMD.Models.Medicos;
-using System.Data;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -13,7 +10,7 @@ namespace RMD.Service.Medicos
     public class MedicoService(MedicosDbContext context, HttpClient httpClient, IConfiguration configuration) : IMedicoService
     {
         private readonly MedicosDbContext _context = context;
-        private readonly HttpClient _httpClient;
+        private readonly HttpClient _httpClient = httpClient;
         private readonly string _baseUrl = configuration["VidalApi:BaseUrl"] ?? throw new ArgumentNullException(nameof(_baseUrl));
         private readonly string _appId = configuration["VidalApi:AppId"] ?? throw new ArgumentNullException(nameof(_appId));
         private readonly string _appKey = configuration["VidalApi:AppKey"] ?? throw new ArgumentNullException(nameof(_appKey));
@@ -117,9 +114,9 @@ namespace RMD.Service.Medicos
 
 
 
-        public async Task<bool> UpdateMedicoAsync(Medico medico, Guid idUsuarioSolicitante)
+        public async Task<string> UpdateMedicoAsync(Medico medico, Guid idUsuarioSolicitante)
         {
-            var medicoTable = new List<Medico> { medico }.ToDataTable(); // Convierte la lista a DataTable
+            var medicoTable = new List<Medico> { medico }.ToDataTable();
 
             var medicoParam = new SqlParameter("@MedicoTable", SqlDbType.Structured)
             {
@@ -129,13 +126,20 @@ namespace RMD.Service.Medicos
 
             var idUsuarioSolicitanteParam = new SqlParameter("@IdUsuarioSolicitante", idUsuarioSolicitante);
 
-            var rowsAffected = await _context.Database.ExecuteSqlRawAsync(
-                "EXEC Medicos_UpdateMedico @MedicoTable, @IdUsuarioSolicitante",
-                medicoParam, idUsuarioSolicitanteParam
+            var outputMessageParam = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 500)
+            {
+                Direction = ParameterDirection.Output
+            };
+
+            await _context.Database.ExecuteSqlRawAsync(
+                "EXEC Medicos_UpdateMedico @MedicoTable, @IdUsuarioSolicitante, @OutputMessage OUTPUT",
+                medicoParam, idUsuarioSolicitanteParam, outputMessageParam
             );
 
-            return rowsAffected > 0;
+            return outputMessageParam.Value?.ToString();
         }
+
+
 
         public async Task<bool> DeleteMedicoAsync(Guid idMedico, Guid idUsuarioSolicitante)
         {
@@ -165,7 +169,7 @@ namespace RMD.Service.Medicos
             var idUsuarioParam = new SqlParameter("@IdUsuario", idUsuario);
 
             var pacientes = await _context.PacientesPorSucursal
-                .FromSqlRaw("EXEC Medicos_GetPacientesBySucursal2 @IdUsuario", idUsuarioParam)
+                .FromSqlRaw("EXEC Medicos_GetPacientesBySucursal @IdUsuario", idUsuarioParam)
                 .ToListAsync();
 
             var resultados = new List<PacientePorSucursalListModel>();
@@ -200,36 +204,39 @@ namespace RMD.Service.Medicos
                 {
                     IdUsuario = p.IdUsuario,
                     IdPaciente = p.IdPaciente,
-                    IdTipoUsuario = p.IdTipoUsuario,
+                    IdGEMP = p.IdGEMP,
                     LogoGEMP = p.LogoGEMP,
-                    GEMP = p.GEMP,
-                    Sucursal = p.Sucursal,
+                    IdSucursal = p.IdSucursal,
                     Nombres = p.Nombres,
                     PrimerApellido = p.PrimerApellido,
                     SegundoApellido = p.SegundoApellido,
                     FechaNacimiento = p.FechaNacimiento,
                     Edad = p.Edad,
+                    IdEntidadNacimiento = p.IdEntidadNacimiento,
                     Genero = p.Genero,
-                    IdEntidad = p.IdEntidad,
-                    EntidadNacimiento = p.EntidadNacimiento,
+                    Alergias = string.IsNullOrEmpty(p.Alergias) ? new List<string>() : p.Alergias.Split(',').ToList(), // Manejo de nulos o vacíos
+                    Molecules = string.IsNullOrEmpty(p.Molecules) ? new List<string>() : p.Molecules.Split(',').ToList(), // Manejo de nulos o vacíos
+                    Patologias = patologias, // Asignamos la lista de patologías ya procesada
+                    Movil = p.Movil,
+                    Email = p.Email,
                     Domicilio = p.Domicilio,
                     IdAsentamiento = p.IdAsentamiento,
                     Asentamiento = p.Asentamiento,
+                    IdTipoAsentamiento = p.IdTipoAsentamiento,
                     TipoAsentamiento = p.TipoAsentamiento,
                     IdCP = p.IdCP,
                     CodigoPostal = p.CodigoPostal,
                     IdMunicipio = p.IdMunicipio,
+                    NoMunicipio = p.NoMunicipio,
                     Municipio = p.Municipio,
                     IdCiudad = p.IdCiudad,
                     Ciudad = p.Ciudad,
-                    Entidad = p.Entidad,
-                    Movil = p.Movil,
-                    Email = p.Email,
-                    Patologias = patologias, // Asignamos la lista de patologías ya procesada
-                    Alergias = p.Alergias.Split(',').ToList(),     // Convierte a lista
-                    Molecules = p.Molecules.Split(',').ToList(),   // Convierte a lista
+                    IdEntidad = p.IdEntidad,
+                    Estado = p.Estado,
+                    Abreviatura = p.Abreviatura,
                     Status = p.Status
                 });
+
             }
 
             return resultados;

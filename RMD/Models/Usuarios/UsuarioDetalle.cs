@@ -25,6 +25,8 @@ namespace RMD.Models.Usuarios
         public required string Domicilio { get; set; }
         public required string Movil { get; set; }
         public required string Email { get; set; }
+        public required string Firma { get; set; } = string.Empty;
+        public required string Imagen { get; set; } = string.Empty;
     }
 
 }

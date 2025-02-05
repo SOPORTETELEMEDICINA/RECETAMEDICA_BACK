@@ -1,10 +1,10 @@
-﻿using RMD.Models.Vidal.ByRoute;
+﻿//using RMD.Models.Vidal.ByRoute;
 
-namespace RMD.Interface.Vidal
-{
-    public interface IRouteService
-    {
-        Task<Routes> GetRouteByIdAsync(int id);
-        Task<List<Routes>> GetAllRoutesAsync();
-    }
-}
+//namespace RMD.Interface.Vidal
+//{
+//    public interface IRouteService
+//    {
+//        Task<Routes> GetRouteByIdAsync(int id);
+//        Task<List<Routes>> GetAllRoutesAsync();
+//    }
+//}

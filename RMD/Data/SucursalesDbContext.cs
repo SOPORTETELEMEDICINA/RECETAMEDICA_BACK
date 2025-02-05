@@ -1,15 +1,14 @@
-﻿using Microsoft.EntityFrameworkCore;
-using RMD.Models.Sucursales;
+﻿using RMD.Models.Sucursales;
 
 namespace RMD.Data
 {
-    public class SucursalesDbContext : DbContext
+    public class SucursalesDbContext(DbContextOptions<SucursalesDbContext> options) : DbContext(options)
     {
-        public SucursalesDbContext(DbContextOptions<SucursalesDbContext> options) : base(options) { }
-
         public DbSet<Sucursal> Sucursales { get; set; }
+        public DbSet<SucursalRequest> SucursalRequest { get; set; }
+        
         public DbSet<SucursalDomicilioModel> SucursalDomicilioModel { get; set; } // Agregado
-
+        public DbSet<CreateSucursalModel> CreateSucursal { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -28,9 +27,14 @@ namespace RMD.Data
                 entity.Property(e => e.Domicilio).IsRequired().HasMaxLength(200);
                 entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
             });
-
+            modelBuilder.Entity<CreateSucursalModel>()
+               .HasNoKey() // No tiene una clave primaria ya que es una consulta
+               .ToView(null); // Indica que no es una tabla mapeada
             // Configuración para el modelo de SucursalDomicilioModel
             modelBuilder.Entity<SucursalDomicilioModel>().HasNoKey(); // No tiene clave primaria porque es una vista o resultado de SP
+            modelBuilder.Entity<SucursalRequest>().HasNoKey();
+
+            
         }
     }
 }

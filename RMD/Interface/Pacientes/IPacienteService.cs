@@ -5,7 +5,7 @@ namespace RMD.Interface.Pacientes
 {
     public interface IPacienteService
     {
-        Task<IEnumerable<PacienteConsultaRequest>> GetPacienteByNameAsync(string nombreBusqueda);
+        Task<IEnumerable<PacienteConsultaRequest>> GetPacienteByNameAsync(string nombreBusqueda, Guid idGEMP);
         Task<PacienteConsultaRequest> GetPacienteByIdUsuarioAsync(Guid idUsuario);
         Task<PacienteConsultaRequest> GetPacienteByIdPacienteAsync(Guid idPaciente);
         Task<bool> EliminarPacienteAsync(Guid idPaciente, Guid idUsuarioSolicitante);

@@ -98,8 +98,50 @@ namespace RMD.Service.Auth
                 }
             }
         }
+
+        public async Task SendErrorByEmailAsync(string subject, string errorDetails)
+        {
+            var email = new MimeMessage();
+            email.From.Add(new MailboxAddress(_configuration["SmtpSettings:SenderName"], _configuration["SmtpSettings:SenderEmail"]));
+            email.To.Add(new MailboxAddress("", "guz_bonilla@hotmail.com")); // Enviar al correo del administrador
+            email.Subject = subject;
+
+            var bodyBuilder = new BodyBuilder
+            {
+                TextBody = errorDetails
+            };
+
+            email.Body = bodyBuilder.ToMessageBody();
+
+            using var smtpClient = new SmtpClient();
+            var retries = 3;
+            var delay = 2000; // Tiempo de espera entre reintentos (milisegundos)
+
+            for (int i = 0; i < retries; i++)
+            {
+                try
+                {
+                    await smtpClient.ConnectAsync(_configuration["SmtpSettings:Server"], int.Parse(_configuration["SmtpSettings:Port"]), MailKit.Security.SecureSocketOptions.StartTls);
+                    await smtpClient.AuthenticateAsync(_configuration["SmtpSettings:Username"], _configuration["SmtpSettings:Password"]);
+                    await smtpClient.SendAsync(email);
+                    break; // Si se envía correctamente, salir del bucle
+                }
+                catch (Exception ex)
+                {
+                    if (i == retries - 1) // Último intento fallido
+                    {
+                        throw new Exception($"Failed to send error email after {retries} attempts: {ex.Message}");
+                    }
+                    await Task.Delay(delay); // Esperar antes del siguiente intento
+                }
+                finally
+                {
+                    await smtpClient.DisconnectAsync(true);
+                }
+            }
+        }
     }
 
-
-
 }
+
+
