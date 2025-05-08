@@ -1,8 +1,10 @@
-﻿namespace RMD.Interface.Auth
+﻿using RMD.Models.Responses;
+
+namespace RMD.Interface.Auth
 {
     public interface IEmailService
     {
-        Task SendEmailAsync(string toEmail, string subject, string body);
-        Task SendErrorByEmailAsync(string subject, string errorDetails);
+        Task<ResponseFromService<bool>> SendEmailAsync(string toEmail, string subject, string resetLink);
+        Task<ResponseFromService<bool>> SendErrorByEmailAsync(string subject, string errorDetails);
     }
 }
