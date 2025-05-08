@@ -17,5 +17,7 @@ namespace RMD.Models.Login
         [Required]
         [MaxLength(255)]
         public string Password { get; set; }  // Contraseña
+
+        public string Plataform { get; set; } = "WEB";
     }
 }
