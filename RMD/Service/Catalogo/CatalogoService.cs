@@ -1,313 +1,882 @@
 ﻿using RMD.Data;
 using RMD.Interface.Catalogo;
+using RMD.Interface.Notificaciones;
 using RMD.Models.Catalogo;
 using RMD.Models.Consulta;
+using RMD.Models.Responses;
 
 namespace RMD.Services.Catalogo
 {
     public class CatalogoService : ICatalogoService
     {
         private readonly CatalogoDbContext _context;
+        private readonly ICatalogoNotificacionService _catalogoNotificacionService;
 
-        public CatalogoService(CatalogoDbContext context)
+        public CatalogoService(CatalogoDbContext context, ICatalogoNotificacionService catalogoNotificacionService)
         {
             _context = context;
+            _catalogoNotificacionService = catalogoNotificacionService;
         }
-    #region CRUD para EntidadesFederativas
-        // Obtener todas las entidades federativas
-        public async Task<IEnumerable<CatEntidadesFederativas>> GetAllEntidadesAsync() =>
-            await _context.CatEntidadesFederativas.ToListAsync();
 
-        // Obtener entidad federativa por ID
-        public async Task<CatEntidadesFederativas> GetEntidadByIdAsync(int id) =>
-            await _context.CatEntidadesFederativas.FindAsync(id);
+        #region CRUD para EntidadesFederativas
 
-        // Obtener entidades federativas por nombre
-        public async Task<IEnumerable<CatEntidadesFederativas>> GetEntidadesByNameAsync(string name) =>
-            await _context.CatEntidadesFederativas
-                .Where(e => EF.Functions.Like(e.Nombre, $"%{name}%"))
-                .ToListAsync();
-        // Validar si ya existe una entidad con el mismo nombre o abreviatura dentro del mismo IdPais
-        private async Task<bool> EntidadExistsAsync(string nombre, string abreviatura, int idPais, int? id = null)
+        public async Task<ResponseFromService<IEnumerable<CatEntidadesFederativas>>> GetAllEntidadesAsync()
         {
-            return await _context.CatEntidadesFederativas
-                .AnyAsync(e =>
-                    e.IdPais == idPais &&
-                    (e.Nombre == nombre || e.Abreviatura == abreviatura) &&
-                    (!id.HasValue || e.IdEntidad != id));
+            try
+            {
+                var entidades = await _context.CatEntidadesFederativas.ToListAsync();
+                if (entidades == null || !entidades.Any())
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "SIN_ENTIDADES");
+                    return ResponseFromService<IEnumerable<CatEntidadesFederativas>>.Failure(notif);
+                }
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "ENTIDADES_OBTENIDAS");
+                return ResponseFromService<IEnumerable<CatEntidadesFederativas>>.Success(entidades, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<CatEntidadesFederativas>>.Exeption(ex, error);
+            }
         }
 
-        // Crear nueva entidad federativa con validación de duplicados por IdPais
-        public async Task<CatEntidadesFederativas> CreateEntidadAsync(CatEntidadesFederativas entidad)
+        public async Task<ResponseFromService<CatEntidadesFederativas>> GetEntidadByIdAsync(int id)
         {
-            if (await EntidadExistsAsync(entidad.Nombre, entidad.Abreviatura, entidad.IdPais))
-                throw new System.Exception("Ya existe una entidad con el mismo nombre o abreviatura para este país.");
+            try
+            {
+                var entidad = await _context.CatEntidadesFederativas.FindAsync(id);
+                if (entidad == null)
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "ENTIDAD_NO_ENCONTRADA");
+                    return ResponseFromService<CatEntidadesFederativas>.Failure(notif);
+                }
 
-            _context.CatEntidadesFederativas.Add(entidad);
-            await _context.SaveChangesAsync();
-            return entidad;
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "ENTIDAD_OBTENIDA");
+                return ResponseFromService<CatEntidadesFederativas>.Success(entidad, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<CatEntidadesFederativas>.Exeption(ex, error);
+            }
         }
 
-        // Actualizar entidad federativa con validación de duplicados por IdPais
-        public async Task UpdateEntidadAsync(int id, CatEntidadesFederativas entidad)
+        public async Task<ResponseFromService<IEnumerable<CatEntidadesFederativas>>> GetEntidadesByNameAsync(string name)
         {
-            if (await EntidadExistsAsync(entidad.Nombre, entidad.Abreviatura, entidad.IdPais, id))
-                throw new System.Exception("Ya existe una entidad con el mismo nombre o abreviatura para este país.");
+            try
+            {
+                var entidades = await _context.CatEntidadesFederativas
+                    .Where(e => EF.Functions.Like(e.Nombre, $"%{name}%"))
+                    .ToListAsync();
 
-            _context.Entry(entidad).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+                if (!entidades.Any())
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "SIN_ENTIDADES");
+                    return ResponseFromService<IEnumerable<CatEntidadesFederativas>>.Failure(notif);
+                }
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "ENTIDADES_OBTENIDAS");
+                return ResponseFromService<IEnumerable<CatEntidadesFederativas>>.Success(entidades, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<CatEntidadesFederativas>>.Exeption(ex, error);
+            }
         }
 
-        // Eliminar entidad federativa
-        public async Task DeleteEntidadAsync(int id)
+        private async Task<bool> EntidadExistsAsync(string nombre, string abreviatura, int idPais, int? id = null) =>
+            await _context.CatEntidadesFederativas.AnyAsync(e =>
+                e.IdPais == idPais &&
+                (e.Nombre == nombre || e.Abreviatura == abreviatura) &&
+                (!id.HasValue || e.IdEntidad != id));
+
+        public async Task<ResponseFromService<CatEntidadesFederativas>> CreateEntidadAsync(CatEntidadesFederativas entidad)
         {
-            var entidad = await _context.CatEntidadesFederativas.FindAsync(id);
-            if (entidad == null) throw new KeyNotFoundException("Entidad no encontrada.");
-            _context.CatEntidadesFederativas.Remove(entidad);
-            await _context.SaveChangesAsync();
+            try
+            {
+                if (await EntidadExistsAsync(entidad.Nombre, entidad.Abreviatura, entidad.IdPais))
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "ENTIDAD_DUPLICADA");
+                    return ResponseFromService<CatEntidadesFederativas>.Failure(notif);
+                }
+
+                _context.CatEntidadesFederativas.Add(entidad);
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "ENTIDAD_CREADA");
+                return ResponseFromService<CatEntidadesFederativas>.Success(entidad, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<CatEntidadesFederativas>.Exeption(ex, error);
+            }
         }
-    #endregion
 
-    #region CRUD para Municipios
-
-        // CRUD para Municipios
-        //public async Task<IEnumerable<CatMunicipios>> GetAllMunicipiosAsync() =>
-        //    await _context.CatMunicipios.ToListAsync();
-        public async Task<IEnumerable<CatMunicipios>> GetAllMunicipiosByIdEntidadAsync(int idEntidad) =>
-           await _context.CatMunicipios
-               .Where(m => m.IdEntidad == idEntidad)
-               .ToListAsync(); // Implementación del nuevo método
-
-
-        public async Task<CatMunicipios> GetMunicipioByIdAsync(int id) =>
-            await _context.CatMunicipios.FindAsync(id);
-
-        public async Task<IEnumerable<CatMunicipios>> GetMunicipiosByNameAsync(string name) =>
-            await _context.CatMunicipios
-                .Where(m => EF.Functions.Like(m.Nombre, $"%{name}%"))
-                .ToListAsync();
-
-        public async Task<CatMunicipios> CreateMunicipioAsync(CatMunicipios municipio)
+        public async Task<ResponseFromService<string>> UpdateEntidadAsync(int id, CatEntidadesFederativas entidad)
         {
-            _context.CatMunicipios.Add(municipio);
-            await _context.SaveChangesAsync();
-            return municipio;
+            try
+            {
+                if (await EntidadExistsAsync(entidad.Nombre, entidad.Abreviatura, entidad.IdPais, id))
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "ENTIDAD_DUPLICADA");
+                    return ResponseFromService<string>.Failure(notif);
+                }
+
+                _context.Entry(entidad).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "ENTIDAD_ACTUALIZADA");
+                return ResponseFromService<string>.Success("Entidad actualizada correctamente.", success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(ex, error);
+            }
         }
 
-        public async Task UpdateMunicipioAsync(int id, CatMunicipios municipio)
+        public async Task<ResponseFromService<string>> DeleteEntidadAsync(int id)
         {
-            if (id != municipio.IdMunicipio) throw new KeyNotFoundException("Municipio no encontrado.");
-            _context.Entry(municipio).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+            try
+            {
+                var entidad = await _context.CatEntidadesFederativas.FindAsync(id);
+                if (entidad == null)
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "ENTIDAD_NO_ENCONTRADA");
+                    return ResponseFromService<string>.Failure(notif);
+                }
+
+                _context.CatEntidadesFederativas.Remove(entidad);
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "ENTIDAD_ELIMINADA");
+                return ResponseFromService<string>.Success("Entidad eliminada correctamente.", success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(ex, error);
+            }
         }
 
-        public async Task DeleteMunicipioAsync(int id)
-        {
-            var municipio = await _context.CatMunicipios.FindAsync(id);
-            if (municipio == null) throw new KeyNotFoundException("Municipio no encontrado.");
-            _context.CatMunicipios.Remove(municipio);
-            await _context.SaveChangesAsync();
-        }
         #endregion
 
-    #region CRUD para Tipo de Asentamiento
+        #region CRUD para Municipios
 
-        // Validar si ya existe un tipo de asentamiento con el mismo nombre
-        private async Task<bool> AsentamientoExistsAsync(string name, int? id = null)
+        public async Task<ResponseFromService<IEnumerable<CatMunicipios>>> GetAllMunicipiosByIdEntidadAsync(int idEntidad)
         {
-            return await _context.CatTipoAsentamiento
-                .AnyAsync(a => a.TipoAsentamiento == name && (!id.HasValue || a.IdTipoAsentamiento != id));
+            try
+            {
+                var municipios = await _context.CatMunicipios.Where(m => m.IdEntidad == idEntidad).ToListAsync();
+                if (!municipios.Any())
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "SIN_MUNICIPIOS_ENTIDAD");
+                    return ResponseFromService<IEnumerable<CatMunicipios>>.Failure(notif);
+                }
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "MUNICIPIOS_OBTENIDOS");
+                return ResponseFromService<IEnumerable<CatMunicipios>>.Success(municipios, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<CatMunicipios>>.Exeption(ex, error);
+            }
         }
 
-        // Obtener todos los tipos de asentamientos
-        public async Task<IEnumerable<CatTipoAsentamiento>> GetAllTipoAsentamientosAsync() =>
-            await _context.CatTipoAsentamiento.ToListAsync();
-
-        // Obtener un tipo de asentamiento por ID
-        public async Task<CatTipoAsentamiento> GetTipoAsentamientoByIdAsync(int id) =>
-            await _context.CatTipoAsentamiento.FindAsync(id);
-
-        // Obtener tipos de asentamientos por nombre
-        public async Task<IEnumerable<CatTipoAsentamiento>> GetTipoAsentamientosByNameAsync(string name) =>
-            await _context.CatTipoAsentamiento
-                .Where(a => EF.Functions.Like(a.TipoAsentamiento, $"%{name}%"))
-                .ToListAsync();
-
-        // Crear un nuevo tipo de asentamiento
-        public async Task<CatTipoAsentamiento> CreateTipoAsentamientoAsync(CatTipoAsentamiento asentamiento)
+        public async Task<ResponseFromService<CatMunicipios>> GetMunicipioByIdAsync(int id)
         {
-            if (await AsentamientoExistsAsync(asentamiento.TipoAsentamiento))
-                throw new System.Exception("Ya existe un tipo de asentamiento con ese nombre.");
+            try
+            {
+                var municipio = await _context.CatMunicipios.FindAsync(id);
+                if (municipio == null)
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "MUNICIPIO_NO_ENCONTRADO");
+                    return ResponseFromService<CatMunicipios>.Failure(notif);
+                }
 
-            _context.CatTipoAsentamiento.Add(asentamiento);
-            await _context.SaveChangesAsync();
-            return asentamiento;
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "MUNICIPIO_OBTENIDO");
+                return ResponseFromService<CatMunicipios>.Success(municipio, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<CatMunicipios>.Exeption(ex, error);
+            }
         }
 
-        // Actualizar un tipo de asentamiento
-        public async Task UpdateTipoAsentamientoAsync(int id, CatTipoAsentamiento asentamiento)
+        public async Task<ResponseFromService<IEnumerable<CatMunicipios>>> GetMunicipiosByNameAsync(string name)
         {
-            if (await AsentamientoExistsAsync(asentamiento.TipoAsentamiento, id))
-                throw new System.Exception("Ya existe un tipo de asentamiento con ese nombre.");
+            try
+            {
+                var municipios = await _context.CatMunicipios.Where(m => EF.Functions.Like(m.Nombre, $"%{name}%")).ToListAsync();
+                if (!municipios.Any())
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "SIN_MUNICIPIOS_NOMBRE");
+                    return ResponseFromService<IEnumerable<CatMunicipios>>.Failure(notif);
+                }
 
-            _context.Entry(asentamiento).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "MUNICIPIOS_OBTENIDOS");
+                return ResponseFromService<IEnumerable<CatMunicipios>>.Success(municipios, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<CatMunicipios>>.Exeption(ex, error);
+            }
         }
 
-        // Eliminar un tipo de asentamiento
-        public async Task DeleteTipoAsentamientoAsync(int id)
+        public async Task<ResponseFromService<CatMunicipios>> CreateMunicipioAsync(CatMunicipios municipio)
         {
-            var asentamiento = await _context.CatTipoAsentamiento.FindAsync(id);
-            if (asentamiento == null) throw new KeyNotFoundException("Tipo de asentamiento no encontrado.");
+            try
+            {
+                _context.CatMunicipios.Add(municipio);
+                await _context.SaveChangesAsync();
 
-            _context.CatTipoAsentamiento.Remove(asentamiento);
-            await _context.SaveChangesAsync();
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "MUNICIPIO_CREADO");
+                return ResponseFromService<CatMunicipios>.Success(municipio, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<CatMunicipios>.Exeption(ex, error);
+            }
         }
+
+        public async Task<ResponseFromService<string>> UpdateMunicipioAsync(int id, CatMunicipios municipio)
+        {
+            try
+            {
+                if (id != municipio.IdMunicipio)
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "ID_NO_COINCIDE");
+                    return ResponseFromService<string>.Failure(notif);
+                }
+
+                _context.Entry(municipio).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "MUNICIPIO_ACTUALIZADO");
+                return ResponseFromService<string>.Success("Municipio actualizado correctamente.", success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<string>> DeleteMunicipioAsync(int id)
+        {
+            try
+            {
+                var municipio = await _context.CatMunicipios.FindAsync(id);
+                if (municipio == null)
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "MUNICIPIO_NO_ENCONTRADO");
+                    return ResponseFromService<string>.Failure(notif);
+                }
+
+                _context.CatMunicipios.Remove(municipio);
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "MUNICIPIO_ELIMINADO");
+                return ResponseFromService<string>.Success("Municipio eliminado correctamente.", success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(ex, error);
+            }
+        }
+
         #endregion
 
+        #region CRUD para Tipo de Asentamiento
+
+        private async Task<bool> AsentamientoExistsAsync(string name, int? id = null) =>
+     await _context.CatTipoAsentamiento.AnyAsync(a => a.TipoAsentamiento == name && (!id.HasValue || a.IdTipoAsentamiento != id));
+
+        public async Task<ResponseFromService<IEnumerable<CatTipoAsentamiento>>> GetAllTipoAsentamientosAsync()
+        {
+            try
+            {
+                var tipos = await _context.CatTipoAsentamiento.ToListAsync();
+                if (!tipos.Any())
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "SIN_TIPOS_ASENTAMIENTO");
+                    return ResponseFromService<IEnumerable<CatTipoAsentamiento>>.Failure(notif);
+                }
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "TIPOS_ASENTAMIENTO_OBTENIDOS");
+                return ResponseFromService<IEnumerable<CatTipoAsentamiento>>.Success(tipos, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<CatTipoAsentamiento>>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<CatTipoAsentamiento>> GetTipoAsentamientoByIdAsync(int id)
+        {
+            try
+            {
+                var tipo = await _context.CatTipoAsentamiento.FindAsync(id);
+                if (tipo == null)
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "TIPO_ASENTAMIENTO_NO_ENCONTRADO");
+                    return ResponseFromService<CatTipoAsentamiento>.Failure(notif);
+                }
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "TIPO_ASENTAMIENTO_OBTENIDO");
+                return ResponseFromService<CatTipoAsentamiento>.Success(tipo, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<CatTipoAsentamiento>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<IEnumerable<CatTipoAsentamiento>>> GetTipoAsentamientosByNameAsync(string name)
+        {
+            try
+            {
+                var tipos = await _context.CatTipoAsentamiento.Where(a => EF.Functions.Like(a.TipoAsentamiento, $"%{name}%")).ToListAsync();
+                if (!tipos.Any())
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "SIN_TIPOS_ASENTAMIENTO_NOMBRE");
+                    return ResponseFromService<IEnumerable<CatTipoAsentamiento>>.Failure(notif);
+                }
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "TIPOS_ASENTAMIENTO_OBTENIDOS");
+                return ResponseFromService<IEnumerable<CatTipoAsentamiento>>.Success(tipos, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<CatTipoAsentamiento>>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<CatTipoAsentamiento>> CreateTipoAsentamientoAsync(CatTipoAsentamiento asentamiento)
+        {
+            try
+            {
+                if (await AsentamientoExistsAsync(asentamiento.TipoAsentamiento))
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "TIPO_ASENTAMIENTO_EXISTE");
+                    return ResponseFromService<CatTipoAsentamiento>.Failure(notif);
+                }
+
+                _context.CatTipoAsentamiento.Add(asentamiento);
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "TIPO_ASENTAMIENTO_CREADO");
+                return ResponseFromService<CatTipoAsentamiento>.Success(asentamiento, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<CatTipoAsentamiento>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<string>> UpdateTipoAsentamientoAsync(int id, CatTipoAsentamiento asentamiento)
+        {
+            try
+            {
+                if (await AsentamientoExistsAsync(asentamiento.TipoAsentamiento, id))
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "TIPO_ASENTAMIENTO_EXISTE");
+                    return ResponseFromService<string>.Failure(notif);
+                }
+
+                _context.Entry(asentamiento).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "TIPO_ASENTAMIENTO_ACTUALIZADO");
+                return ResponseFromService<string>.Success("Tipo de asentamiento actualizado correctamente.", success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<string>> DeleteTipoAsentamientoAsync(int id)
+        {
+            try
+            {
+                var tipo = await _context.CatTipoAsentamiento.FindAsync(id);
+                if (tipo == null)
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "TIPO_ASENTAMIENTO_NO_ENCONTRADO");
+                    return ResponseFromService<string>.Failure(notif);
+                }
+
+                _context.CatTipoAsentamiento.Remove(tipo);
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "TIPO_ASENTAMIENTO_ELIMINADO");
+                return ResponseFromService<string>.Success("Tipo de asentamiento eliminado correctamente.", success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<IEnumerable<AsentamientoResultModel>>> BuscarAsentamientosAsync(AsentamientoSearchModel searchModel)
+        {
+            try
+            {
+                var parameters = new[]
+                {
+                    new SqlParameter("@CodigoPostalParam", searchModel.CodigoPostal ?? (object)DBNull.Value),
+                    new SqlParameter("@NombreAsentamientoParam", searchModel.NombreAsentamiento ?? (object)DBNull.Value),
+                    new SqlParameter("@TipoAsentamientoParam", searchModel.TipoAsentamiento ?? (object)DBNull.Value),
+                    new SqlParameter("@NombreMunicipioParam", searchModel.NombreMunicipio ?? (object)DBNull.Value),
+                    new SqlParameter("@NombreCiudadParam", searchModel.NombreCiudad ?? (object)DBNull.Value),
+                    new SqlParameter("@AbreviaturaParam", searchModel.Abreviatura ?? (object)DBNull.Value)
+                };
+
+                var results = await _context.AsentamientoResultModel
+                    .FromSqlRaw("EXEC Catalogo_GetAsentamientosByNames @CodigoPostalParam, @NombreAsentamientoParam, @TipoAsentamientoParam, @NombreMunicipioParam, @NombreCiudadParam, @AbreviaturaParam", parameters)
+                    .ToListAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                return ResponseFromService<IEnumerable<AsentamientoResultModel>>.Success(results, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<AsentamientoResultModel>>.Exeption(ex, error);
+            }
+        }
+
+
+        #endregion
 
         #region CRUD para CatCP
 
-        // Validar si ya existe el mismo CP con el mismo IdEntidad
-        private async Task<bool> CPExistsAsync(string codigoPostal, int idEntidad, int? id = null)
+        private async Task<bool> CPExistsAsync(string codigoPostal, int idEntidad, int? id = null) =>
+            await _context.CatCP.AnyAsync(c => c.CodigoPostal == codigoPostal && c.IdEntidad == idEntidad &&
+                                               (!id.HasValue || c.IdCP != id));
+        public async Task<ResponseFromService<IEnumerable<CatCP>>> GetAllCPAsync()
         {
-            return await _context.CatCP
-                .AnyAsync(c => c.CodigoPostal == codigoPostal && c.IdEntidad == idEntidad &&
-                               (!id.HasValue || c.IdCP != id));
+            try
+            {
+                var cps = await _context.CatCP.ToListAsync();
+                if (!cps.Any())
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "SIN_CP");
+                    return ResponseFromService<IEnumerable<CatCP>>.Failure(notif);
+                }
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CP_OBTENIDOS");
+                return ResponseFromService<IEnumerable<CatCP>>.Success(cps, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<CatCP>>.Exeption(ex, error);
+            }
         }
 
-        // Obtener todos los CP
-        public async Task<IEnumerable<CatCP>> GetAllCPAsync() =>
-            await _context.CatCP.ToListAsync();
-
-        // Obtener CP por municipio
-        public async Task<IEnumerable<CatCP>> GetAllCPByMunicipioAsync(int idMunicipio) =>
-            await _context.CatCP.Where(c => c.IdMunicipio == idMunicipio).ToListAsync();
-
-        // Obtener CP por entidad
-        public async Task<IEnumerable<CatCP>> GetAllCPByEntidadAsync(int idEntidad) =>
-            await _context.CatCP.Where(c => c.IdEntidad == idEntidad).ToListAsync();
-
-        // Obtener un CP por ID
-        public async Task<CatCP> GetCPByIdAsync(int id) =>
-            await _context.CatCP.FindAsync(id);
-
-        // Crear un nuevo CP con validación
-        public async Task<CatCP> CreateCPAsync(CatCP cp)
+        public async Task<ResponseFromService<IEnumerable<CatCP>>> GetAllCPByMunicipioAsync(int idMunicipio)
         {
-            if (await CPExistsAsync(cp.CodigoPostal, cp.IdEntidad))
-                throw new System.Exception("Ya existe un CP con el mismo código postal para esta entidad.");
+            try
+            {
+                var cps = await _context.CatCP.Where(c => c.IdMunicipio == idMunicipio).ToListAsync();
+                if (!cps.Any())
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "SIN_CP_MUNICIPIO");
+                    return ResponseFromService<IEnumerable<CatCP>>.Failure(notif);
+                }
 
-            _context.CatCP.Add(cp);
-            await _context.SaveChangesAsync();
-            return cp;
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CP_MUNICIPIO_OBTENIDOS");
+                return ResponseFromService<IEnumerable<CatCP>>.Success(cps, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<CatCP>>.Exeption(ex, error);
+            }
         }
 
-        // Actualizar un CP con validación
-        public async Task UpdateCPAsync(int id, CatCP cp)
+        public async Task<ResponseFromService<IEnumerable<CatCP>>> GetAllCPByEntidadAsync(int idEntidad)
         {
-            if (await CPExistsAsync(cp.CodigoPostal, cp.IdEntidad, id))
-                throw new System.Exception("Ya existe un CP con el mismo código postal para esta entidad.");
+            try
+            {
+                var cps = await _context.CatCP.Where(c => c.IdEntidad == idEntidad).ToListAsync();
+                if (!cps.Any())
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "SIN_CP_ENTIDAD");
+                    return ResponseFromService<IEnumerable<CatCP>>.Failure(notif);
+                }
 
-            _context.Entry(cp).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CP_ENTIDAD_OBTENIDOS");
+                return ResponseFromService<IEnumerable<CatCP>>.Success(cps, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<CatCP>>.Exeption(ex, error);
+            }
         }
 
-        // Eliminar un CP
-        public async Task DeleteCPAsync(int id)
+        public async Task<ResponseFromService<CatCP>> GetCPByIdAsync(int id)
         {
-            var cp = await _context.CatCP.FindAsync(id);
-            if (cp == null) throw new KeyNotFoundException("CP no encontrado.");
+            try
+            {
+                var cp = await _context.CatCP.FindAsync(id);
+                if (cp == null)
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CP_NO_ENCONTRADO");
+                    return ResponseFromService<CatCP>.Failure(notif);
+                }
 
-            _context.CatCP.Remove(cp);
-            await _context.SaveChangesAsync();
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CP_OBTENIDO");
+                return ResponseFromService<CatCP>.Success(cp, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<CatCP>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<CatCP>> CreateCPAsync(CatCP cp)
+        {
+            try
+            {
+                if (await CPExistsAsync(cp.CodigoPostal, cp.IdEntidad))
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CP_EXISTE");
+                    return ResponseFromService<CatCP>.Failure(notif);
+                }
+
+                _context.CatCP.Add(cp);
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CP_CREADO");
+                return ResponseFromService<CatCP>.Success(cp, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<CatCP>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<string>> UpdateCPAsync(int id, CatCP cp)
+        {
+            try
+            {
+                if (await CPExistsAsync(cp.CodigoPostal, cp.IdEntidad, id))
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CP_EXISTE");
+                    return ResponseFromService<string>.Failure(notif);
+                }
+
+                _context.Entry(cp).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CP_ACTUALIZADO");
+                return ResponseFromService<string>.Success("CP actualizado correctamente.", success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<string>> DeleteCPAsync(int id)
+        {
+            try
+            {
+                var cp = await _context.CatCP.FindAsync(id);
+                if (cp == null)
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CP_NO_ENCONTRADO");
+                    return ResponseFromService<string>.Failure(notif);
+                }
+
+                _context.CatCP.Remove(cp);
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CP_ELIMINADO");
+                return ResponseFromService<string>.Success("CP eliminado correctamente.", success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(ex, error);
+            }
         }
 
         #endregion
 
         #region CRUD para CatCiudades
 
-        // Validar si ya existe una ciudad con el mismo nombre
-        private async Task<bool> CiudadExistsAsync(string nombre, int? id = null)
+        private async Task<bool> CiudadExistsAsync(string nombre, int? id = null) =>
+            await _context.CatCiudades.AnyAsync(c => c.Nombre == nombre && (!id.HasValue || c.IdCiudad != id));
+
+        public async Task<ResponseFromService<IEnumerable<CatCiudades>>> GetAllCiudadesAsync()
         {
-            return await _context.CatCiudades
-                .AnyAsync(c => c.Nombre == nombre && (!id.HasValue || c.IdCiudad != id));
+            try
+            {
+                var ciudades = await _context.CatCiudades.ToListAsync();
+                if (!ciudades.Any())
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "SIN_CIUDADES");
+                    return ResponseFromService<IEnumerable<CatCiudades>>.Failure(notif);
+                }
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CIUDADES_OBTENIDAS");
+                return ResponseFromService<IEnumerable<CatCiudades>>.Success(ciudades, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<CatCiudades>>.Exeption(ex, error);
+            }
         }
 
-        // Obtener todas las ciudades
-        public async Task<IEnumerable<CatCiudades>> GetAllCiudadesAsync() =>
-            await _context.CatCiudades.ToListAsync();
-
-        // Obtener una ciudad por ID
-        public async Task<CatCiudades> GetCiudadByIdAsync(int id) =>
-            await _context.CatCiudades.FindAsync(id);
-
-        // Obtener ciudades por nombre
-        public async Task<IEnumerable<CatCiudades>> GetCiudadesByNameAsync(string name) =>
-            await _context.CatCiudades
-                .Where(c => EF.Functions.Like(c.Nombre, $"%{name}%"))
-                .ToListAsync();
-
-        // Crear una nueva ciudad con validación
-        public async Task<CatCiudades> CreateCiudadAsync(CatCiudades ciudad)
+        public async Task<ResponseFromService<CatCiudades>> GetCiudadByIdAsync(int id)
         {
-            if (await CiudadExistsAsync(ciudad.Nombre))
-                throw new System.Exception("Ya existe una ciudad con ese nombre.");
+            try
+            {
+                var ciudad = await _context.CatCiudades.FindAsync(id);
+                if (ciudad == null)
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CIUDAD_NO_ENCONTRADA");
+                    return ResponseFromService<CatCiudades>.Failure(notif);
+                }
 
-            _context.CatCiudades.Add(ciudad);
-            await _context.SaveChangesAsync();
-            return ciudad;
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CIUDAD_OBTENIDA");
+                return ResponseFromService<CatCiudades>.Success(ciudad, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<CatCiudades>.Exeption(ex, error);
+            }
         }
 
-        // Actualizar una ciudad con validación
-        public async Task UpdateCiudadAsync(int id, CatCiudades ciudad)
+        public async Task<ResponseFromService<IEnumerable<CatCiudades>>> GetCiudadesByNameAsync(string name)
         {
-            if (await CiudadExistsAsync(ciudad.Nombre, id))
-                throw new System.Exception("Ya existe una ciudad con ese nombre.");
+            try
+            {
+                var ciudades = await _context.CatCiudades
+                    .Where(c => EF.Functions.Like(c.Nombre, $"%{name}%"))
+                    .ToListAsync();
 
-            _context.Entry(ciudad).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+                if (!ciudades.Any())
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "SIN_CIUDADES_NOMBRE");
+                    return ResponseFromService<IEnumerable<CatCiudades>>.Failure(notif);
+                }
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CIUDADES_OBTENIDAS_NOMBRE");
+                return ResponseFromService<IEnumerable<CatCiudades>>.Success(ciudades, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<CatCiudades>>.Exeption(ex, error);
+            }
         }
 
-        // Eliminar una ciudad
-        public async Task DeleteCiudadAsync(int id)
+        public async Task<ResponseFromService<CatCiudades>> CreateCiudadAsync(CatCiudades ciudad)
         {
-            var ciudad = await _context.CatCiudades.FindAsync(id);
-            if (ciudad == null) throw new KeyNotFoundException("Ciudad no encontrada.");
+            try
+            {
+                if (await CiudadExistsAsync(ciudad.Nombre))
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CIUDAD_EXISTE");
+                    return ResponseFromService<CatCiudades>.Failure(notif);
+                }
 
-            _context.CatCiudades.Remove(ciudad);
-            await _context.SaveChangesAsync();
+                _context.CatCiudades.Add(ciudad);
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CIUDAD_CREADA");
+                return ResponseFromService<CatCiudades>.Success(ciudad, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<CatCiudades>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<string>> UpdateCiudadAsync(int id, CatCiudades ciudad)
+        {
+            try
+            {
+                if (await CiudadExistsAsync(ciudad.Nombre, id))
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CIUDAD_EXISTE");
+                    return ResponseFromService<string>.Failure(notif);
+                }
+
+                _context.Entry(ciudad).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CIUDAD_ACTUALIZADA");
+                return ResponseFromService<string>.Success("Ciudad actualizada correctamente.", success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<string>> DeleteCiudadAsync(int id)
+        {
+            try
+            {
+                var ciudad = await _context.CatCiudades.FindAsync(id);
+                if (ciudad == null)
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CIUDAD_NO_ENCONTRADA");
+                    return ResponseFromService<string>.Failure(notif);
+                }
+
+                _context.CatCiudades.Remove(ciudad);
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "CIUDAD_ELIMINADA");
+                return ResponseFromService<string>.Success("Ciudad eliminada correctamente.", success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(ex, error);
+            }
         }
 
         #endregion
 
-        public async Task<IEnumerable<AsentamientoResultModel>> BuscarAsentamientosAsync(AsentamientoSearchModel searchModel)
+        #region CRUD para CatEventosDeSalud
+
+        public async Task<ResponseFromService<IEnumerable<CatEventosDeSalud>>> GetAllEventosSaludAsync()
         {
-            // Configuramos los parámetros para el procedimiento almacenado
-            var parameters = new[]
+            try
             {
-                new SqlParameter("@CodigoPostalParam", searchModel.CodigoPostal ?? (object)DBNull.Value),
-                new SqlParameter("@NombreAsentamientoParam", searchModel.NombreAsentamiento ?? (object)DBNull.Value),
-                new SqlParameter("@TipoAsentamientoParam", searchModel.TipoAsentamiento ?? (object)DBNull.Value),
-                new SqlParameter("@NombreMunicipioParam", searchModel.NombreMunicipio ?? (object)DBNull.Value),
-                new SqlParameter("@NombreCiudadParam", searchModel.NombreCiudad ?? (object)DBNull.Value),
-                new SqlParameter("@AbreviaturaParam", searchModel.Abreviatura ?? (object)DBNull.Value)
-            };
+                var eventos = await _context.CatEventosDeSalud.ToListAsync();
+                if (!eventos.Any())
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "SIN_EVENTOS_SALUD");
+                    return ResponseFromService<IEnumerable<CatEventosDeSalud>>.Failure(notif);
+                }
 
-            // Ejecutamos la consulta y obtenemos los resultados usando Entity Framework Core
-            var results = await _context.AsentamientoResultModel
-                .FromSqlRaw("EXEC Catalogo_GetAsentamientosByNames @CodigoPostalParam, @NombreAsentamientoParam, @TipoAsentamientoParam, @NombreMunicipioParam, @NombreCiudadParam, @AbreviaturaParam", parameters)
-                .ToListAsync();
-
-            if (results.Count > 0)
-            {
-                return results;
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "EVENTOS_SALUD_OBTENIDOS");
+                return ResponseFromService<IEnumerable<CatEventosDeSalud>>.Success(eventos, success);
             }
-            else
+            catch (Exception ex)
             {
-                throw new KeyNotFoundException("No se encontraron resultados para los criterios especificados.");
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<CatEventosDeSalud>>.Exeption(ex, error);
             }
         }
+
+        public async Task<ResponseFromService<CatEventosDeSalud>> GetEventoSaludByIdAsync(int id)
+        {
+            try
+            {
+                var evento = await _context.CatEventosDeSalud.FindAsync(id);
+                if (evento == null)
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "EVENTO_SALUD_NO_ENCONTRADO");
+                    return ResponseFromService<CatEventosDeSalud>.Failure(notif);
+                }
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "EVENTO_SALUD_OBTENIDO");
+                return ResponseFromService<CatEventosDeSalud>.Success(evento, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<CatEventosDeSalud>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<CatEventosDeSalud>> CreateEventoSaludAsync(CatEventosDeSalud evento)
+        {
+            try
+            {
+                _context.CatEventosDeSalud.Add(evento);
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "EVENTO_SALUD_CREADO");
+                return ResponseFromService<CatEventosDeSalud>.Success(evento, success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<CatEventosDeSalud>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<string>> UpdateEventoSaludAsync(int id, CatEventosDeSalud evento)
+        {
+            try
+            {
+                if (id != evento.IdEvento)
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "ID_INVALIDO_EVENTO_SALUD");
+                    return ResponseFromService<string>.Failure(notif);
+                }
+
+                _context.Entry(evento).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "EVENTO_SALUD_ACTUALIZADO");
+                return ResponseFromService<string>.Success("Evento de salud actualizado correctamente.", success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<string>> DeleteEventoSaludAsync(int id)
+        {
+            try
+            {
+                var evento = await _context.CatEventosDeSalud.FindAsync(id);
+                if (evento == null)
+                {
+                    var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "EVENTO_SALUD_NO_ENCONTRADO");
+                    return ResponseFromService<string>.Failure(notif);
+                }
+
+                _context.CatEventosDeSalud.Remove(evento);
+                await _context.SaveChangesAsync();
+
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CATALOGOS", "EVENTO_SALUD_ELIMINADO");
+                return ResponseFromService<string>.Success("Evento de salud eliminado correctamente.", success);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(ex, error);
+            }
+        }
+
+
+        #endregion
     }
 }
-
