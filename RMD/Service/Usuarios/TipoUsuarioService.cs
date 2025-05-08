@@ -1,6 +1,14 @@
-﻿using RMD.Data;
-using RMD.Extensions; // Asegúrate de tener las extensiones necesarias para ToDataTable()
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using RMD.Data;
+using RMD.Extensions;
+using RMD.Interface.Notificaciones;
 using RMD.Interface.Usuarios;
+using RMD.Models.Responses;
 using RMD.Models.Usuarios;
 
 namespace RMD.Service.Usuarios
@@ -8,63 +16,99 @@ namespace RMD.Service.Usuarios
     public class TipoUsuarioService : ITipoUsuarioService
     {
         private readonly UsuariosDBContext _context;
+        private readonly ICatalogoNotificacionService _catalogoNotificacionService;
+        private readonly string _connectionString;
 
-        public TipoUsuarioService(UsuariosDBContext context)
+        public TipoUsuarioService(
+            UsuariosDBContext context,
+            ICatalogoNotificacionService catalogoNotificacionService,
+            string connectionString)
         {
             _context = context;
+            _catalogoNotificacionService = catalogoNotificacionService;
+            _connectionString = connectionString;
         }
 
-        public async Task<IEnumerable<TipoUsuario>> GetAllTipoUsuario()
+        public async Task<ResponseFromService<IEnumerable<TipoUsuario>>> GetAllTipoUsuarioAsync()
         {
             try
             {
-                return await _context.TipoUsuarios
-                    .FromSqlRaw("EXEC sp_Cat_GetAllTipoUsuario")
-                    .ToListAsync();
-            }
-            catch (SqlException sqlEx)
-            {
-                throw new Exception($"Error en la base de datos: {sqlEx.Message}");
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error al obtener todos los tipos de usuario: {ex.Message}");
-            }
-        }
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-        public async Task<TipoUsuario> GetTipoUsuarioById(Guid id)
-        {
-            try
-            {
-                var parameters = new SqlParameter[]
+                using var command = new SqlCommand("sp_Cat_GetAllTipoUsuario", connection)
                 {
-                    new SqlParameter("@IdTipoUsuario", id)
+                    CommandType = CommandType.StoredProcedure
                 };
 
-                var result = await _context.TipoUsuarios
-                    .FromSqlRaw("EXEC sp_Cat_GetTipoUsuarioById @IdTipoUsuario", parameters)
-                    .ToListAsync();
+                using var reader = await command.ExecuteReaderAsync();
 
-                if (result.Count > 0)
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
                 {
-                    return result.First();
+                    return ResponseFromService<IEnumerable<TipoUsuario>>.Failure(notificacion);
                 }
-                else
+
+                var tipos = new List<TipoUsuario>();
+                if (await reader.NextResultAsync())
                 {
-                    throw new KeyNotFoundException("No existe el Tipo de Usuario especificado.");
+                    while (await reader.ReadAsync())
+                    {
+                        tipos.Add(TipoUsuario.FromDataReader(reader));
+                    }
                 }
-            }
-            catch (SqlException sqlEx)
-            {
-                throw new Exception($"Error en la base de datos: {sqlEx.Message}");
+
+                return ResponseFromService<IEnumerable<TipoUsuario>>.Success(tipos, notificacion);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error al obtener el Tipo de Usuario: {ex.Message}");
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<TipoUsuario>>.Exeption(ex, error);
             }
         }
 
-        public async Task<string> CreateTipoUsuario(TipoUsuario tipoUsuario)
+
+        public async Task<ResponseFromService<TipoUsuario>> GetTipoUsuarioByIdAsync(Guid id)
+        {
+            try
+            {
+                var parameter = new SqlParameter("@IdTipoUsuario", id);
+
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("sp_Cat_GetTipoUsuarioById", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.Add(parameter);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                {
+                    return ResponseFromService<TipoUsuario>.Failure(notificacion);
+                }
+
+                TipoUsuario tipo = null;
+                if (await reader.NextResultAsync() && await reader.ReadAsync())
+                {
+                    tipo = TipoUsuario.FromDataReader(reader);
+                }
+
+                return ResponseFromService<TipoUsuario>.Success(tipo, notificacion);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<TipoUsuario>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<string>> CreateTipoUsuarioAsync(TipoUsuario tipoUsuario)
         {
             try
             {
@@ -74,20 +118,31 @@ namespace RMD.Service.Usuarios
                     Value = new List<TipoUsuario> { tipoUsuario }.ToDataTable()
                 };
 
-                await _context.Database.ExecuteSqlRawAsync("EXEC sp_Cat_CreateTipoUsuario @TipoUsuario", parameter);
-                return "Tipo de Usuario creado con éxito.";
-            }
-            catch (SqlException sqlEx)
-            {
-                throw new Exception($"Error en la base de datos: {sqlEx.Message}");
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("sp_Cat_CreateTipoUsuario", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.Add(parameter);
+
+                using var reader = await command.ExecuteReaderAsync();
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+
+                return notificacion.ToastType.ToUpperInvariant() == "ERROR"
+                    ? ResponseFromService<string>.Failure(notificacion)
+                    : ResponseFromService<string>.Success(notificacion.Descripcion, notificacion);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error al crear el Tipo de Usuario: {ex.Message}");
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(ex, error);
             }
         }
 
-        public async Task<string> UpdateTipoUsuario(TipoUsuario tipoUsuario)
+        public async Task<ResponseFromService<string>> UpdateTipoUsuarioAsync(TipoUsuario tipoUsuario)
         {
             try
             {
@@ -97,17 +152,30 @@ namespace RMD.Service.Usuarios
                     Value = new List<TipoUsuario> { tipoUsuario }.ToDataTable()
                 };
 
-                await _context.Database.ExecuteSqlRawAsync("EXEC sp_Cat_UpdateTipoUsuario @TipoUsuario", parameter);
-                return "Tipo de Usuario actualizado con éxito.";
-            }
-            catch (SqlException sqlEx)
-            {
-                throw new Exception($"Error en la base de datos: {sqlEx.Message}");
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("sp_Cat_UpdateTipoUsuario", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.Add(parameter);
+
+                using var reader = await command.ExecuteReaderAsync();
+                // Recibe el código de notificación retornado por el SP
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+
+                return notificacion.ToastType.ToUpperInvariant() == "ERROR"
+                    ? ResponseFromService<string>.Failure(notificacion)
+                    : ResponseFromService<string>.Success(notificacion.Descripcion, notificacion);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error al actualizar el Tipo de Usuario: {ex.Message}");
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(ex, error);
             }
         }
+
     }
 }

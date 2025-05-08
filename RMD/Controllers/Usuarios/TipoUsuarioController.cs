@@ -1,4 +1,4 @@
-﻿using RMD.Extensions;
+﻿using RMD.Interface.Notificaciones;
 using RMD.Interface.Usuarios;
 using RMD.Models.Responses;
 using RMD.Models.Usuarios;
@@ -9,127 +9,95 @@ namespace RMD.Controllers.Usuarios
     [ApiController]
     [Authorize]
     [ServiceFilter(typeof(ValidateTokenFilter))]
-    public class TipoUsuarioController(ITipoUsuarioService tipoUsuarioService) : ControllerBase
+    public class TipoUsuarioController : ControllerBase
     {
-        private readonly ITipoUsuarioService _tipoUsuarioService = tipoUsuarioService;
+        private readonly ITipoUsuarioService _tipoUsuarioService;
+        private readonly ICatalogoNotificacionService _catalogoNotificacionService;
 
-        /// <summary>
-        /// Gets all user types.
-        /// </summary>
-        /// <returns>A list of user types.</returns>
+        public TipoUsuarioController(ITipoUsuarioService tipoUsuarioService, ICatalogoNotificacionService catalogoNotificacionService)
+        {
+            _tipoUsuarioService = tipoUsuarioService;
+            _catalogoNotificacionService = catalogoNotificacionService;
+        }
+
         [HttpGet("GetAllTipoUsuario")]
         public async Task<IActionResult> GetAllTipoUsuario()
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.TipoUsuarioController.EndpointRolesTipoUsuarioController["GetAllTipoUsuario"].Contains(rol))
+            if (!HasPermission("GetAllTipoUsuario"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
-            try
-            {
-                var result = await _tipoUsuarioService.GetAllTipoUsuario();
-                var response = ResponseFromService<IEnumerable<TipoUsuario>>.Success(result, "Lista de tipos de usuario obtenida con éxito.");
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+
+            var response = await _tipoUsuarioService.GetAllTipoUsuarioAsync();
+            return (response.Toast == "success" || response.Toast == "info") ? Ok(response) : BadRequest(response);
         }
 
-        /// <summary>
-        /// Gets a user type by its ID.
-        /// </summary>
-        /// <param name="id">The ID of the user type.</param>
-        /// <returns>The requested user type.</returns>
         [HttpGet("GetTipoUsuarioById/{id}")]
         public async Task<IActionResult> GetTipoUsuarioById(Guid id)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.TipoUsuarioController.EndpointRolesTipoUsuarioController["GetTipoUsuarioById"].Contains(rol))
+            if (!HasPermission("GetTipoUsuarioById"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
+
             if (id == Guid.Empty)
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El Id proporcionado no es válido."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            try
-            {
-                var result = await _tipoUsuarioService.GetTipoUsuarioById(id);
-                if (result == null)
-                {
-                    return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "No se encontró el tipo de usuario especificado."));
-                }
-
-                var response = ResponseFromService<TipoUsuario>.Success(result, "Tipo de usuario obtenido con éxito.");
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+            var response = await _tipoUsuarioService.GetTipoUsuarioByIdAsync(id);
+            // Si el código en la respuesta indica que el tipo de usuario no fue encontrado, se retorna NotFound
+            return (response.Toast == "success" || response.Toast == "info") ? Ok(response) : BadRequest(response);
         }
 
-        /// <summary>
-        /// Creates a new user type.
-        /// </summary>
-        /// <param name="tipoUsuario">The user type model.</param>
-        /// <returns>A message indicating the result of the operation.</returns>
         [HttpPost("CreateTipoUsuario")]
         public async Task<IActionResult> CreateTipoUsuario([FromBody] TipoUsuario tipoUsuario)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.TipoUsuarioController.EndpointRolesTipoUsuarioController["CreateTipoUsuario"].Contains(rol))
+            if (!HasPermission("CreateTipoUsuario"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
+
             if (tipoUsuario == null)
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El modelo TipoUsuario proporcionado no es válido."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            try
-            {
-                var result = await _tipoUsuarioService.CreateTipoUsuario(tipoUsuario);
-                var response = ResponseFromService<string>.Success(result, "Tipo de usuario creado con éxito.");
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+            var response = await _tipoUsuarioService.CreateTipoUsuarioAsync(tipoUsuario);
+            // Se espera el código de éxito correspondiente (por ejemplo, 50450)
+            return (response.Toast == "success" || response.Toast == "info") ? Ok(response) : BadRequest(response);
         }
 
-        /// <summary>
-        /// Updates an existing user type.
-        /// </summary>
-        /// <param name="tipoUsuario">The updated user type model.</param>
-        /// <returns>A message indicating the result of the operation.</returns>
         [HttpPut("UpdateTipoUsuario")]
         public async Task<IActionResult> UpdateTipoUsuario([FromBody] TipoUsuario tipoUsuario)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.TipoUsuarioController.EndpointRolesTipoUsuarioController["UpdateTipoUsuario"].Contains(rol))
+            if (!HasPermission("UpdateTipoUsuario"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
-            }
-            if (tipoUsuario == null)
-            {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El modelo TipoUsuario proporcionado no es válido."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            try
+            if (tipoUsuario == null)
             {
-                var result = await _tipoUsuarioService.UpdateTipoUsuario(tipoUsuario);
-                var response = ResponseFromService<string>.Success(result, "Tipo de usuario actualizado con éxito.");
-                return Ok(response);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+
+            var response = await _tipoUsuarioService.UpdateTipoUsuarioAsync(tipoUsuario);
+            // Se espera el código de éxito correspondiente para actualización (por ejemplo, 50451)
+
+            return (response.Toast == "success" || response.Toast == "info") ? Ok(response) : BadRequest(response);
+        }
+
+        private bool HasPermission(string endpointName)
+        {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            return RolesPermissions.TipoUsuarioController.EndpointRolesTipoUsuarioController[endpointName].Contains(rol);
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿using RMD.Extensions;
-using RMD.Interface.Pacientes;
+﻿using RMD.Interface.Notificaciones;
 using RMD.Interface.Usuarios;
 using RMD.Models.Responses;
 using RMD.Models.Usuarios;
@@ -10,189 +9,199 @@ namespace RMD.Controllers.Usuarios
     [ApiController]
     [Authorize]
     [ServiceFilter(typeof(ValidateTokenFilter))]
-    public class UsuariosController(IUsuarioService usuarioService
-        //, IPacienteService pacienteService
-        ) : ControllerBase
+    public class UsuariosController(IUsuarioService usuarioService, ICatalogoNotificacionService catalogoNotificacionService) : ControllerBase
     {
         private readonly IUsuarioService _usuarioService = usuarioService;
-        //private readonly IPacienteService _pacienteService = pacienteService;
+        private readonly ICatalogoNotificacionService _catalogoNotificacionService = catalogoNotificacionService;
 
         [HttpPost("crear")]
         public async Task<IActionResult> CrearUsuario([FromBody] UsuarioCreate usuario)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.UsuariosController.EndpointRolesUsuariosController["CrearUsuario"].Contains(rol))
+            // Verificar permiso
+            if (!HasPermission("CrearUsuario"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
-            if (usuario == null)
-            {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Datos inválidos."));
-            }
+
+            // Validar el modelo
             if (!ModelState.IsValid)
             {
                 var errores = string.Join(" | ", ModelState.Values
-                                            .SelectMany(v => v.Errors)
-                                            .Select(e => e.ErrorMessage));
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, errores));
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage));
+
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("USUARIOSC", "DATOS_INVALIDOS");
+                notificacion.Mensaje = errores;
+
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
+            if (!ValidationHelper.IsValidEmail(usuario.Email))
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EMAIL_INVALIDO");
+                return BadRequest(ResponseFromService<object>.Failure(notificacion));
+            }
+
+            if (!ValidationHelper.IsValidPassword(usuario.Password))
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "PASSWORD_INVALIDO");
+                return BadRequest(ResponseFromService<object>.Failure(notificacion));
+            }
+
+            // Extraer datos del token: IdRol, GEMP e IdSucursal
             var idRol = User.FindFirstValue("IdRol");
             var idGemp = User.FindFirstValue("GEMP");
             var idSucursal = User.FindFirstValue("IdSucursal");
 
-            if (string.IsNullOrEmpty(idRol) || string.IsNullOrEmpty(rol) || string.IsNullOrEmpty(idGemp) || string.IsNullOrEmpty(idSucursal))
+
+            if (!Guid.TryParse(idRol, out Guid idRolGuid) ||
+                !Guid.TryParse(idGemp, out Guid idGempGuid) ||
+                !Guid.TryParse(idSucursal, out Guid idSucursalGuid))
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Faltan datos en el token."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO"); // TOKEN INCOMPLETO
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            if (!Guid.TryParse(idRol, out Guid idRolGuid) || !Guid.TryParse(idGemp, out Guid idGempGuid) || !Guid.TryParse(idSucursal, out Guid idSucursalGuid))
+            // Crear el usuario
+            var crear_usuario = await _usuarioService.AddUsuarioAsync(usuario, idRolGuid, User.FindFirstValue(ClaimTypes.Role), idGempGuid, idSucursalGuid);
+
+            if (crear_usuario.Toast != "success" && crear_usuario.Toast != "info")
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Los valores de GUID no son válidos."));
+                return BadRequest(crear_usuario);
             }
-
-            var (mensaje, idUsuario) = await _usuarioService.AddUsuarioAsync(usuario, idRolGuid, rol, idGempGuid, idSucursalGuid);
-
-            if (idUsuario == Guid.Empty)
-            {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, mensaje));
-            }
-
-            var responseData = new { Mensaje = mensaje, IdUsuario = idUsuario };
-            return Ok(ResponseFromService<object>.Success(responseData, "Usuario creado con éxito."));
+            return Ok(crear_usuario);
         }
 
         [HttpPut("actualizar")]
         public async Task<IActionResult> UpdateUsuario([FromBody] Usuario usuario)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.UsuariosController.EndpointRolesUsuariosController["UpdateUsuario"].Contains(rol))
+            if (!HasPermission("UpdateUsuario"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
-            if (usuario == null)
+
+            if (!ModelState.IsValid)
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Datos inválidos."));
+                var errores = string.Join(" | ", ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage));
+
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                notificacion.Mensaje = errores;
+
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
+            if (!ValidationHelper.IsValidEmail(usuario.Email))
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EMAIL_INVALIDO");
+                return BadRequest(ResponseFromService<object>.Failure(notificacion));
+            }
+
+            if (!string.IsNullOrEmpty(usuario.Password) && !ValidationHelper.IsValidPassword(usuario.Password))
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "PASSWORD_INVALIDO");
+                return BadRequest(ResponseFromService<object>.Failure(notificacion));
+            }
+            
 
             var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
-
             if (!Guid.TryParse(idUsuarioSolicitante, out var parsedIdUsuarioSolicitante))
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Id del usuario solicitante no válido."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            var (mensaje, exito) = await _usuarioService.UpdateUsuarioAsync(usuario, parsedIdUsuarioSolicitante);
+            var actualizar_usuario = await _usuarioService.UpdateUsuarioAsync(usuario, parsedIdUsuarioSolicitante);
 
-            if (!exito)
+            if (actualizar_usuario.Toast != "success" && actualizar_usuario.Toast != "info")
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, mensaje));
+                return BadRequest(actualizar_usuario);
             }
 
-            return Ok(ResponseFromService<string>.Success(null, mensaje));
+            return Ok(actualizar_usuario);
         }
 
         [HttpGet("gemp/{idGEMP}")]
-        public async Task<ActionResult<IEnumerable<RequestUsuario>>> GetUsuariosByGEMP(Guid idGEMP)
+        public async Task<IActionResult> GetUsuariosByGEMP(Guid idGEMP)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.UsuariosController.EndpointRolesUsuariosController["GetUsuariosByGEMP"].Contains(rol))
+            if (!HasPermission("GetUsuariosByGEMP"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
-            try
-            {
-                // Llamar al servicio para obtener los usuarios
-                var usuarios = await _usuarioService.GetUsuariosByGEMPAsync(idGEMP);
 
-                // Verificar si no se encontraron resultados
-                if (usuarios == null || !usuarios.Any())
-                {
-                    return NotFound(ResponseFromService<IEnumerable<RequestUsuario>>.Failure(HttpStatusCode.NotFound, "No se encontraron usuarios para el GEMP especificado."));
-                }
+            var usuarios = await _usuarioService.GetUsuariosByGEMPAsync(idGEMP);
 
-                return Ok(ResponseFromService<IEnumerable<RequestUsuario>>.Success(usuarios, "Usuarios obtenidos con éxito."));
-            }
-            catch (ArgumentException ex)
+            if (usuarios.Toast != "success" && usuarios.Toast != "info")
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, ex.Message));
+                return BadRequest(usuarios);
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Error interno del servidor."));
-            }
+
+            return Ok(usuarios);
         }
 
         [HttpGet("sucursal/{idSucursal}")]
-        public async Task<ActionResult<IEnumerable<RequestUsuario>>> GetUsuariosBySucursal(Guid idSucursal)
+        public async Task<IActionResult> GetUsuariosBySucursal(Guid idSucursal)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.UsuariosController.EndpointRolesUsuariosController["GetUsuariosBySucursal"].Contains(rol))
+            if (!HasPermission("GetUsuariosBySucursal"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
-            try
-            {
-                // Llamar al servicio para obtener los usuarios
-                var usuarios = await _usuarioService.GetUsuariosBySucursalAsync(idSucursal);
 
-                // Verificar si no se encontraron resultados
-                if (usuarios == null || !usuarios.Any())
-                {
-                    return NotFound(ResponseFromService<IEnumerable<RequestUsuario>>.Failure(HttpStatusCode.NotFound, "No se encontraron usuarios para la sucursal especificada."));
-                }
+            var usuarios = await _usuarioService.GetUsuariosBySucursalAsync(idSucursal);
 
-                return Ok(ResponseFromService<IEnumerable<RequestUsuario>>.Success(usuarios, "Usuarios obtenidos con éxito."));
-            }
-            catch (ArgumentException ex)
+            if (usuarios.Toast != "success" && usuarios.Toast != "info")
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, ex.Message));
+                return BadRequest(usuarios);
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, "Error interno del servidor."));
-            }
+
+            return Ok(usuarios);
         }
+
 
         [HttpPost("obtener-usuarios")]
         public async Task<IActionResult> ObtenerUsuarios()
         {
+            if (!HasPermission("ObtenerUsuarios"))
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
+            }
+
             var idUsuario = User.FindFirstValue("IdUsuario");
             var idRol = User.FindFirstValue("IdRol");
 
-            if (Guid.TryParse(idUsuario, out var parsedIdUsuario) && Guid.TryParse(idRol, out var parsedIdRol))
+            if (!Guid.TryParse(idUsuario, out var parsedIdUsuario) || !Guid.TryParse(idRol, out var parsedIdRol))
             {
-                var usuarios = await _usuarioService.ObtenerUsuariosPorIdUsuarioYRolAsync(parsedIdUsuario, parsedIdRol);
-
-                return Ok(ResponseFromService<IEnumerable<UsuarioDetalle>>.Success(usuarios ?? new List<UsuarioDetalle>(), usuarios == null || !usuarios.Any() ? "No se encontraron usuarios." : ""));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "No se pudo obtener el IdUsuario o el IdRol del token."));
+            var usuarios = await _usuarioService.ObtenerUsuariosPorIdUsuarioYRolAsync(parsedIdUsuario, parsedIdRol);
+            return (usuarios.Toast == "success" || usuarios.Toast == "info") ? Ok(usuarios) : BadRequest(usuarios);
         }
 
         [HttpPost("eliminar-usuario/{idUsuario}")]
         public async Task<IActionResult> EliminarUsuario(Guid idUsuario)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.UsuariosController.EndpointRolesUsuariosController["EliminarUsuario"].Contains(rol))
+            if (!HasPermission("EliminarUsuario"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
-            var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
 
+            var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
             if (!Guid.TryParse(idUsuarioSolicitante, out var parsedIdUsuarioSolicitante))
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Id del usuario solicitante no válido."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            var (mensaje, exito) = await _usuarioService.InactivarUsuarioAsync(idUsuario, parsedIdUsuarioSolicitante);
-
-            if (!exito)
-            {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, mensaje));
-            }
-
-            return Ok(ResponseFromService<string>.Success(null, mensaje));
+            var resultado = await _usuarioService.InactivarUsuarioAsync(idUsuario, parsedIdUsuarioSolicitante);
+            return (resultado.Toast == "success" || resultado.Toast == "info") ? Ok(resultado) : BadRequest(resultado);
         }
 
         [HttpPost("cambiar-password")]
@@ -200,117 +209,136 @@ namespace RMD.Controllers.Usuarios
         {
             if (request == null || string.IsNullOrEmpty(request.NuevaPassword) || string.IsNullOrEmpty(request.ConfirmacionPassword))
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Datos inválidos."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
+            }
+
+            if (!ValidationHelper.IsValidPassword(request.NuevaPassword))
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "PASSWORD_INVALIDO");
+                return BadRequest(ResponseFromService<object>.Failure(notificacion));
             }
 
             if (request.NuevaPassword != request.ConfirmacionPassword)
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Las contraseñas no coinciden."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("USUARIOSC", "PASSWORD_NO_COINCIDE");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
             var idUsuario = User.FindFirstValue("IdUsuario");
-
             if (!Guid.TryParse(idUsuario, out var parsedIdUsuario))
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Id del usuario no válido."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            var (mensaje, exito) = await _usuarioService.CambiarPasswordAsync(parsedIdUsuario, request.NuevaPassword);
-
-            if (!exito)
-            {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, mensaje));
-            }
-
-            return Ok(ResponseFromService<string>.Success(null, mensaje));
+            var resultado = await _usuarioService.CambiarPasswordAsync(parsedIdUsuario, request.NuevaPassword);
+            return (resultado.Toast == "success" || resultado.Toast == "info") ? Ok(resultado) : BadRequest(resultado);
         }
 
         [HttpPost("imagen-firma")]
         public async Task<IActionResult> CrearActualizarImagenFirma([FromBody] UsuarioImagenRequest request)
         {
+            if (!HasPermission("CrearActualizarImagenFirma"))
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
+            }
+
             if (request == null)
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Datos inválidos."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            var idUsuario = User.FindFirstValue("IdUsuario");
-            if (!Guid.TryParse(idUsuario, out var parsedIdUsuario))
-            {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "IdUsuario no válido en el token."));
-            }
-
-            // Establecer el IdUsuario desde el token
-            request.IdUsuario = parsedIdUsuario;
-
-            var mensaje = await _usuarioService.CrearActualizarImagenFirmaAsync(request);
-
-            return Ok(ResponseFromService<string>.Success(mensaje, "Operación realizada con éxito."));
+            var resultado = await _usuarioService.CrearActualizarImagenFirmaAsync(request);
+            return (resultado.Toast == "success" || resultado.Toast == "info") ? Ok(resultado) : BadRequest(resultado);
         }
-
 
         [HttpGet("firma")]
         public async Task<IActionResult> ObtenerFirma()
         {
+            if (!HasPermission("ObtenerFirma"))
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
+            }
+
             var idUsuario = User.FindFirstValue("IdUsuario");
             if (!Guid.TryParse(idUsuario, out var parsedIdUsuario))
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "IdUsuario no válido en el token."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            var firma = await _usuarioService.ObtenerFirmaPorIdUsuarioAsync(parsedIdUsuario);
-            if (string.IsNullOrEmpty(firma))
-            {
-                return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "Firma no encontrada."));
-            }
-
-            return Ok(ResponseFromService<string>.Success(firma, "Firma obtenida con éxito."));
+            var resultado = await _usuarioService.ObtenerFirmaPorIdUsuarioAsync(parsedIdUsuario);
+            return (resultado.Toast == "success" || resultado.Toast == "info") ? Ok(resultado) : BadRequest(resultado);
         }
-
 
         [HttpDelete("firma")]
         public async Task<IActionResult> EliminarFirma()
         {
+            if (!HasPermission("EliminarFirma"))
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
+            }
+
             var idUsuario = User.FindFirstValue("IdUsuario");
             if (!Guid.TryParse(idUsuario, out var parsedIdUsuario))
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "IdUsuario no válido en el token."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            var mensaje = await _usuarioService.EliminarFirmaAsync(parsedIdUsuario);
-            return Ok(ResponseFromService<string>.Success(mensaje, "Firma eliminada con éxito."));
+            var resultado = await _usuarioService.EliminarFirmaAsync(parsedIdUsuario);
+            return (resultado.Toast == "success" || resultado.Toast == "info") ? Ok(resultado) : BadRequest(resultado);
         }
 
         [HttpGet("imagen")]
         public async Task<IActionResult> ObtenerImagen()
         {
+            if (!HasPermission("ObtenerImagen"))
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
+            }
+
             var idUsuario = User.FindFirstValue("IdUsuario");
             if (!Guid.TryParse(idUsuario, out var parsedIdUsuario))
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "IdUsuario no válido en el token."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            var imagen = await _usuarioService.ObtenerImagenPorIdUsuarioAsync(parsedIdUsuario);
-            if (string.IsNullOrEmpty(imagen))
-            {
-                return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "Imagen no encontrada."));
-            }
-
-            return Ok(ResponseFromService<string>.Success(imagen, "Imagen obtenida con éxito."));
+            var resultado = await _usuarioService.ObtenerImagenPorIdUsuarioAsync(parsedIdUsuario);
+            return (resultado.Toast == "success" || resultado.Toast == "info") ? Ok(resultado) : BadRequest(resultado);
         }
 
         [HttpDelete("imagen")]
         public async Task<IActionResult> EliminarImagen()
         {
+            if (!HasPermission("EliminarImagen"))
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
+            }
+
             var idUsuario = User.FindFirstValue("IdUsuario");
             if (!Guid.TryParse(idUsuario, out var parsedIdUsuario))
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "IdUsuario no válido en el token."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            var mensaje = await _usuarioService.EliminarImagenAsync(parsedIdUsuario);
-            return Ok(ResponseFromService<string>.Success(mensaje, "Imagen eliminada con éxito."));
+            var resultado = await _usuarioService.EliminarImagenAsync(parsedIdUsuario);
+            return (resultado.Toast == "success" || resultado.Toast == "info") ? Ok(resultado) : BadRequest(resultado);
         }
 
-
+        private bool HasPermission(string endpointName)
+        {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            return RolesPermissions.UsuariosController.EndpointRolesUsuariosController[endpointName].Contains(rol);
+        }
     }
 }

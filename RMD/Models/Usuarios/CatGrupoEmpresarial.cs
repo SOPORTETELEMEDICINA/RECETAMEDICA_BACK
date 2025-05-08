@@ -19,5 +19,18 @@ namespace RMD.Models.Usuarios
         /// Logo en formato Base64.
         /// </summary>
         public string? LogoBase64 { get; set; }
+
+        public string Abreviatura { get; set; } = string.Empty;
+        public static CatGrupoEmpresarial FromDataReader(SqlDataReader reader)
+        {
+            return new CatGrupoEmpresarial
+            {
+                IdGEMP = reader.GetGuid(reader.GetOrdinal("IdGEMP")),
+                Nombre = reader["Nombre"] as string ?? string.Empty,
+                LogoBase64 = reader["LogoBase64"] as string,
+                Abreviatura = reader["Abreviatura"] as string ?? string.Empty
+            };
+        }
     }
+
 }

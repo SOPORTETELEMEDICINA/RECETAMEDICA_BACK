@@ -1,4 +1,4 @@
-﻿using RMD.Extensions;
+﻿using RMD.Interface.Notificaciones;
 using RMD.Interface.Usuarios;
 using RMD.Models.Responses;
 using RMD.Models.Usuarios;
@@ -9,130 +9,105 @@ namespace RMD.Controllers.Usuarios
     [ApiController]
     [Authorize]
     [ServiceFilter(typeof(ValidateTokenFilter))]
-    public class CatGrupoEmpresarialController(ICatGrupoEmpresarialService grupoEmpresarialService) : ControllerBase
+    public class CatGrupoEmpresarialController : ControllerBase
     {
-        private readonly ICatGrupoEmpresarialService _grupoEmpresarialService = grupoEmpresarialService;
+        private readonly ICatGrupoEmpresarialService _grupoEmpresarialService;
+        private readonly ICatalogoNotificacionService _catalogoNotificacionService;
 
-        /// <summary>
-        /// Gets all business groups.
-        /// </summary>
-        /// <returns>A list of business groups.</returns>
-        [HttpGet("GetAllGrupoEmpresarial")]
-        public async Task<IActionResult> GetAllGrupoEmpresarial()
+        public CatGrupoEmpresarialController(
+            ICatGrupoEmpresarialService grupoEmpresarialService,
+            ICatalogoNotificacionService catalogoNotificacionService)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.CatGrupoEmpresarialController.EndpointRolesCatGrupoEmpresarialController["GetAllGrupoEmpresarial"].Contains(rol))
-            {
-                return Forbid("No tiene permisos para acceder a este recurso.");
-            }
-
-            try
-            {
-                var result = await _grupoEmpresarialService.GetAllGrupoEmpresarial();
-                var response = ResponseFromService<IEnumerable<CatGrupoEmpresarial>>.Success(result, "Lista de grupos empresariales obtenida con éxito.");
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+            _grupoEmpresarialService = grupoEmpresarialService;
+            _catalogoNotificacionService = catalogoNotificacionService;
         }
 
         /// <summary>
-        /// Gets a business group by its ID.
+        /// Obtiene todos los grupos empresariales.
         /// </summary>
-        /// <param name="id">The ID of the business group.</param>
-        /// <returns>The requested business group.</returns>
+        [HttpGet("GetAllGrupoEmpresarial")]
+        public async Task<IActionResult> GetAllGrupoEmpresarial()
+        {
+            if (!HasPermission("GetAllGrupoEmpresarial"))
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
+            }
+
+            var result = await _grupoEmpresarialService.GetAllGrupoEmpresarialAsync();
+            return (result.Toast == "success" || result.Toast == "info") ? Ok(result) : BadRequest(result);
+        }
+
+        /// <summary>
+        /// Obtiene un grupo empresarial por su ID.
+        /// </summary>
         [HttpGet("GetGrupoEmpresarialById/{id}")]
         public async Task<IActionResult> GetGrupoEmpresarialById(Guid id)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.CatGrupoEmpresarialController.EndpointRolesCatGrupoEmpresarialController["GetGrupoEmpresarialById"].Contains(rol))
+            if (!HasPermission("GetGrupoEmpresarialById"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
             if (id == Guid.Empty)
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El Id proporcionado no es válido."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            try
-            {
-                var result = await _grupoEmpresarialService.GetGrupoEmpresarialById(id);
-                if (result == null)
-                {
-                    return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "No se encontró el grupo empresarial especificado."));
-                }
-
-                var response = ResponseFromService<CatGrupoEmpresarial>.Success(result, "Grupo empresarial obtenido con éxito.");
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+            var result = await _grupoEmpresarialService.GetGrupoEmpresarialByIdAsync(id);
+            return (result.Toast == "success" || result.Toast == "info") ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
-        /// Creates a new business group.
+        /// Crea un nuevo grupo empresarial.
         /// </summary>
-        /// <param name="grupoEmpresarial">The business group model.</param>
-        /// <returns>A message indicating the result of the operation.</returns>
         [HttpPost("CreateGrupoEmpresarial")]
         public async Task<IActionResult> CreateGrupoEmpresarial([FromBody] CatGrupoEmpresarial grupoEmpresarial)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.CatGrupoEmpresarialController.EndpointRolesCatGrupoEmpresarialController["CreateGrupoEmpresarial"].Contains(rol))
+            if (!HasPermission("CreateGrupoEmpresarial"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
             if (grupoEmpresarial == null)
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El modelo GrupoEmpresarial proporcionado no es válido."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            try
-            {
-                var result = await _grupoEmpresarialService.CreateGrupoEmpresarial(grupoEmpresarial);
-                var response = ResponseFromService<string>.Success(result, "Grupo empresarial creado con éxito.");
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+            var result = await _grupoEmpresarialService.CreateGrupoEmpresarialAsync(grupoEmpresarial);
+            return (result.Toast == "success" || result.Toast == "info") ? Ok(result) : BadRequest(result);
         }
 
         /// <summary>
-        /// Updates an existing business group.
+        /// Actualiza un grupo empresarial existente.
         /// </summary>
-        /// <param name="grupoEmpresarial">The updated business group model.</param>
-        /// <returns>A message indicating the result of the operation.</returns>
         [HttpPut("UpdateGrupoEmpresarial")]
         public async Task<IActionResult> UpdateGrupoEmpresarial([FromBody] CatGrupoEmpresarial grupoEmpresarial)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.CatGrupoEmpresarialController.EndpointRolesCatGrupoEmpresarialController["UpdateGrupoEmpresarial"].Contains(rol))
+            if (!HasPermission("UpdateGrupoEmpresarial"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
-            }
-            if (grupoEmpresarial == null)
-            {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El modelo GrupoEmpresarial proporcionado no es válido."));
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            try
+            if (grupoEmpresarial == null)
             {
-                var result = await _grupoEmpresarialService.UpdateGrupoEmpresarial(grupoEmpresarial);
-                var response = ResponseFromService<string>.Success(result, "Grupo empresarial actualizado con éxito.");
-                return Ok(response);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+
+            var result = await _grupoEmpresarialService.UpdateGrupoEmpresarialAsync(grupoEmpresarial);
+            return (result.Toast == "success" || result.Toast == "info") ? Ok(result) : BadRequest(result);
+        }
+
+        private bool HasPermission(string endpointName)
+        {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            return RolesPermissions.CatGrupoEmpresarialController.EndpointRolesCatGrupoEmpresarialController[endpointName].Contains(rol);
         }
     }
 }

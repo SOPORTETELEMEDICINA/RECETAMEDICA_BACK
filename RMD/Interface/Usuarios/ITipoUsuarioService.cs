@@ -1,12 +1,13 @@
-﻿using RMD.Models.Usuarios;
+﻿using RMD.Models.Responses;
+using RMD.Models.Usuarios;
 
 namespace RMD.Interface.Usuarios
 {
     public interface ITipoUsuarioService
     {
-        Task<IEnumerable<TipoUsuario>> GetAllTipoUsuario();
-        Task<TipoUsuario> GetTipoUsuarioById(Guid id);
-        Task<string> CreateTipoUsuario(TipoUsuario tipoUsuario);
-        Task<string> UpdateTipoUsuario(TipoUsuario tipoUsuario);
+        Task<ResponseFromService<string>> CreateTipoUsuarioAsync(TipoUsuario tipoUsuario);
+        Task<ResponseFromService<string>> UpdateTipoUsuarioAsync(TipoUsuario tipoUsuario);
+        Task<ResponseFromService<IEnumerable<TipoUsuario>>> GetAllTipoUsuarioAsync();
+        Task<ResponseFromService<TipoUsuario>> GetTipoUsuarioByIdAsync(Guid id);
     }
 }
