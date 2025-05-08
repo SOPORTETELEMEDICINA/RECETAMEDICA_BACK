@@ -1,6 +1,5 @@
-﻿using RMD.Extensions;
-using RMD.Interface.Dashborad;
-using RMD.Models.Dashboard;
+﻿using RMD.Interface.Dashboard;
+using RMD.Interface.Notificaciones;
 using RMD.Models.Responses;
 
 namespace RMD.Controllers.Dashboard
@@ -9,75 +8,91 @@ namespace RMD.Controllers.Dashboard
     [Route("api/[controller]")]
     [Authorize]
     [ServiceFilter(typeof(ValidateTokenFilter))]
-    public class DashboardController(IDashboardService dashboardService) : ControllerBase
+    public class DashboardController : ControllerBase
     {
-        private readonly IDashboardService _dashboardService = dashboardService;
+        private readonly IDashboardService _dashboardService;
+        private readonly ICatalogoNotificacionService _catalogoNotificacionService;
+
+        public DashboardController(
+            IDashboardService dashboardService,
+            ICatalogoNotificacionService catalogoNotificacionService)
+        {
+            _dashboardService = dashboardService;
+            _catalogoNotificacionService = catalogoNotificacionService;
+        }
 
         [HttpPost("sucursales-pacientes")]
         public async Task<IActionResult> GetSucursalPacientes()
         {
-            try
+            // 1) Permisos
+            if (!HasPermission("GetSucursalPacientes"))
             {
-                // Obtener información del token
-                var idGemp = Guid.Parse(User.FindFirst("GEMP")?.Value ?? Guid.Empty.ToString());
-                var idSucursal = Guid.Parse(User.FindFirst("IdSucursal")?.Value ?? Guid.Empty.ToString());
-                var idTipoUsuario = Guid.Parse(User.FindFirst("IdRol")?.Value ?? Guid.Empty.ToString());
-
-                if (idGemp == Guid.Empty || idSucursal == Guid.Empty || idTipoUsuario == Guid.Empty)
-                {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Error al obtener la información del token."));
-                }
-
-                // Obtener la información de las sucursales y los pacientes
-                var sucursalPacientes = await _dashboardService.GetSucursalesPacientesAsync(idGemp, idSucursal, idTipoUsuario);
-
-                if (sucursalPacientes == null || !sucursalPacientes.Any())
-                {
-                    return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "No se encontraron datos."));
-                }
-
-                var response = ResponseFromService<object>.Success(sucursalPacientes, "Datos obtenidos con éxito.");
-                return Ok(response);
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            catch (Exception ex)
+
+            // 2) Extraer y validar claims
+            var gempClaim = User.FindFirstValue("GEMP");
+            var sucursalClaim = User.FindFirstValue("IdSucursal");
+            var rolClaim = User.FindFirstValue("IdRol");
+            if (!Guid.TryParse(gempClaim, out var idGemp)
+                || !Guid.TryParse(sucursalClaim, out var idSucursal)
+                || !Guid.TryParse(rolClaim, out var idRol))
             {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Ocurrió un error en el servidor: {ex.Message}"));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
+
+            // 3) Llamar al service
+            var response = await _dashboardService
+                .GetSucursalesPacientesAsync(idGemp, idSucursal, idRol);
+
+            // 4) Evaluar Toast y devolver
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
         [HttpPost("GetKPIPacientesRecetas")]
         public async Task<IActionResult> GetKpiPacientesRecetas()
         {
-            try
+            // 1) Permisos
+            if (!HasPermission("GetKpiPacientesRecetas"))
             {
-                // Obtener el IdUsuario del token JWT
-                var idUsuario = User.FindFirstValue("IdUsuario");
-                var idRol = Guid.Parse(User.FindFirst("IdRol")?.Value ?? Guid.Empty.ToString());
-                if (string.IsNullOrEmpty(idUsuario))
-                {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "No se pudo obtener el IdUsuario del token."));
-                }
-
-                // Convertir a GUID
-                if (!Guid.TryParse(idUsuario, out var idUsuarioGuid))
-                {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "IdUsuario no válido."));
-                }
-
-                // Llamar al servicio para obtener la información
-                var result = await _dashboardService.GetKPIPacientesRecetas(idUsuarioGuid, idRol);
-                if (result == null || result.Count == 0)
-                {
-                    return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "No se encontraron sucursales para el médico."));
-                }
-
-                // Devolver la respuesta
-                return Ok(ResponseFromService<List<DashBoardKPIPacientesRecetas>>.Success(result, "Sucursales obtenidas con éxito."));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            catch (Exception ex)
+
+            // 2) Extraer y validar claims
+            var usuarioClaim = User.FindFirstValue("IdUsuario");
+            var rolClaim = User.FindFirstValue("IdRol");
+            if (!Guid.TryParse(usuarioClaim, out var idUsuario)
+                || !Guid.TryParse(rolClaim, out var idRol))
             {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
+
+            // 3) Llamar al service
+            var response = await _dashboardService
+                .GetKPIPacientesRecetasAsync(idUsuario, idRol);
+
+            // 4) Evaluar Toast y devolver
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
+        }
+
+        private bool HasPermission(string endpointName)
+        {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            return RolesPermissions.DashBoardController
+                       .EndpointRolesDashBoardController[endpointName]
+                   .Contains(rol);
         }
     }
 }

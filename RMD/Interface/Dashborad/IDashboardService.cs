@@ -1,11 +1,28 @@
 ﻿using RMD.Models.Dashboard;
+using RMD.Models.Responses;
 
-namespace RMD.Interface.Dashborad
+namespace RMD.Interface.Dashboard
 {
     public interface IDashboardService
     {
-        Task<IEnumerable<SucursalPacientes>> GetSucursalesPacientesAsync(Guid idGemp, Guid idSucursal, Guid idTipoUsuario);
+        /// <summary>
+        /// Obtiene el conteo de pacientes por sucursal.
+        /// </summary>
+        /// <param name="idGEMP">Identificador del grupo empresarial.</param>
+        /// <param name="idSucursal">Identificador de la sucursal.</param>
+        /// <param name="idTipoUsuario">Identificador del tipo de usuario.</param>
+        Task<ResponseFromService<IEnumerable<SucursalPacientes>>> GetSucursalesPacientesAsync(
+            Guid idGEMP,
+            Guid idSucursal,
+            Guid idTipoUsuario);
 
-        Task<List<DashBoardKPIPacientesRecetas>> GetKPIPacientesRecetas(Guid idUsuario, Guid idRol);
+        /// <summary>
+        /// Obtiene los KPIs de pacientes y recetas para un usuario dado.
+        /// </summary>
+        /// <param name="idUsuario">Identificador del usuario (médico).</param>
+        /// <param name="idTipoUsuario">Identificador del tipo de usuario.</param>
+        Task<ResponseFromService<IEnumerable<DashBoardKPIPacientesRecetas>>> GetKPIPacientesRecetasAsync(
+            Guid idUsuario,
+            Guid idTipoUsuario);
     }
 }

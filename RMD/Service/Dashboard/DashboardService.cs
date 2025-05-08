@@ -1,47 +1,146 @@
 ﻿using RMD.Data;
-using RMD.Interface.Dashborad;
+using RMD.Interface.Dashboard;
+using RMD.Interface.Notificaciones;
 using RMD.Models.Dashboard;
+using RMD.Models.Responses;
 
 namespace RMD.Service.Dashboard
 {
     public class DashboardService : IDashboardService
     {
         private readonly DashboardDbContext _context;
+        private readonly ICatalogoNotificacionService _catalogoNotificacionService;
 
-        public DashboardService(DashboardDbContext context)
+        public DashboardService(
+            DashboardDbContext context,
+            ICatalogoNotificacionService catalogoNotificacionService)
         {
             _context = context;
+            _catalogoNotificacionService = catalogoNotificacionService;
         }
 
-        public async Task<IEnumerable<SucursalPacientes>> GetSucursalesPacientesAsync(Guid idGemp, Guid idSucursal, Guid idTipoUsuario)
+        public async Task<ResponseFromService<IEnumerable<SucursalPacientes>>> GetSucursalesPacientesAsync(
+            Guid idGemp,
+            Guid idSucursal,
+            Guid idTipoUsuario)
         {
-            var sucursalesPacientes = new List<SucursalPacientes>();
-
-            var parameters = new[]
+            try
             {
-                new SqlParameter("@IdGEMP", idGemp),
-                new SqlParameter("@IdSucursal", idSucursal),
-                new SqlParameter("@IdTipoUsuario", idTipoUsuario)
-            };
+                // 1) Abrir conexión y preparar comando
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
 
-            sucursalesPacientes = await _context.SucursalPacientes
-                .FromSqlRaw("EXEC Dashboard_CountPacientesBySucursal @IdGEMP, @IdSucursal, @IdTipoUsuario", parameters)
-                .ToListAsync();
+                using var command = new SqlCommand("Dashboard_CountPacientesBySucursal", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.AddWithValue("@IdGEMP", idGemp);
+                command.Parameters.AddWithValue("@IdSucursal", idSucursal);
+                command.Parameters.AddWithValue("@IdTipoUsuario", idTipoUsuario);
 
-            return sucursalesPacientes;
+                // 2) Ejecutar y leer primer conjunto: Código de notificación
+                using var reader = await command.ExecuteReaderAsync();
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                {
+                    return ResponseFromService<IEnumerable<SucursalPacientes>>.Failure(notificacion);
+                }
+
+                // 3) Leer segundo conjunto: resultados de sucursales + conteo
+                var lista = new List<SucursalPacientes>();
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        lista.Add(new SucursalPacientes
+                        {
+                            IdGEMP = reader.GetGuid(reader.GetOrdinal("IdGEMP")),
+                            IdSucursal = reader.GetGuid(reader.GetOrdinal("IdSucursal")),
+                            NombreSucursal = reader.GetString(reader.GetOrdinal("NombreSucursal")),
+                            TotalPacientes = reader.GetInt32(reader.GetOrdinal("TotalPacientes"))
+                        });
+                    }
+                }
+
+                return ResponseFromService<IEnumerable<SucursalPacientes>>
+                    .Success(lista, notificacion);
+            }
+            catch (SqlException sqlEx)
+            {
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<SucursalPacientes>>
+                    .Exeption(sqlEx, error);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<SucursalPacientes>>
+                    .Exeption(ex, error);
+            }
         }
 
-        public async Task<List<DashBoardKPIPacientesRecetas>> GetKPIPacientesRecetas(Guid idUsuario, Guid idRol)
+
+        public async Task<ResponseFromService<IEnumerable<DashBoardKPIPacientesRecetas>>> GetKPIPacientesRecetasAsync(
+     Guid idUsuario,
+     Guid idRol)
         {
-            var idUsuarioParam = new SqlParameter("@IdUsuario", idUsuario);
-            var tipoUsuarioParam = new SqlParameter("@IdTipoUsuario", idRol);
+            try
+            {
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
 
-            var result = await _context.MedicoKPIPacientesRecetas
-                .FromSqlRaw("EXEC Dashboard_GetPacientesRecetasByIdUsuario @IdUsuario, @IdTipoUsuario", idUsuarioParam, tipoUsuarioParam)
-                .AsNoTracking()
-                .ToListAsync();
+                using var command = new SqlCommand("Dashboard_GetPacientesRecetasByIdUsuario", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.AddWithValue("@IdUsuario", idUsuario);
+                command.Parameters.AddWithValue("@IdTipoUsuario", idRol);
 
-            return result;
+                using var reader = await command.ExecuteReaderAsync();
+
+                // 1) Leer código de notificación
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<IEnumerable<DashBoardKPIPacientesRecetas>>.Failure(notificacion);
+
+                // 2) Leer segundo conjunto: KPI de pacientes y recetas
+                var lista = new List<DashBoardKPIPacientesRecetas>();
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        lista.Add(new DashBoardKPIPacientesRecetas
+                        {
+                            IdGEMP = reader.GetGuid(reader.GetOrdinal("IdGEMP")),
+                            IdSucursal = reader.GetGuid(reader.GetOrdinal("IdSucursal")),
+                            CountPacientes = reader.GetInt32(reader.GetOrdinal("CountPacientes")),
+                            CountRecetas = reader.GetInt32(reader.GetOrdinal("CountRecetas"))
+                        });
+                    }
+                }
+
+                return ResponseFromService<IEnumerable<DashBoardKPIPacientesRecetas>>
+                    .Success(lista, notificacion);
+            }
+            catch (SqlException sqlEx)
+            {
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<DashBoardKPIPacientesRecetas>>
+                    .Exeption(sqlEx, error);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<DashBoardKPIPacientesRecetas>>
+                    .Exeption(ex, error);
+            }
         }
 
     }
