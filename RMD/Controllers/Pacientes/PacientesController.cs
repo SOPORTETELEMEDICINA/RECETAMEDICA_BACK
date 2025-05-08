@@ -1,4 +1,4 @@
-﻿using RMD.Extensions;
+﻿using RMD.Interface.Notificaciones;
 using RMD.Interface.Pacientes;
 using RMD.Models.Pacientes;
 using RMD.Models.Responses;
@@ -9,305 +9,253 @@ namespace RMD.Controllers.Pacientes
     [ApiController]
     [Authorize]
     [ServiceFilter(typeof(ValidateTokenFilter))]
-    public class PacientesController(IPacienteService pacienteService, IHttpContextAccessor httpContextAccessor) : ControllerBase
+    public class PacientesController : ControllerBase
     {
-        private readonly IPacienteService _pacienteService = pacienteService;
-        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IPacienteService _pacienteService;
+        private readonly ICatalogoNotificacionService _catalogoNotificacionService;
+
+        public PacientesController(
+            IPacienteService pacienteService,
+            ICatalogoNotificacionService catalogoNotificacionService)
+        {
+            _pacienteService = pacienteService;
+            _catalogoNotificacionService = catalogoNotificacionService;
+        }
 
         [HttpGet("ByIdUsuario/{idUsuario}")]
         public async Task<IActionResult> GetPacienteByIdUsuario(Guid idUsuario)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["GetPacienteByIdUsuario"].Contains(rol))
+            if (!HasPermission("GetPacienteByIdUsuario"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            try
+
+            if (idUsuario == Guid.Empty)
             {
-                var paciente = await _pacienteService.GetPacienteByIdUsuarioAsync(idUsuario);
-                if (paciente == null)
-                {
-                    return Ok(ResponseFromService<PacienteConsultaRequest>.Success(new PacienteConsultaRequest(), "No se encontró el paciente con el ID de usuario especificado."));
-                }
-                var response = ResponseFromService<PacienteConsultaRequest>.Success(paciente, "Paciente obtenido con éxito.");
-                return Ok(response);
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+
+            var response = await _pacienteService.GetPacienteByIdUsuarioAsync(idUsuario);
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
         [HttpGet("ByIdPaciente/{idPaciente}")]
         public async Task<IActionResult> GetPacienteByIdPaciente(Guid idPaciente)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["GetPacienteByIdPaciente"].Contains(rol))
+            if (!HasPermission("GetPacienteByIdPaciente"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            try
+
+            if (idPaciente == Guid.Empty)
             {
-                var paciente = await _pacienteService.GetPacienteByIdPacienteAsync(idPaciente);
-                if (paciente == null)
-                {
-                    return Ok(ResponseFromService<PacienteConsultaRequest>.Success(new PacienteConsultaRequest(), "No se encontró el paciente con el ID de paciente especificado."));
-                }
-                var response = ResponseFromService<PacienteConsultaRequest>.Success(paciente, "Paciente obtenido con éxito.");
-                return Ok(response);
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+
+            var response = await _pacienteService.GetPacienteByIdPacienteAsync(idPaciente);
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
-
-
-        //[HttpGet("ByName/{nombreBusqueda}")]
-        //[Authorize]
-        //[ServiceFilter(typeof(ValidateTokenFilter))]
-        //public async Task<IActionResult> GetPacienteByName(string nombreBusqueda)
-        //{
-        //    var rol = User.FindFirstValue(ClaimTypes.Role);
-        //    if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["GetPacienteByName"].Contains(rol))
-        //    {
-        //        return Forbid("No tiene permisos para acceder a este recurso.");
-        //    }
-        //    try
-        //    {
-        //        var pacientes = await _pacienteService.GetPacienteByNameAsync(nombreBusqueda);
-        //        if (pacientes == null || !pacientes.Any())
-        //        {
-        //            return Ok(ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(new List<PacienteConsultaRequest>(), "No se encontraron pacientes con el nombre especificado."));
-        //        }
-        //        var response = ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(pacientes, "Pacientes obtenidos con éxito.");
-        //        return Ok(response);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-        //    }
-        //}
 
         [HttpGet("BySucursal/{idSucursal}")]
         public async Task<IActionResult> GetPacientesBySucursal(Guid idSucursal)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["GetPacientesBySucursal"].Contains(rol))
+            if (!HasPermission("GetPacientesBySucursal"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            try
+
+            if (idSucursal == Guid.Empty)
             {
-                var pacientes = await _pacienteService.GetPacientesBySucursalAsync(idSucursal);
-                if (pacientes == null || !pacientes.Any())
-                {
-                    return Ok(ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(new List<PacienteConsultaRequest>(), "No se encontraron pacientes para la sucursal especificada."));
-                }
-                var response = ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(pacientes, "Pacientes obtenidos con éxito.");
-                return Ok(response);
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+
+            var response = await _pacienteService.GetPacientesBySucursalAsync(idSucursal);
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
         [HttpGet("ByGEMP/{idGEMP}")]
         public async Task<IActionResult> GetPacientesByGEMP(Guid idGEMP)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["GetPacientesByGEMP"].Contains(rol))
+            if (!HasPermission("GetPacientesByGEMP"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            try
+
+            if (idGEMP == Guid.Empty)
             {
-                var pacientes = await _pacienteService.GetPacientesByGEMPAsync(idGEMP);
-                if (pacientes == null || !pacientes.Any())
-                {
-                    return Ok(ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(new List<PacienteConsultaRequest>(), "No se encontraron pacientes para el grupo empresarial especificado."));
-                }
-                var response = ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(pacientes, "Pacientes obtenidos con éxito.");
-                return Ok(response);
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+
+            var response = await _pacienteService.GetPacientesByGEMPAsync(idGEMP);
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
         [HttpGet("ByMedico/{idMedico}")]
         public async Task<IActionResult> GetPacientesByMedico(Guid idMedico)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["GetPacientesByMedico"].Contains(rol))
+            if (!HasPermission("GetPacientesByMedico"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            try
+
+            if (idMedico == Guid.Empty)
             {
-                var pacientes = await _pacienteService.GetPacientesByMedicoAsync(idMedico);
-                if (pacientes == null || !pacientes.Any())
-                {
-                    return Ok(ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(new List<PacienteConsultaRequest>(), "No se encontraron pacientes para el médico especificado."));
-                }
-                var response = ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(pacientes, "Pacientes obtenidos con éxito.");
-                return Ok(response);
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+
+            var response = await _pacienteService.GetPacientesByMedicoAsync(idMedico);
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
-
         [HttpPost]
-        public async Task<IActionResult> CreatePaciente([FromBody] PacienteCreateConListas pacienteRequest)
+        public async Task<IActionResult> CreatePaciente([FromBody] PacienteCreateConListas model)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["CreatePaciente"].Contains(rol))
+            if (!HasPermission("CreatePaciente"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            try
-            {                
-                var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
-                if (string.IsNullOrEmpty(idUsuarioSolicitante))
-                {
-                    return BadRequest("No se pudo obtener el IdUsuario del token.");
-                }
 
-                if (!Guid.TryParse(idUsuarioSolicitante, out var idUsuarioSolicitanteGuid))
-                {
-                    return BadRequest("IdUsuario no válido.");
-                }
-
-                // Llamar al servicio para crear el paciente
-                var result = await _pacienteService.CreatePacienteAsync(pacienteRequest, idUsuarioSolicitanteGuid);
-                if (!result)
-                {
-                    return BadRequest("Error al crear el paciente.");
-                }
-
-                return Ok("Paciente creado con éxito.");
-            }
-            catch (Exception ex)
+            if (!ModelState.IsValid || model == null)
             {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
+                var errores = string.Join(" | ", ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage));
+
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                notif.Mensaje = errores;
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
+
+            var idUsuarioClaim = User.FindFirstValue("IdUsuario");
+            if (!Guid.TryParse(idUsuarioClaim, out var idUsuarioSolicitante))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            var response = await _pacienteService.CreatePacienteAsync(model, idUsuarioSolicitante);
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdatePaciente([FromBody] PacienteConListas pacienteRequest)
+        public async Task<IActionResult> UpdatePaciente([FromBody] PacienteConListas model)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["UpdatePaciente"].Contains(rol))
+            if (!HasPermission("UpdatePaciente"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            try
+
+            if (!ModelState.IsValid || model == null)
             {
-                // Obtener el IdUsuario solicitante del token JWT
-                var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
-                if (string.IsNullOrEmpty(idUsuarioSolicitante))
-                {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Token Invalido."));
-                }
+                var errores = string.Join(" | ", ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage));
 
-                // Convertir a GUID
-                if (!Guid.TryParse(idUsuarioSolicitante, out var idUsuarioSolicitanteGuid))
-                {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "IdUsuario no válido."));
-                }
-
-                // Asignar el ID del paciente que viene en la URL
-               // pacienteRequest.IdPaciente = id;
-
-                // Llamar al servicio para actualizar el paciente
-                var result = await _pacienteService.UpdatePacienteAsync(pacienteRequest, idUsuarioSolicitanteGuid);
-                if (!result)
-                {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Error al actualizar el paciente."));
-                }
-
-                var response = ResponseFromService<string>.Success(null, "Paciente actualizado con éxito.");
-                return Ok(response);
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                notif.Mensaje = errores;
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            catch (Exception ex)
+
+            var idUsuarioClaim = User.FindFirstValue("IdUsuario");
+            if (!Guid.TryParse(idUsuarioClaim, out var idUsuarioSolicitante))
             {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
+
+            var response = await _pacienteService.UpdatePacienteAsync(model, idUsuarioSolicitante);
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
         [HttpGet("entidades-federativas")]
         public async Task<IActionResult> GetEntidadesFederativas()
         {
-            try
-            {
-                var entidades = await _pacienteService.GetEntidadesFederativasAsync();
-
-                if (entidades == null || !entidades.Any())
-                {
-                    return Ok(ResponseFromService<IEnumerable<EntidadNacimiento>>.Success(new List<EntidadNacimiento>(), "No se encontraron entidades federativas."));
-                }
-
-                return Ok(ResponseFromService<IEnumerable<EntidadNacimiento>>.Success(entidades, "Entidades federativas obtenidas con éxito."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+            // No hay permiso específico, sólo devolvemos el catálogo
+            var response = await _pacienteService.GetEntidadesFederativasAsync();
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
         [HttpDelete("{idPaciente}")]
         public async Task<IActionResult> EliminarPaciente(Guid idPaciente)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.PacientesController.EndpointRolesPacientesController["EliminarPaciente"].Contains(rol))
+            if (!HasPermission("EliminarPaciente"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            try
-            {              
 
-                var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
-                if (string.IsNullOrEmpty(idUsuarioSolicitante))
-                {
-                    return BadRequest("No se pudo obtener el IdUsuario del token.");
-                }
-
-                if (!Guid.TryParse(idUsuarioSolicitante, out var idUsuarioSolicitanteGuid))
-                {
-                    return BadRequest("IdUsuario no válido.");
-                }
-
-                var result = await _pacienteService.EliminarPacienteAsync(idPaciente, idUsuarioSolicitanteGuid);
-                if (!result)
-                {
-                    return BadRequest("Error al eliminar el paciente.");
-                }
-
-                return Ok("Paciente eliminado con éxito.");
-            }
-            catch (Exception ex)
+            if (idPaciente == Guid.Empty)
             {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
+
+            var idUsuarioClaim = User.FindFirstValue("IdUsuario");
+            if (!Guid.TryParse(idUsuarioClaim, out var idUsuarioSolicitante))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            var response = await _pacienteService.EliminarPacienteAsync(idPaciente, idUsuarioSolicitante);
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
-
-        //private bool IsUserAuthorized()
-        //{
-        //    var user = _httpContextAccessor.HttpContext?.User;
-        //    var roleIdClaim = user?.FindFirst("IdRol")?.Value?.ToUpper();  // Convertir a mayúsculas
-
-        //    // Validar si el IdRol del token es uno de los permitidos
-        //    return roleIdClaim == "7905213C-B0CB-4D42-A997-20094EF41F9C" ||
-        //           roleIdClaim == "DE5DFDDC-F6CC-4B7F-B805-286732501E57";
-        //}
-
-
-
+        private bool HasPermission(string endpointName)
+        {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            return RolesPermissions.PacientesController
+                       .EndpointRolesPacientesController[endpointName]
+                   .Contains(rol);
+        }
     }
 }

@@ -1,18 +1,21 @@
 ﻿using RMD.Models.Medicos;
+using RMD.Models.Responses;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace RMD.Interface.Medicos
 {
     public interface IMedicoService
     {
-        Task<MedicoConsultaRequest> GetMedicoByIdUsuarioAsync(Guid idUsuario);
-        Task<bool> CreateMedicoAsync(MedicoCreate medico, Guid idRol);
-        Task<string> UpdateMedicoAsync(Medico medico, Guid idUsuarioSolicitante);
-        Task<IEnumerable<PacientePorSucursalListModel>> GetPacientesBySucursalListAsync(Guid idUsuario);
-        Task<bool> DeleteMedicoAsync(Guid idMedico, Guid idUsuarioSolicitante);
-        Task<IEnumerable<MedicoConsultaRequest>> GetMedicoByNameAsync(string nombreBusqueda);
-        Task<IEnumerable<MedicoConsultaRequest>> GetMedicosBySucursalAsync(Guid idSucursal);
-        Task<IEnumerable<MedicoConsultaRequest>> GetMedicosByGEMPAsync(Guid idGEMP);
-        Task<MedicoConsultaRequest> GetMedicoByIdMedicoAsync(Guid idMedico);
-
+        Task<ResponseFromService<MedicoConsultaRequest>> GetMedicoByIdUsuarioAsync(Guid idUsuario);
+        Task<ResponseFromService<bool>> CreateMedicoAsync(MedicoCreate medico, Guid idRol);
+        Task<ResponseFromService<string>> UpdateMedicoAsync(Medico medico, Guid idUsuarioSolicitante);
+        Task<ResponseFromService<IEnumerable<PacientePorSucursalListModel>>> GetPacientesBySucursalListAsync(Guid idUsuario);
+        Task<ResponseFromService<bool>> DeleteMedicoAsync(Guid idMedico, Guid idUsuarioSolicitante);
+        Task<ResponseFromService<IEnumerable<MedicoConsultaRequest>>> GetMedicoByNameAsync(string nombreBusqueda);
+        Task<ResponseFromService<IEnumerable<MedicoConsultaRequest>>> GetMedicosBySucursalAsync(Guid idSucursal);
+        Task<ResponseFromService<IEnumerable<MedicoConsultaRequest>>> GetMedicosByGEMPAsync(Guid idGEMP);
+        Task<ResponseFromService<MedicoConsultaRequest>> GetMedicoByIdMedicoAsync(Guid idMedico);
     }
 }

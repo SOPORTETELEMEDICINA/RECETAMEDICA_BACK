@@ -1,219 +1,737 @@
-﻿using Newtonsoft.Json;
+﻿using System;
+using Newtonsoft.Json;
 using RMD.Data;
-using RMD.Extensions;
+using RMD.Interface.Notificaciones;
 using RMD.Interface.Pacientes;
 using RMD.Models.Pacientes;
-using RMD.Models.Sucursales;
+using RMD.Models.Responses;
 
 namespace RMD.Service.Pacientes
 {
-    public class PacienteService : IPacienteService
+    public class PacienteService(PacientesDbContext context,
+           ICatalogoNotificacionService catalogoNotificacionService) : IPacienteService
     {
-        private readonly PacientesDbContext _context;
+        private readonly PacientesDbContext _context = context;
+        private readonly ICatalogoNotificacionService _catalogoNotificacionService = catalogoNotificacionService;
 
-        public PacienteService(PacientesDbContext context)
-        {
-            _context = context;
-        }
-
-        // Este método devuelve un UsuarioPaciente basado en el IdUsuario
-        public async Task<PacienteConsultaRequest> GetPacienteByIdUsuarioAsync(Guid idUsuario)
+        public async Task<ResponseFromService<PacienteConsultaRequest>> GetPacienteByIdUsuarioAsync(Guid idUsuario)
         {
             try
             {
-                var idUsuarioParam = new SqlParameter("@IdUsuario", SqlDbType.UniqueIdentifier)
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("Paciente_GetPacienteByIdUsuario", connection)
                 {
-                    Value = idUsuario
+                    CommandType = CommandType.StoredProcedure
                 };
+                command.Parameters.Add(new SqlParameter("@IdUsuario", idUsuario));
 
-                var usuarioPaciente = await _context.UsuarioPacientes
-                    .FromSqlRaw("EXEC Paciente_GetPacienteByIdUsuario @IdUsuario", idUsuarioParam)
-                    .AsNoTracking()
-                    .ToListAsync();
+                using var reader = await command.ExecuteReaderAsync();
 
-                if (usuarioPaciente.Count > 0)
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<PacienteConsultaRequest>.Failure(spNotificacion);
+
+                PacienteConsultaRequest paciente = null;
+                if (await reader.NextResultAsync() && await reader.ReadAsync())
                 {
-                    var alergias = await ObtenerAlergiasPorIdsAsync(usuarioPaciente.First().Alergias);
-                    var molecules = await ObtenerMoleculesPorIdsAsync(usuarioPaciente.First().Molecules);
-                    var patologias = await ObtenerCIM10PorIdsAsync(usuarioPaciente.First().Patologias);
-
-                    var pacienteConsulta = new PacienteConsultaRequest
-                    {
-                        IdUsuario = usuarioPaciente.First().IdUsuario,
-                        IdTipoUsuario = usuarioPaciente.First().IdTipoUsuario,
-                        IdPaciente = usuarioPaciente.First().IdPaciente,
-                        IdGEMP = usuarioPaciente.First().IdGEMP,
-                        GrupoEmpresarial = usuarioPaciente.First().GrupoEmpresarial,
-                        IdSucursal = usuarioPaciente.First().IdSucursal,
-                        Sucursal = usuarioPaciente.First().Sucursal,
-                        Usr = usuarioPaciente.First().Usr,
-                        Nombres = usuarioPaciente.First().Nombres,
-                        PrimerApellido = usuarioPaciente.First().PrimerApellido,
-                        SegundoApellido = usuarioPaciente.First().SegundoApellido,
-                        FechaNacimiento = usuarioPaciente.First().FechaNacimiento,
-                        Edad = usuarioPaciente.First().Edad,
-                        IdEntidadNacimiento = usuarioPaciente.First().IdEntidadNacimiento,
-                        EntidadNacimiento = usuarioPaciente.First().EntidadNacimiento,
-                        Genero = usuarioPaciente.First().Genero,
-                        Movil = usuarioPaciente.First().Movil,
-                        Email = usuarioPaciente.First().Email,
-                        Domicilio = usuarioPaciente.First().Domicilio,
-
-                        // Campos adicionales
-                        IdAsentamiento = usuarioPaciente.First().IdAsentamiento,
-                        Asentamiento = usuarioPaciente.First().Asentamiento,
-                        IdTipoAsentamiento = usuarioPaciente.First().IdTipoAsentamiento,
-                        TipoAsentamiento = usuarioPaciente.First().TipoAsentamiento,
-                        IdCP = usuarioPaciente.First().IdCP,
-                        CodigoPostal = usuarioPaciente.First().CodigoPostal,
-                        IdMunicipio = usuarioPaciente.First().IdMunicipio,
-                        NoMunicipio = usuarioPaciente.First().NoMunicipio,
-                        Municipio = usuarioPaciente.First().Municipio,
-                        IdCiudad = usuarioPaciente.First().IdCiudad,
-                        Ciudad = usuarioPaciente.First().Ciudad,
-                        IdEntidad = usuarioPaciente.First().IdEntidad,
-                        Estado = usuarioPaciente.First().Estado,
-                        Abreviatura = usuarioPaciente.First().Abreviatura,
-                        Firma = usuarioPaciente.First().Firma,
-                        Imagen = usuarioPaciente.First().Imagen,
-
-                        // Listas de datos serializados
-                        Alergias = alergias,
-                        Molecules = molecules,
-                        Patologias = patologias
-                    };
-
-
-                    return pacienteConsulta;
+                    // Se asume que UsuarioPaciente.FromDataReader(reader) mapea el registro
+                    var usuarioPaciente = UsuarioPaciente.FromDataReader(reader);
+                    paciente = await MapToPacienteConsultaRequest(usuarioPaciente);
                 }
-                else
-                {
-                    throw new KeyNotFoundException("Paciente no encontrado.");
-                }
-            }
-            catch (SqlException sqlEx)
-            {
-                throw new Exception($"Error en la base de datos: {sqlEx.Message}");
+                return ResponseFromService<PacienteConsultaRequest>.Success(paciente, spNotificacion);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error al obtener el paciente: {ex.Message}");
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<PacienteConsultaRequest>.Exeption(ex, notificacion);
             }
         }
-
-        public async Task<PacienteConsultaRequest> GetPacienteByIdPacienteAsync(Guid idPaciente)
+        
+        public async Task<ResponseFromService<PacienteConsultaRequest>> GetPacienteByIdPacienteAsync(Guid idPaciente)
         {
             try
             {
-                var idPacienteParam = new SqlParameter("@IdPaciente", SqlDbType.UniqueIdentifier)
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("Paciente_GetPacienteByIdPaciente", connection)
                 {
-                    Value = idPaciente
+                    CommandType = CommandType.StoredProcedure
                 };
+                command.Parameters.Add(new SqlParameter("@IdPaciente", idPaciente));
 
-                var usuarioPaciente = await _context.UsuarioPacientes
-                    .FromSqlRaw("EXEC Paciente_GetPacienteByIdPaciente @IdPaciente", idPacienteParam)
-                    .AsNoTracking()
-                    .ToListAsync();
+                using var reader = await command.ExecuteReaderAsync();
 
-                if (usuarioPaciente.Count > 0)
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<PacienteConsultaRequest>.Failure(spNotificacion);
+
+                PacienteConsultaRequest paciente = null;
+                if (await reader.NextResultAsync() && await reader.ReadAsync())
                 {
-                    var alergias = await ObtenerAlergiasPorIdsAsync(usuarioPaciente.First().Alergias);
-                    var molecules = await ObtenerMoleculesPorIdsAsync(usuarioPaciente.First().Molecules);
-                    var patologias = await ObtenerCIM10PorIdsAsync(usuarioPaciente.First().Patologias);
-
-                    var pacienteConsulta = new PacienteConsultaRequest
-                    {
-                        IdUsuario = usuarioPaciente.First().IdUsuario,
-                        IdTipoUsuario = usuarioPaciente.First().IdTipoUsuario,
-                        IdPaciente = usuarioPaciente.First().IdPaciente,
-                        IdGEMP = usuarioPaciente.First().IdGEMP,
-                        GrupoEmpresarial = usuarioPaciente.First().GrupoEmpresarial,
-                        IdSucursal = usuarioPaciente.First().IdSucursal,
-                        Sucursal = usuarioPaciente.First().Sucursal,
-                        Usr = usuarioPaciente.First().Usr,
-                        Nombres = usuarioPaciente.First().Nombres,
-                        PrimerApellido = usuarioPaciente.First().PrimerApellido,
-                        SegundoApellido = usuarioPaciente.First().SegundoApellido,
-                        FechaNacimiento = usuarioPaciente.First().FechaNacimiento,
-                        Edad = usuarioPaciente.First().Edad,
-                        IdEntidadNacimiento = usuarioPaciente.First().IdEntidadNacimiento,
-                        EntidadNacimiento = usuarioPaciente.First().EntidadNacimiento,
-                        Genero = usuarioPaciente.First().Genero,
-                        Movil = usuarioPaciente.First().Movil,
-                        Email = usuarioPaciente.First().Email,
-                        Domicilio = usuarioPaciente.First().Domicilio,
-
-                        // Campos adicionales
-                        IdAsentamiento = usuarioPaciente.First().IdAsentamiento,
-                        Asentamiento = usuarioPaciente.First().Asentamiento,
-                        IdTipoAsentamiento = usuarioPaciente.First().IdTipoAsentamiento,
-                        TipoAsentamiento = usuarioPaciente.First().TipoAsentamiento,
-                        IdCP = usuarioPaciente.First().IdCP,
-                        CodigoPostal = usuarioPaciente.First().CodigoPostal,
-                        IdMunicipio = usuarioPaciente.First().IdMunicipio,
-                        NoMunicipio = usuarioPaciente.First().NoMunicipio,
-                        Municipio = usuarioPaciente.First().Municipio,
-                        IdCiudad = usuarioPaciente.First().IdCiudad,
-                        Ciudad = usuarioPaciente.First().Ciudad,
-                        IdEntidad = usuarioPaciente.First().IdEntidad,
-                        Estado = usuarioPaciente.First().Estado,
-                        Abreviatura = usuarioPaciente.First().Abreviatura,
-                        Firma = usuarioPaciente.First().Firma,
-                        Imagen = usuarioPaciente.First().Imagen,
-
-                        // Listas de datos serializados
-                        Alergias = alergias,
-                        Molecules = molecules,
-                        Patologias = patologias
-                    };
-
-                    return pacienteConsulta;
+                    var usuarioPaciente = UsuarioPaciente.FromDataReader(reader);
+                    paciente = await MapToPacienteConsultaRequest(usuarioPaciente);
                 }
-                else
-                {
-                    throw new KeyNotFoundException("Paciente no encontrado.");
-                }
-            }
-            catch (SqlException sqlEx)
-            {
-                throw new Exception($"Error en la base de datos: {sqlEx.Message}");
+                return ResponseFromService<PacienteConsultaRequest>.Success(paciente, spNotificacion);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error al obtener el paciente: {ex.Message}");
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<PacienteConsultaRequest>.Exeption(ex, notificacion);
+            }
+        }
+
+        //public async Task<ResponseFromService<IEnumerable<Paciente>>> GetPacientesByEntidadNacimientoAsync(int idEntidadNacimiento)
+        //{
+        //    try
+        //    {
+        //        // Aunque el SP no se usa aquí, se recomienda estandarizar la consulta usando ADO.NET.
+        //        using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+        //        await connection.OpenAsync();
+        //        using var command = new SqlCommand("Paciente_GetPacientesByEntidadNacimiento", connection)
+        //        {
+        //            CommandType = CommandType.StoredProcedure
+        //        };
+        //        command.Parameters.Add(new SqlParameter("@IdEntidadNacimiento", idEntidadNacimiento));
+
+        //        using var reader = await command.ExecuteReaderAsync();
+        //        int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+        //        var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+        //        if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
+        //            return ResponseFromService<IEnumerable<Paciente>>.Failure(spNotificacion);
+
+        //        var lista = new List<Paciente>();
+        //        if (await reader.NextResultAsync())
+        //        {
+        //            while (await reader.ReadAsync())
+        //            {
+        //                // Se asume que existe un método de mapeo en Paciente.FromDataReader(reader)
+        //                lista.Add(Paciente.FromDataReader(reader));
+        //            }
+        //        }
+        //        return ResponseFromService<IEnumerable<Paciente>>.Success(lista, spNotificacion);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+        //        return ResponseFromService<IEnumerable<Paciente>>.Exeption(ex, notificacion);
+        //    }
+        //}
+
+        public async Task<ResponseFromService<IEnumerable<PacienteConsultaRequest>>> GetPacienteByNameAsync(string nombreBusqueda, Guid idGemp)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("Paciente_GetPacienteByName", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.AddWithValue("@NombreBusqueda", nombreBusqueda);
+                command.Parameters.AddWithValue("@IdGemp", idGemp);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                // Leer el primer conjunto para obtener el código de notificación
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Failure(spNotificacion);
+
+                // Leer el segundo conjunto: Lista de pacientes
+                var lista = new List<PacienteConsultaRequest>();
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        // Se obtiene el objeto UsuarioPaciente a partir del lector
+                        var usuarioPaciente = UsuarioPaciente.FromDataReader(reader);
+                        // Mapear el objeto UsuarioPaciente a PacienteConsultaRequest usando el helper de mapeo
+                        var paciente = await MapToPacienteConsultaRequest(usuarioPaciente);
+                        lista.Add(paciente);
+                    }
+                }
+
+                return ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(lista, spNotificacion);
+            }
+            catch (Exception ex)
+            {
+                var errorNotificacion = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Exeption(ex, errorNotificacion);
+            }
+        }
+
+        public async Task<ResponseFromService<bool>> CreatePacienteAsync(PacienteCreateConListas pacienteRequest, Guid idUsuarioSolicitante)
+        {
+            try
+            {
+                int result = await EjecutarStoredProcedureAsync("Pacientes_CrearPaciente", pacienteRequest, idUsuarioSolicitante);
+                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(result);
+                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<bool>.Failure(spNotificacion);
+
+                return ResponseFromService<bool>.Success(true, spNotificacion);
+            }
+            catch (Exception ex)
+            {
+                var notificacion = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<bool>.Exeption(ex, notificacion);
             }
         }
 
 
-        public async Task<IEnumerable<Paciente>> GetPacientesByEntidadNacimientoAsync(int idEntidadNacimiento)
+        public async Task<ResponseFromService<bool>> UpdatePacienteAsync(PacienteConListas pacienteRequest, Guid idUsuarioSolicitante)
         {
-            return await _context.Pacientes
-                .Where(p => p.IdEntidadNacimiento == idEntidadNacimiento)
-                .ToListAsync();
+            try
+            {
+                int codigoNotificacion = await EjecutarStoredProcedureAsync("Pacientes_UpdatePaciente", pacienteRequest, idUsuarioSolicitante);
+                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                
+                if (spNotificacion.ToastType.ToUpperInvariant() == "SUCCESS" ||
+                    spNotificacion.ToastType.ToUpperInvariant() == "INFO")
+                {
+                    return ResponseFromService<bool>.Success(true, spNotificacion);
+                }
+                else
+                {
+                    return ResponseFromService<bool>.Failure(spNotificacion);
+                }
+            }
+            catch (Exception ex)
+            {
+                var notificacion = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<bool>.Exeption(ex, notificacion);
+            }
         }
 
-        // Este método devuelve una lista de UsuarioPaciente basado en la búsqueda por nombre
-        public async Task<IEnumerable<PacienteConsultaRequest>> GetPacienteByNameAsync(string nombreBusqueda, Guid IdGemp)
+        public async Task<ResponseFromService<bool>> EliminarPacienteAsync(Guid idPaciente, Guid idUsuarioSolicitante)
         {
-            var nombreParam = new SqlParameter("@NombreBusqueda", nombreBusqueda);
-            var idGempParam = new SqlParameter("@IdGemp", IdGemp); // Asegurarte de usar idGempParam
-
-            var usuarioPaciente = await _context.UsuarioPacientes
-                .FromSqlRaw("EXEC Paciente_GetPacienteByName @NombreBusqueda, @IdGemp", nombreParam, idGempParam)
-                .AsNoTracking()
-                .ToListAsync();
-
-            var resultado = new List<PacienteConsultaRequest>();
-
-            foreach (var paciente in usuarioPaciente)
+            try
             {
-                // Enviar las cadenas de IDs directamente al stored procedure
+                // Ejecuta el SP y obtiene el código de notificación devuelto.
+                int codigo = await EjecutarStoredProcedureAsync("Pacientes_EliminarPaciente", idPaciente, idUsuarioSolicitante);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigo);
+
+                if (notificacion.ToastType.ToUpperInvariant() == "SUCCESS" ||
+                    notificacion.ToastType.ToUpperInvariant() == "INFO")
+                {
+                    return ResponseFromService<bool>.Success(true, notificacion);
+                }
+                else
+                {
+                    return ResponseFromService<bool>.Failure(notificacion);
+                }
+            }
+            catch (Exception ex)
+            {
+                var errorNotificacion = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<bool>.Exeption(ex, errorNotificacion);
+            }
+        }
+
+        public async Task<ResponseFromService<IEnumerable<EntidadNacimiento>>> GetEntidadesFederativasAsync()
+        {
+            try
+            {
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+                using var command = new SqlCommand("Paciente_GetEntidadesFederativas", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+
+                using var reader = await command.ExecuteReaderAsync();
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<IEnumerable<EntidadNacimiento>>.Failure(spNotificacion);
+
+                var lista = new List<EntidadNacimiento>();
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        // Se asume que existe EntidadNacimiento.FromDataReader(reader)
+                        lista.Add(EntidadNacimiento.FromDataReader(reader));
+                    }
+                }
+                return ResponseFromService<IEnumerable<EntidadNacimiento>>.Success(lista, spNotificacion);
+            }
+            catch (Exception ex)
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<EntidadNacimiento>>.Exeption(ex, notificacion);
+            }
+        }
+
+        public async Task<ResponseFromService<IEnumerable<PacienteConsultaRequest>>> GetPacientesBySucursalAsync(Guid idSucursal)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("Paciente_GetPacientesBySucursal", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.AddWithValue("@IdSucursal", idSucursal);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                // Primer conjunto: Código de notificación
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Failure(spNotificacion);
+
+                // Segundo conjunto: Lista de pacientes
+                var lista = new List<PacienteConsultaRequest>();
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var usuarioPaciente = UsuarioPaciente.FromDataReader(reader);
+                        // Mapear el objeto UsuarioPaciente a PacienteConsultaRequest utilizando el helper de mapeo
+                        var paciente = await MapToPacienteConsultaRequest(usuarioPaciente);
+                        lista.Add(paciente);
+                    }
+                }
+
+                return ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(lista, spNotificacion);
+            }
+            catch (Exception ex)
+            {
+                var errorNotificacion = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Exeption(ex, errorNotificacion);
+            }
+        }
+
+        public async Task<ResponseFromService<IEnumerable<PacienteConsultaRequest>>> GetPacientesByGEMPAsync(Guid idGemp)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("Paciente_GetPacientesByGEMP", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.AddWithValue("@IdGemp", idGemp);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                // Leer el primer conjunto: Código de notificación
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Failure(spNotificacion);
+
+                // Leer el segundo conjunto: Lista de pacientes
+                var lista = new List<PacienteConsultaRequest>();
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        // Mapear el registro a un objeto UsuarioPaciente
+                        var usuarioPaciente = UsuarioPaciente.FromDataReader(reader);
+                        // Convertir el usuarioPaciente en un PacienteConsultaRequest usando el helper de mapeo
+                        var paciente = await MapToPacienteConsultaRequest(usuarioPaciente);
+                        lista.Add(paciente);
+                    }
+                }
+
+                return ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(lista, spNotificacion);
+            }
+            catch (Exception ex)
+            {
+                var errorNotificacion = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Exeption(ex, errorNotificacion);
+            }
+        }
+
+        public async Task<ResponseFromService<IEnumerable<PacienteConsultaRequest>>> GetPacientesByMedicoAsync(Guid idMedico)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("Paciente_GetPacientesByMedico", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.AddWithValue("@IdMedico", idMedico);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                // Primer conjunto: leer el código de notificación
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Failure(spNotificacion);
+
+                // Segundo conjunto: leer la lista de pacientes
+                var lista = new List<PacienteConsultaRequest>();
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var usuarioPaciente = UsuarioPaciente.FromDataReader(reader);
+                        // Mapear el usuarioPaciente a un objeto de tipo PacienteConsultaRequest usando el helper de mapeo
+                        var paciente = await MapToPacienteConsultaRequest(usuarioPaciente);
+                        lista.Add(paciente);
+                    }
+                }
+
+                return ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Success(lista, spNotificacion);
+            }
+            catch (Exception ex)
+            {
+                var errNotificacion = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<PacienteConsultaRequest>>.Exeption(ex, errNotificacion);
+            }
+        }
+
+
+        public async Task<ResponseFromService<IEnumerable<EventosSaludConsulta>>> GetAllEventosPacienteAsync(Guid idPaciente)
+        {
+            try
+            {
+                var eventos = new List<EventosSaludConsulta>();
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("EventosSalud_GetEventosByPaciente", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.Add(new SqlParameter("@IdPaciente", idPaciente));
+
+                using var reader = await command.ExecuteReaderAsync();
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<IEnumerable<EventosSaludConsulta>>.Failure(spNotificacion);
+
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        eventos.Add(new EventosSaludConsulta
+                        {
+                            IdEventoSalud = reader.GetGuid(reader.GetOrdinal("IdEventoSalud")),
+                            IdPaciente = reader.GetGuid(reader.GetOrdinal("IdPaciente")),
+                            Fecha = reader.GetDateTime(reader.GetOrdinal("Fecha")),
+                            EventoDeSalud = reader.GetInt32(reader.GetOrdinal("EventoDeSalud")),
+                            Descripcion = reader.IsDBNull(reader.GetOrdinal("Descripcion")) ? string.Empty : reader.GetString(reader.GetOrdinal("Descripcion")),
+                            NombreEvento = reader.IsDBNull(reader.GetOrdinal("NombreEvento")) ? string.Empty : reader.GetString(reader.GetOrdinal("NombreEvento"))
+                        });
+                    }
+                }
+                return ResponseFromService<IEnumerable<EventosSaludConsulta>>.Success(eventos, spNotificacion);
+            }
+            catch (Exception ex)
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<EventosSaludConsulta>>.Exeption(ex, notificacion);
+            }
+        }
+
+        // Devuelve el evento de salud correspondiente al idEventoSalud.
+        public async Task<ResponseFromService<EventosSaludConsulta>> GetEventoPacienteByIdAsync(Guid idEventoSalud)
+        {
+            try
+            {
+                var evento = await (from ev in _context.EventosSalud
+                                    join cat in _context.CatEventosDeSalud on ev.EventoDeSalud equals cat.IdEvento
+                                    where ev.IdEventoSalud == idEventoSalud
+                                    select new EventosSaludConsulta
+                                    {
+                                        IdEventoSalud = ev.IdEventoSalud,
+                                        IdPaciente = ev.IdPaciente,
+                                        Fecha = ev.Fecha,
+                                        EventoDeSalud = ev.EventoDeSalud,
+                                        Descripcion = ev.Descripcion,
+                                        NombreEvento = cat.NombreEvento
+                                    }).FirstOrDefaultAsync();
+
+                if (evento == null)
+                {
+                    var notificacion = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("PACIENTESP", "NO_EVENTOS_ENCONTRADOS");
+                    return ResponseFromService<EventosSaludConsulta>.Failure(notificacion);
+                }
+
+                var success = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("PACIENTESP", "EVENTOS_ENCONTRADOS");
+                return ResponseFromService<EventosSaludConsulta>.Success(evento, success);
+            }
+            catch (Exception ex)
+            {
+                var notificacion = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<EventosSaludConsulta>.Exeption(ex, notificacion);
+            }
+        }
+
+        public async Task<ResponseFromService<EventosSalud>> CreateEventoPacienteAsync(EventosSalud evento)
+        {
+            try
+            {
+                _context.EventosSalud.Add(evento);
+                var affectedRows = await _context.SaveChangesAsync();
+                if (affectedRows > 0)
+                {
+                    var success = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("PACIENTESP", "CREADO");
+                    return ResponseFromService<EventosSalud>.Success(evento, success);
+                }
+                else
+                {
+                    var failure = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("PACIENTESP", "NO_CREADO");
+                    return ResponseFromService<EventosSalud>.Failure(failure);
+                }
+            }
+            catch (Exception ex)
+            {
+                var notificacion = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<EventosSalud>.Exeption(ex, notificacion);
+            }
+        }
+
+        public async Task<ResponseFromService<bool>> UpdateEventoPacienteAsync(EventosSalud evento)
+        {
+            try
+            {
+                _context.Entry(evento).State = EntityState.Modified;
+                var affectedRows = await _context.SaveChangesAsync();
+                if (affectedRows > 0)
+                {
+                    var success = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("PACIENTESP", "EVENTO_ACTUALIZADO");
+                    return ResponseFromService<bool>.Success(true, success);
+                }
+                else
+                {
+                    var failure = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("PACIENTESP", "EVENTO_NO_ACTUALIZADO");
+                    return ResponseFromService<bool>.Failure(failure);
+                }
+            }
+            catch (Exception ex)
+            {
+                var notificacion = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<bool>.Exeption(ex, notificacion);
+            }
+        }
+
+        public async Task<ResponseFromService<bool>> DeleteEventoPacienteAsync(Guid idEventoSalud)
+        {
+            try
+            {
+                var evento = await _context.EventosSalud.FindAsync(idEventoSalud);
+                if (evento == null)
+                {
+                    var notificacion = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("PACIENTESP", "NO_EVENTOS_ENCONTRADOS");
+                    return ResponseFromService<bool>.Failure(notificacion);
+                }
+
+                _context.EventosSalud.Remove(evento);
+                var affectedRows = await _context.SaveChangesAsync();
+                if (affectedRows > 0)
+                {
+                    var success = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("PACIENTESP", "EVENTO_ELIMINADO");
+                    return ResponseFromService<bool>.Success(true, success);
+                }
+                else
+                {
+                    var failure = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("PACIENTESP", "EVENTO_NO_ELIMINADO");
+                    return ResponseFromService<bool>.Failure(failure);
+                }
+            }
+            catch (Exception ex)
+            {
+                var notificacion = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<bool>.Exeption(ex, notificacion);
+            }
+        }
+
+
+        // Obtiene el IdPaciente asociado a un usuario, mediante un SP estandarizado.
+        public async Task<ResponseFromService<Guid?>> GetIdPacienteByUsuarioAsync(Guid idUsuario)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("Recetas_GetPacienteByIdUsuario", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.AddWithValue("@IdUsuario", idUsuario);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                // Leer el código de notificación del primer conjunto
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                {
+                    return ResponseFromService<Guid?>.Failure(notificacion);
+                }
+
+                // Leer el segundo conjunto, que contiene el IdPaciente
+                Guid? idPaciente = null;
+                if (await reader.NextResultAsync() && await reader.ReadAsync())
+                {
+                    idPaciente = reader.IsDBNull(0) ? (Guid?)null : reader.GetGuid(0);
+                }
+
+                return ResponseFromService<Guid?>.Success(idPaciente, notificacion);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<Guid?>.Exeption(ex, error);
+            }
+        }
+
+
+        private async Task<PacienteConsultaRequest?> ObtenerUsuarioPacienteAsync(string procedimiento, string paramName, Guid paramValue)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand(procedimiento, connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.Add(new SqlParameter(paramName, paramValue));
+
+                using var reader = await command.ExecuteReaderAsync();
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return null;
+
+                PacienteConsultaRequest paciente = null;
+                if (await reader.NextResultAsync() && await reader.ReadAsync())
+                {
+                    var usuarioPaciente = UsuarioPaciente.FromDataReader(reader);
+                    paciente = await MapToPacienteConsultaRequest(usuarioPaciente);
+                }
+                return paciente;
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        private async Task<List<PacienteConsultaRequest>> ObtenerListaPacientesAsync(string procedimiento, params SqlParameter[] parameters)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                string sqlQuery = $"EXEC {procedimiento} " + string.Join(", ", parameters.Select(p => p.ParameterName));
+                using var command = new SqlCommand(sqlQuery, connection)
+                {
+                    CommandType = CommandType.Text
+                };
+                command.Parameters.AddRange(parameters);
+
+                using var reader = await command.ExecuteReaderAsync();
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return new List<PacienteConsultaRequest>();
+
+                var lista = new List<PacienteConsultaRequest>();
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var usuarioPaciente = UsuarioPaciente.FromDataReader(reader);
+                        lista.Add(await MapToPacienteConsultaRequest(usuarioPaciente));
+                    }
+                }
+                return lista;
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        private async Task<int> EjecutarStoredProcedureAsync(string procedimiento, object pacienteRequest, Guid idUsuarioSolicitante)
+        {
+            try
+            {
+                var pacienteJson = JsonConvert.SerializeObject(pacienteRequest);
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand(procedimiento, connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.Add(new SqlParameter("@PacienteJson", SqlDbType.NVarChar) { Value = pacienteJson });
+                command.Parameters.Add(new SqlParameter("@IdUsuarioSolicitante", idUsuarioSolicitante));
+                var outputMessageParam = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 500)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                command.Parameters.Add(outputMessageParam);
+
+                using var reader = await command.ExecuteReaderAsync();
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                return codigoNotificacion;
+            }
+            catch (Exception)
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return notificacion.CodigoNotificacion;
+            }
+        }
+
+        private async Task<PacienteConsultaRequest> MapToPacienteConsultaRequest(UsuarioPaciente paciente)
+        {
+            try
+            {
                 var alergias = await ObtenerAlergiasPorIdsAsync(paciente.Alergias);
                 var molecules = await ObtenerMoleculesPorIdsAsync(paciente.Molecules);
                 var patologias = await ObtenerCIM10PorIdsAsync(paciente.Patologias);
 
-                // Crear el objeto PacienteConsultaRequest con los detalles obtenidos
-                var pacienteConsulta = new PacienteConsultaRequest
+                return new PacienteConsultaRequest
                 {
                     IdUsuario = paciente.IdUsuario,
                     IdTipoUsuario = paciente.IdTipoUsuario,
@@ -226,6 +744,9 @@ namespace RMD.Service.Pacientes
                     Nombres = paciente.Nombres,
                     PrimerApellido = paciente.PrimerApellido,
                     SegundoApellido = paciente.SegundoApellido,
+                    IdTipoIdentificacion = paciente.IdTipoIdentificacion,
+                    TipoIdentificacion = paciente.TipoIdentificacion,
+                    NumeroIdentificacion = paciente.NumeroIdentificacion,
                     FechaNacimiento = paciente.FechaNacimiento,
                     Edad = paciente.Edad,
                     IdEntidadNacimiento = paciente.IdEntidadNacimiento,
@@ -234,8 +755,6 @@ namespace RMD.Service.Pacientes
                     Movil = paciente.Movil,
                     Email = paciente.Email,
                     Domicilio = paciente.Domicilio,
-
-                    // Campos adicionales
                     IdAsentamiento = paciente.IdAsentamiento,
                     Asentamiento = paciente.Asentamiento,
                     IdTipoAsentamiento = paciente.IdTipoAsentamiento,
@@ -252,392 +771,67 @@ namespace RMD.Service.Pacientes
                     Abreviatura = paciente.Abreviatura,
                     Firma = paciente.Firma,
                     Imagen = paciente.Imagen,
-
-                    // Listas de datos serializados
                     Alergias = alergias,
                     Molecules = molecules,
                     Patologias = patologias
                 };
-
-                resultado.Add(pacienteConsulta);
             }
-
-            return resultado;
-        }      
-
-        public async Task<bool> CreatePacienteAsync(PacienteCreateConListas pacienteRequest, Guid idUsuarioSolicitante)
-        {
-            // Convertir las listas a strings con delimitadores
-            var pacienteConStrings = new PacienteCreate
+            catch (Exception ex)
             {
-                IdUsuario = pacienteRequest.IdUsuario,
-                FechaNacimiento = pacienteRequest.FechaNacimiento,
-                IdEntidadNacimiento = pacienteRequest.IdEntidadNacimiento,
-                Genero = pacienteRequest.Genero,
-                Alergias = string.Join(";", pacienteRequest.Alergias ?? new List<string>()),
-                Molecules = string.Join(";", pacienteRequest.Molecules ?? new List<string>()),
-                Patologias = string.Join(";", pacienteRequest.Patologias ?? new List<string>())
-            };
-
-            var pacienteTable = new List<PacienteCreate> { pacienteConStrings }.ToDataTable();
-            var parameter = new SqlParameter("@PacienteTable", SqlDbType.Structured)
-            {
-                TypeName = "dbo.CreatePacienteTableType",
-                Value = pacienteTable
-            };
-
-            var idUsuarioSolicitanteParam = new SqlParameter("@IdUsuarioSolicitante", idUsuarioSolicitante);
-            var outputMessageParam = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 500)
-            {
-                Direction = ParameterDirection.Output
-            };
-
-            await _context.Database.ExecuteSqlRawAsync(
-                "EXEC Pacientes_CrearPaciente @PacienteTable, @IdUsuarioSolicitante, @OutputMessage OUTPUT",
-                parameter, idUsuarioSolicitanteParam, outputMessageParam
-            );
-
-            var outputMessage = outputMessageParam.Value.ToString();
-
-            return outputMessage.Contains("creado con éxito");
-        }
-
-        public async Task<bool> UpdatePacienteAsync(PacienteConListas pacienteRequest, Guid idUsuarioSolicitante)
-        {
-            // Convertir el modelo a un JSON
-            var pacienteJson = JsonConvert.SerializeObject(new List<Paciente>
-            {
-                new Paciente
-                {
-                    IdPaciente = pacienteRequest.IdPaciente,
-                    IdUsuario = pacienteRequest.IdUsuario,
-                    FechaNacimiento = pacienteRequest.FechaNacimiento,
-                    IdEntidadNacimiento = pacienteRequest.IdEntidadNacimiento,
-                    Genero = pacienteRequest.Genero,
-                    Alergias = string.Join(";", pacienteRequest.Alergias ?? new List<string>()),
-                    Molecules = string.Join(";", pacienteRequest.Molecules ?? new List<string>()),
-                    Patologias = string.Join(";", pacienteRequest.Patologias ?? new List<string>()),
-                    IdMedico = idUsuarioSolicitante
-                }
-            });
-
-            var pacienteJsonParam = new SqlParameter("@PacienteJson", SqlDbType.NVarChar)
-            {
-                Value = pacienteJson
-            };
-
-            var idUsuarioSolicitanteParam = new SqlParameter("@IdUsuarioSolicitante", idUsuarioSolicitante);
-            var outputMessageParam = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 500)
-            {
-                Direction = ParameterDirection.Output
-            };
-
-            await _context.Database.ExecuteSqlRawAsync(
-                "EXEC Pacientes_UpdatePaciente @PacienteJson, @IdUsuarioSolicitante, @OutputMessage OUTPUT",
-                pacienteJsonParam, idUsuarioSolicitanteParam, outputMessageParam
-            );
-
-            var outputMessage = outputMessageParam.Value.ToString();
-
-            return outputMessage.Contains("actualizado con éxito");
-        }
-
-
-        public async Task<bool> EliminarPacienteAsync(Guid idPaciente, Guid idUsuarioSolicitante)
-        {
-            var idPacienteParam = new SqlParameter("@IdPaciente", idPaciente);
-            var idUsuarioSolicitanteParam = new SqlParameter("@IdUsuarioSolicitante", idUsuarioSolicitante);
-            var outputMessageParam = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 500)
-            {
-                Direction = ParameterDirection.Output
-            };
-
-            await _context.Database.ExecuteSqlRawAsync(
-                "EXEC Pacientes_EliminarPaciente @IdPaciente, @IdUsuarioSolicitante, @OutputMessage OUTPUT",
-                idPacienteParam, idUsuarioSolicitanteParam, outputMessageParam
-            );
-
-            var outputMessage = outputMessageParam.Value.ToString();
-
-            return outputMessage.Contains("eliminado con éxito");
-        }
-
-        public async Task<IEnumerable<EntidadNacimiento>> GetEntidadesFederativasAsync()
-        {
-            var entidades = await _context.Set<EntidadNacimiento>()
-                .FromSqlRaw("EXEC Paciente_GetEntidadesFederativas")
-                .AsNoTracking()
-                .ToListAsync();
-
-            return entidades;
-        }
-
-        public async Task<IEnumerable<PacienteConsultaRequest>> GetPacientesBySucursalAsync(Guid idSucursal)
-        {
-            var idSucursalParam = new SqlParameter("@IdSucursal", idSucursal);
-
-            var usuarioPaciente = await _context.UsuarioPacientes
-                .FromSqlRaw("EXEC Paciente_GetPacientesBySucursal @IdSucursal", idSucursalParam)
-                .AsNoTracking()
-                .ToListAsync();
-
-            var resultado = new List<PacienteConsultaRequest>();
-
-            foreach (var paciente in usuarioPaciente)
-            {
-                var alergiasIds = paciente.Alergias;
-                var moleculesIds = paciente.Molecules;
-                var patologiasIds = paciente.Patologias;
-
-                var alergias = await ObtenerAlergiasPorIdsAsync(alergiasIds);
-                var molecules = await ObtenerMoleculesPorIdsAsync(moleculesIds);
-                var patologias = await ObtenerCIM10PorIdsAsync(patologiasIds);
-
-                var pacienteConsulta = new PacienteConsultaRequest
-                {
-                    IdUsuario = paciente.IdUsuario,
-                    IdTipoUsuario = paciente.IdTipoUsuario,
-                    IdPaciente = paciente.IdPaciente,
-                    IdGEMP = paciente.IdGEMP,
-                    GrupoEmpresarial = paciente.GrupoEmpresarial,
-                    IdSucursal = paciente.IdSucursal,
-                    Sucursal = paciente.Sucursal,
-                    Usr = paciente.Usr,
-                    Nombres = paciente.Nombres,
-                    PrimerApellido = paciente.PrimerApellido,
-                    SegundoApellido = paciente.SegundoApellido,
-                    FechaNacimiento = paciente.FechaNacimiento,
-                    Edad = paciente.Edad,
-                    IdEntidadNacimiento = paciente.IdEntidadNacimiento,
-                    EntidadNacimiento = paciente.EntidadNacimiento,
-                    Genero = paciente.Genero,
-                    Movil = paciente.Movil,
-                    Email = paciente.Email,
-                    Domicilio = paciente.Domicilio,
-
-                    // Campos adicionales
-                    IdAsentamiento = paciente.IdAsentamiento,
-                    Asentamiento = paciente.Asentamiento,
-                    IdTipoAsentamiento = paciente.IdTipoAsentamiento,
-                    TipoAsentamiento = paciente.TipoAsentamiento,
-                    IdCP = paciente.IdCP,
-                    CodigoPostal = paciente.CodigoPostal,
-                    IdMunicipio = paciente.IdMunicipio,
-                    NoMunicipio = paciente.NoMunicipio,
-                    Municipio = paciente.Municipio,
-                    IdCiudad = paciente.IdCiudad,
-                    Ciudad = paciente.Ciudad,
-                    IdEntidad = paciente.IdEntidad,
-                    Estado = paciente.Estado,
-                    Abreviatura = paciente.Abreviatura,
-                    Firma = paciente.Firma,
-                    Imagen = paciente.Imagen,
-
-                    // Listas de datos serializados
-                    Alergias = alergias,
-                    Molecules = molecules,
-                    Patologias = patologias
-                };
-
-
-                resultado.Add(pacienteConsulta);
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                throw new ApplicationException($"{error.Descripcion}. Detalle: {ex.Message}");
             }
-
-            return resultado;
         }
-
-        public async Task<IEnumerable<PacienteConsultaRequest>> GetPacientesByGEMPAsync(Guid idGEMP)
-        {
-            var idGEMPParam = new SqlParameter("@IdGEMP", idGEMP.ToString().ToUpper());
-
-
-            var usuarioPaciente = await _context.UsuarioPacientes
-                .FromSqlRaw("EXEC Paciente_GetPacientesByGEMP @IdGEMP", idGEMPParam)
-                .AsNoTracking()
-                .ToListAsync();
-
-            var resultado = new List<PacienteConsultaRequest>();
-
-            foreach (var paciente in usuarioPaciente)
-            {
-                var alergiasIds = paciente.Alergias;
-                var moleculesIds = paciente.Molecules;
-                var patologiasIds = paciente.Patologias;
-
-                var alergias = await ObtenerAlergiasPorIdsAsync(alergiasIds);
-                var molecules = await ObtenerMoleculesPorIdsAsync(moleculesIds);
-                var patologias = await ObtenerCIM10PorIdsAsync(patologiasIds);
-                var pacienteConsulta = new PacienteConsultaRequest
-                {
-                    IdUsuario = paciente.IdUsuario,
-                    IdTipoUsuario = paciente.IdTipoUsuario,
-                    IdPaciente = paciente.IdPaciente,
-                    IdGEMP = paciente.IdGEMP,
-                    GrupoEmpresarial = paciente.GrupoEmpresarial,
-                    IdSucursal = paciente.IdSucursal,
-                    Sucursal = paciente.Sucursal,
-                    Usr = paciente.Usr,
-                    Nombres = paciente.Nombres,
-                    PrimerApellido = paciente.PrimerApellido,
-                    SegundoApellido = paciente.SegundoApellido,
-                    FechaNacimiento = paciente.FechaNacimiento,
-                    Edad = paciente.Edad,
-                    IdEntidadNacimiento = paciente.IdEntidadNacimiento,
-                    EntidadNacimiento = paciente.EntidadNacimiento,
-                    Genero = paciente.Genero,
-                    Movil = paciente.Movil,
-                    Email = paciente.Email,
-                    Domicilio = paciente.Domicilio,
-
-                    // Campos adicionales
-                    IdAsentamiento = paciente.IdAsentamiento,
-                    Asentamiento = paciente.Asentamiento,
-                    IdTipoAsentamiento = paciente.IdTipoAsentamiento,
-                    TipoAsentamiento = paciente.TipoAsentamiento,
-                    IdCP = paciente.IdCP,
-                    CodigoPostal = paciente.CodigoPostal,
-                    IdMunicipio = paciente.IdMunicipio,
-                    NoMunicipio = paciente.NoMunicipio,
-                    Municipio = paciente.Municipio,
-                    IdCiudad = paciente.IdCiudad,
-                    Ciudad = paciente.Ciudad,
-                    IdEntidad = paciente.IdEntidad,
-                    Estado = paciente.Estado,
-                    Abreviatura = paciente.Abreviatura,
-                    Firma = paciente.Firma,
-                    Imagen = paciente.Imagen,
-
-                    // Listas de datos serializados
-                    Alergias = alergias,
-                    Molecules = molecules,
-                    Patologias = patologias
-                };
-
-
-                resultado.Add(pacienteConsulta);
-            }
-
-            return resultado;
-        }
-
-        public async Task<IEnumerable<PacienteConsultaRequest>> GetPacientesByMedicoAsync(Guid idMedico)
-        {
-            var idMedicoParam = new SqlParameter("@IdMedico", idMedico);
-
-            var usuarioPaciente = await _context.UsuarioPacientes
-                .FromSqlRaw("EXEC Paciente_GetPacientesByMedico @IdMedico", idMedicoParam)
-                .AsNoTracking()
-                .ToListAsync();
-
-            var resultado = new List<PacienteConsultaRequest>();
-
-            foreach (var paciente in usuarioPaciente)
-            {
-                var alergiasIds = paciente.Alergias;
-                var moleculesIds = paciente.Molecules;
-                var patologiasIds = paciente.Patologias;
-
-                var alergias = await ObtenerAlergiasPorIdsAsync(alergiasIds);
-                var molecules = await ObtenerMoleculesPorIdsAsync(moleculesIds);
-                var patologias = await ObtenerCIM10PorIdsAsync(patologiasIds);
-
-                var pacienteConsulta = new PacienteConsultaRequest
-                {
-                    IdUsuario = paciente.IdUsuario,
-                    IdTipoUsuario = paciente.IdTipoUsuario,
-                    IdPaciente = paciente.IdPaciente,
-                    IdGEMP = paciente.IdGEMP,
-                    GrupoEmpresarial = paciente.GrupoEmpresarial,
-                    IdSucursal = paciente.IdSucursal,
-                    Sucursal = paciente.Sucursal,
-                    Usr = paciente.Usr,
-                    Nombres = paciente.Nombres,
-                    PrimerApellido = paciente.PrimerApellido,
-                    SegundoApellido = paciente.SegundoApellido,
-                    FechaNacimiento = paciente.FechaNacimiento,
-                    Edad = paciente.Edad,
-                    IdEntidadNacimiento = paciente.IdEntidadNacimiento,
-                    EntidadNacimiento = paciente.EntidadNacimiento,
-                    Genero = paciente.Genero,
-                    Movil = paciente.Movil,
-                    Email = paciente.Email,
-                    Domicilio = paciente.Domicilio,
-
-                    // Campos adicionales
-                    IdAsentamiento = paciente.IdAsentamiento,
-                    Asentamiento = paciente.Asentamiento,
-                    IdTipoAsentamiento = paciente.IdTipoAsentamiento,
-                    TipoAsentamiento = paciente.TipoAsentamiento,
-                    IdCP = paciente.IdCP,
-                    CodigoPostal = paciente.CodigoPostal,
-                    IdMunicipio = paciente.IdMunicipio,
-                    NoMunicipio = paciente.NoMunicipio,
-                    Municipio = paciente.Municipio,
-                    IdCiudad = paciente.IdCiudad,
-                    Ciudad = paciente.Ciudad,
-                    IdEntidad = paciente.IdEntidad,
-                    Estado = paciente.Estado,
-                    Abreviatura = paciente.Abreviatura,
-                    Firma = paciente.Firma,
-                    Imagen = paciente.Imagen,
-
-                    // Listas de datos serializados
-                    Alergias = alergias,
-                    Molecules = molecules,
-                    Patologias = patologias
-                };
-
-                resultado.Add(pacienteConsulta);
-            }
-
-            return resultado;
-        }
-
-
 
         private async Task<List<AllergyModel>> ObtenerAlergiasPorIdsAsync(string alergiasIds)
         {
-            if (string.IsNullOrEmpty(alergiasIds))
+            try
             {
-                // Si alergiasIds está vacío o es null, devolvemos una lista vacía.
-                return new List<AllergyModel>();
+                return string.IsNullOrEmpty(alergiasIds)
+                    ? new List<AllergyModel>()
+                    : await _context.AllergyModels
+                         .FromSqlRaw("EXEC Vidal_GetAllergiesByIds @Ids", new SqlParameter("@Ids", alergiasIds))
+                         .ToListAsync();
             }
-
-            var alergiasParam = new SqlParameter("@Ids", alergiasIds);
-
-            return await _context.AllergyModels
-                .FromSqlRaw("EXEC Vidal_GetAllergiesByIds @Ids", alergiasParam)
-                .ToListAsync();
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                throw new ApplicationException($"{error.Descripcion}. Detalle: {ex.Message}");
+            }
         }
 
         private async Task<List<MoleculeModel>> ObtenerMoleculesPorIdsAsync(string moleculesIds)
         {
-            if (string.IsNullOrEmpty(moleculesIds))
+            try
             {
-                // Si moleculesIds está vacío o es null, devolvemos una lista vacía.
-                return new List<MoleculeModel>();
+                return string.IsNullOrEmpty(moleculesIds)
+                    ? new List<MoleculeModel>()
+                    : await _context.MoleculeModels
+                         .FromSqlRaw("EXEC Vidal_GetMoleculesByIds @Ids", new SqlParameter("@Ids", moleculesIds))
+                         .ToListAsync();
             }
-
-            var moleculesParam = new SqlParameter("@Ids", moleculesIds);
-
-            return await _context.MoleculeModels
-                .FromSqlRaw("EXEC Vidal_GetMoleculesByIds @Ids", moleculesParam)
-                .ToListAsync();
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                throw new ApplicationException($"{error.Descripcion}. Detalle: {ex.Message}");
+            }
         }
 
         private async Task<List<CIM10Model>> ObtenerCIM10PorIdsAsync(string cim10Ids)
         {
-            if (string.IsNullOrEmpty(cim10Ids))
+            try
             {
-                // Si cim10Ids está vacío o es null, devolvemos una lista vacía.
-                return new List<CIM10Model>();
+                return string.IsNullOrEmpty(cim10Ids)
+                    ? new List<CIM10Model>()
+                    : await _context.CIM10Models
+                         .FromSqlRaw("EXEC Vidal_GetCIM10ByIds @Ids", new SqlParameter("@Ids", cim10Ids))
+                         .ToListAsync();
             }
-
-            var cim10Param = new SqlParameter("@Ids", cim10Ids);
-
-            return await _context.CIM10Models
-                .FromSqlRaw("EXEC Vidal_GetCIM10ByIds @Ids", cim10Param)
-                .ToListAsync();
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                throw new ApplicationException($"{error.Descripcion}. Detalle: {ex.Message}");
+            }
         }
 
     }

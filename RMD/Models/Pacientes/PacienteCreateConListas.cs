@@ -9,6 +9,8 @@ namespace RMD.Models.Pacientes
         public DateTime FechaNacimiento { get; set; }
 
         public int IdEntidadNacimiento { get; set; }
+        public int IdTipoIdentificacion { get; set; }
+        public string NumeroIdentificacion { get; set; }
 
         [Required]
         [MaxLength(10)]

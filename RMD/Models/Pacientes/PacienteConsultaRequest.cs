@@ -13,6 +13,9 @@
         public string Nombres { get; set; } = string.Empty; // T1.Nombres
         public string PrimerApellido { get; set; } = string.Empty; // T1.PrimerApellido
         public string SegundoApellido { get; set; } = string.Empty; // T1.SegundoApellido
+        public int IdTipoIdentificacion { get; set; }
+        public string TipoIdentificacion { get; set; }
+        public string NumeroIdentificacion { get; set; }
         public string FechaNacimiento { get; set; } = string.Empty; // T2.FechaNacimiento
         public int Edad { get; set; } // Calculada en el SP
         public int? IdEntidadNacimiento { get; set; } // T2.IdEntidadNacimiento
