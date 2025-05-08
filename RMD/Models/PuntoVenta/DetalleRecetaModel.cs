@@ -43,6 +43,33 @@
         public DateTime PeriodoInicio { get; set; } // Fecha de inicio del tratamiento
         public DateTime? PeriodoTerminacion { get; set; } // Fecha de terminación del tratamiento
         public bool Surtido { get; set; } // Estado de si fue surtido o no
+        public static DetalleRecetaModel FromDataReader(SqlDataReader reader)
+        {
+            return new DetalleRecetaModel
+            {
+                IdDetalleReceta = reader.GetGuid(reader.GetOrdinal("IdDetalleReceta")),
+                IdReceta = reader.GetGuid(reader.GetOrdinal("IdReceta")),
+                MedicamentoType = reader["MedicamentoType"]?.ToString() ?? string.Empty,
+                MedicamentoId = reader.GetInt32(reader.GetOrdinal("MedicamentoId")),
+                MedicamentoNombre = reader["MedicamentoNombre"]?.ToString() ?? string.Empty,
+                UnidadDispensacionId = reader.GetInt32(reader.GetOrdinal("UnidadDispensacionId")),
+                UnidadDispensacion = reader["UnidadDispensacion"]?.ToString() ?? string.Empty,
+                RutaAdministracionId = reader.GetInt32(reader.GetOrdinal("RutaAdministracionId")),
+                RutaAdministracion = reader["RutaAdministracion"]?.ToString() ?? string.Empty,
+                CantidadDiaria = reader.GetDecimal(reader.GetOrdinal("CantidadDiaria")),
+                Indicacion = reader["Indicacion"]?.ToString() ?? string.Empty,
+                IndicacionNombre = reader["IndicacionNombre"]?.ToString(),
+                Frecuencia = reader["Frecuencia"]?.ToString() ?? string.Empty,
+                Observaciones = reader["Observaciones"]?.ToString(),
+                Duracion = reader.GetInt32(reader.GetOrdinal("Duracion")),
+                UnidadDuracion = reader["UnidadDuracion"]?.ToString() ?? string.Empty,
+                PeriodoInicio = reader.GetDateTime(reader.GetOrdinal("PeriodoInicio")),
+                PeriodoTerminacion = reader.IsDBNull(reader.GetOrdinal("PeriodoTerminacion"))
+                    ? (DateTime?)null
+                    : reader.GetDateTime(reader.GetOrdinal("PeriodoTerminacion")),
+                Surtido = reader.GetBoolean(reader.GetOrdinal("Surtido"))
+            };
+        }
     }
 
 

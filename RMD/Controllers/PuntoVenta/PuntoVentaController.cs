@@ -1,4 +1,4 @@
-﻿using RMD.Extensions;
+﻿using RMD.Interface.Notificaciones;
 using RMD.Interface.PuntoVenta;
 using RMD.Models.PuntoVenta;
 using RMD.Models.Responses;
@@ -8,122 +8,117 @@ namespace RMD.Controllers.PuntoVenta
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class PuntoVentaController(IPuntoVentaService puntoVentaService) : ControllerBase
+    [ServiceFilter(typeof(ValidateTokenFilter))]
+    public class PuntoVentaController : ControllerBase
     {
-        private readonly IPuntoVentaService _puntoVentaService = puntoVentaService;
+        private readonly IPuntoVentaService _puntoVentaService;
+        private readonly ICatalogoNotificacionService _catalogoNotificacionService;
+
+        public PuntoVentaController(IPuntoVentaService puntoVentaService, ICatalogoNotificacionService catalogoNotificacionService)
+        {
+            _puntoVentaService = puntoVentaService;
+            _catalogoNotificacionService = catalogoNotificacionService;
+        }
 
         [HttpPost("buscar-receta")]
         public async Task<IActionResult> BuscarReceta([FromBody] string qrEncriptado)
         {
-            try
+            // 1) Permiso
+            if (!HasPermission("BuscarReceta"))
             {
-                // Desencriptar el QR
-                var datosDesencriptados = EncryptionHelper.Decrypt(qrEncriptado);
-
-                // Separar los datos (IdReceta|IdMedico|FechaUltimaModificacion)
-                var partes = datosDesencriptados.Split('|');
-                if (partes.Length != 3)
-                {
-                    return BadRequest(ResponseFromService<string>.Failure(
-                        HttpStatusCode.BadRequest,
-                        "QR inválido."
-                    ));
-                }
-
-                var idReceta = Guid.Parse(partes[0]);
-                var idMedico = Guid.Parse(partes[1]);
-                var fechaUltimaModificacion = DateTime.Parse(partes[2]);
-
-                // Llamar al servicio para obtener la receta desde la base de datos
-                var (receta, detalles, paciente, medico, grupoEmpresarial) =
-                    await _puntoVentaService.ObtenerRecetaAsync(idReceta, idMedico, fechaUltimaModificacion);
-
-                if (receta == null)
-                {
-                    return NotFound(ResponseFromService<string>.Failure(
-                        HttpStatusCode.NotFound,
-                        "Receta no encontrada o ya no está surtida."
-                    ));
-                }
-
-                // Preparar la respuesta con los datos obtenidos
-                var responseData = new
-                {
-                    Receta = receta,
-                    Detalles = detalles,
-                    Paciente = paciente,
-                    Medico = medico,
-                    GrupoEmpresarial = grupoEmpresarial
-                };
-
-                return Ok(ResponseFromService<object>.Success(responseData, "Receta encontrada exitosamente."));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            catch (Exception ex)
+            // 2) Validar input
+            if (string.IsNullOrEmpty(qrEncriptado))
             {
-                return BadRequest(ResponseFromService<string>.Failure(
-                    HttpStatusCode.BadRequest,
-                    $"Error al procesar el QR: {ex.Message}"
-                ));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("PUNTOVENTA", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
+            // 3) Desencriptar y parsear
+            var partes = EncryptionHelper.Decrypt(qrEncriptado).Split('|');
+            if (partes.Length != 3
+                || !Guid.TryParse(partes[0], out var idReceta)
+                || !Guid.TryParse(partes[1], out var idMedico)
+                || !DateTime.TryParse(partes[2].Trim(),
+                     CultureInfo.InvariantCulture,
+                     DateTimeStyles.None,
+                     out var fechaUltimaModificacion))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("PUNTOVENTA", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+            // 4) Llamada al servicio
+            var response = await _puntoVentaService
+                .ObtenerRecetaAsync(idReceta, idMedico, fechaUltimaModificacion);
+            // 5) Evaluar toast
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : NotFound(response);
         }
 
         [HttpPost("surtir-medicamentos")]
         public async Task<IActionResult> SurtirMedicamentos([FromBody] SurtirRecetaRequest request)
         {
-            try
+            // 1) Permiso
+            if (!HasPermission("SurtirMedicamentos"))
             {
-                await _puntoVentaService.SurtirMedicamentosAsync(request.IdReceta, request.DetallesReceta);
-
-                return Ok(ResponseFromService<string>.Success(
-                    "Los medicamentos han sido surtidos exitosamente."));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            catch (Exception ex)
+            // 2) Validar input
+            if (request?.DetallesReceta == null || !request.DetallesReceta.Any())
             {
-                return BadRequest(ResponseFromService<string>.Failure(
-                    System.Net.HttpStatusCode.BadRequest,
-                    $"Error al surtir los medicamentos: {ex.Message}"));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("PUNTOVENTA", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
+            // 3) Llamada al servicio
+            var response = await _puntoVentaService
+                .SurtirMedicamentosAsync(request.IdReceta, request.DetallesReceta);
+            // 4) Evaluar toast
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
-        [HttpGet("consultar-receta/{id}")]
-        public async Task<IActionResult> ConsultarRecetaPorId(int id)
+        [HttpGet("consultar-receta/{folio}")]
+        public async Task<IActionResult> ConsultarRecetaPorId(string folio)
         {
-            try
+            // 1) Permiso
+            if (!HasPermission("ConsultarRecetaPorId"))
             {
-                // Llama al servicio que ejecuta el SP
-                var (receta, detalles) = await _puntoVentaService.ConsultarRecetaPorIdAsync(id);
-
-                if (receta == null) // Verifica si la receta es null
-                {
-                    return NotFound(ResponseFromService<string>.Failure(
-                        HttpStatusCode.NotFound,
-                        "No se encontró ninguna receta con el ID proporcionado."
-                    ));
-                }
-
-                // Construye la respuesta con receta y detalles
-                var response = new
-                {
-                    Receta = receta,
-                    Detalles = detalles
-                };
-
-                return Ok(ResponseFromService<object>.Success(
-                    response,
-                    "Receta obtenida exitosamente."
-                ));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            catch (Exception ex)
+            // 2) Validar input
+            if (string.IsNullOrEmpty(folio))
             {
-                return BadRequest(ResponseFromService<string>.Failure(
-                    HttpStatusCode.BadRequest,
-                    $"Error al consultar la receta: {ex.Message}"
-                ));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("PUNTOVENTA", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
+            // 3) Llamada al servicio
+            var response = await _puntoVentaService
+                .ConsultarRecetaPorIdAsync(folio);
+            // 4) Evaluar toast
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : NotFound(response);
         }
 
-
-
+        private bool HasPermission(string endpointName)
+        {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            return RolesPermissions.PuntoVentaController
+                       .EndpointRolesPuntoVentaController[endpointName]
+                   .Contains(rol);
+        }
 
     }
 }
