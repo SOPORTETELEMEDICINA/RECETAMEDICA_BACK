@@ -1,8 +1,7 @@
-﻿using RMD.Extensions;
+﻿using RMD.Interface.Notificaciones;
 using RMD.Interface.Recetas;
 using RMD.Models.Recetas;
 using RMD.Models.Responses;
-using RMD.Models.Sucursales;
 
 namespace RMD.Controllers.Recetas
 {
@@ -10,264 +9,259 @@ namespace RMD.Controllers.Recetas
     [ApiController]
     [Authorize]
     [ServiceFilter(typeof(ValidateTokenFilter))]
-    public class RecetasController(IRecetaService recetaService, IHttpContextAccessor httpContextAccessor) : ControllerBase
+    public class RecetasController : ControllerBase
     {
-        private readonly IRecetaService _recetaService = recetaService;
-        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IRecetaService _recetaService;
+        private readonly ICatalogoNotificacionService _catalogoNotificacionService;
 
-        //[HttpGet("GetByIdRecetaByMedico/{idReceta}")]
-        //[Authorize]
-        //[ServiceFilter(typeof(ValidateTokenFilter))]
-        //public async Task<IActionResult> GetRecetaByIdRecetaByMedico(Guid idReceta)
-        //{
-        //    // Obtener el IdUsuario del token
-        //    var idUsuario = User.FindFirstValue("IdUsuario");
-        //    if (!Guid.TryParse(idUsuario, out var idUsuarioGuid))
-        //    {
-        //        return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El IdUsuario no es válido."));
-        //    }
-
-        //    try
-        //    {
-        //        // Llamar al servicio para obtener la receta y detalles
-        //        var recetaConDetalles = await _recetaService.GetRecetaByIdRecetaByMedicoAsync(idReceta, idUsuarioGuid);
-
-        //        if (recetaConDetalles == null)
-        //        {
-        //            // Retornar modelo vacío con mensaje informativo
-        //            return Ok(ResponseFromService<object>.Success(null, "No se encontró la receta o el médico no está autorizado."));
-        //        }
-
-        //        // Retornar la receta encontrada con mensaje de éxito
-        //        return Ok(ResponseFromService<object>.Success(recetaConDetalles, "Receta obtenida exitosamente."));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        // Manejo de errores con ResponseFromService
-        //        return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-        //    }
-        //}
-
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetRecetaById(Guid id)
+        public RecetasController(IRecetaService recetaService, ICatalogoNotificacionService catalogoNotificacionService)
         {
-            try
-            {
-                // Llamar al servicio para obtener la receta por ID
-                var receta = await _recetaService.GetRecetaByIdAsync(id);
-
-                if (receta == null)
-                {
-                    // Retornar un modelo vacío con un mensaje informativo
-                    return Ok(ResponseFromService<Receta>.Success(null, "No se encontró la receta especificada."));
-                }
-
-                return Ok(ResponseFromService<Receta>.Success(receta, "Receta obtenida exitosamente."));
-            }
-            catch (Exception ex)
-            {
-                // Manejo de errores con ResponseFromService
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+            _recetaService = recetaService;
+            _catalogoNotificacionService = catalogoNotificacionService;
         }
-
-
-        /// <summary>
-        /// Gets prescriptions by doctor ID.
-        /// </summary>
-        /// <param name="idMedico">The doctor ID.</param>
-        /// <returns>A list of prescriptions.</returns>
-        [HttpGet("medico/{idMedico}")]
-        public async Task<IActionResult> GetRecetasByMedico(Guid idMedico)
-        {
-            try
-            {
-                // Llamar al servicio para obtener las recetas por médico
-                var recetas = await _recetaService.GetRecetasByMedicoAsync(idMedico);
-
-                if (recetas == null || !recetas.Any())
-                {
-                    // Retornar un modelo vacío y un mensaje informativo
-                    return Ok(ResponseFromService<List<Receta>>.Success(new List<Receta>(), "No se encontraron recetas para el médico especificado."));
-                }
-
-                return Ok(ResponseFromService<IEnumerable<Receta>>.Success(recetas, "Recetas obtenidas exitosamente."));
-            }
-            catch (Exception ex)
-            {
-                // Manejo de errores con ResponseFromService
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
-        }
-
-
-        /// <summary>
-        /// Gets prescriptions by patient ID.
-        /// </summary>
-        /// <param name="idPaciente">The patient ID.</param>
-        /// <returns>A list of prescriptions.</returns>
-        [HttpGet("paciente/{idPaciente}")]
-        public async Task<IActionResult> GetRecetasByPaciente(Guid idPaciente)
-        {
-            try
-            {
-                // Llamar al servicio para obtener las recetas por paciente
-                var recetas = await _recetaService.GetRecetasByPacienteAsync(idPaciente);
-
-                if (recetas == null || !recetas.Any())
-                {
-                    // Retornar un modelo vacío y un mensaje informativo
-                    return Ok(ResponseFromService<List<Receta>>.Success(new List<Receta>(), "No se encontraron recetas para el paciente especificado."));
-                }
-
-                return Ok(ResponseFromService<IEnumerable<Receta>>.Success(recetas, "Recetas obtenidas exitosamente."));
-            }
-            catch (Exception ex)
-            {
-                // Manejo de errores con ResponseFromService
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
-        }
-
 
         [HttpPost("GetFilteredRecetas")]
         public async Task<IActionResult> GetFilteredRecetas([FromBody] RecetaFilterRequest filterRequest)
         {
-            // Obtener los valores del token
-            var rol = User.FindFirstValue(ClaimTypes.Role); // TipoUsuario del token
-            var idGEMPFromToken = User.FindFirstValue("GEMP");
-            var idSucursalFromToken = User.FindFirstValue("IdSucursal");
-
-            if (string.IsNullOrEmpty(rol))
+            if (!HasPermission("GetFilteredRecetas"))
             {
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "No se encontró el rol en el token."));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
 
-            try
+            if (filterRequest == null || !ModelState.IsValid)
             {
-                Guid idGEMP;
-                Guid? idSucursal = null;
-
-                // Validar y asignar los valores según el rol
-                if (rol == "Empleado de Farmacia" || rol == "Encargado de Farmacia")
-                {
-                    // Empleado o encargado: datos estrictamente del token
-                    if (string.IsNullOrEmpty(idGEMPFromToken) || string.IsNullOrEmpty(idSucursalFromToken))
-                        return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El token no contiene IdGEMP o IdSucursal."));
-
-                    idGEMP = Guid.Parse(idGEMPFromToken);
-                    idSucursal = Guid.Parse(idSucursalFromToken);
-                }
-                else if (rol == "Supervisor Sucursales" || rol == "Medico" || rol == "Particular")
-                {
-                    // Supervisor, médico o particular: IdGEMP del token, pero requieren IdSucursal
-                    if (string.IsNullOrEmpty(idGEMPFromToken))
-                        return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "El token no contiene IdGEMP."));
-
-                    idGEMP = Guid.Parse(idGEMPFromToken);
-                    idSucursal = filterRequest.IdSucursal ?? throw new ArgumentException("El IdSucursal es obligatorio para este rol.");
-                }
-                else if (rol == "Super Admin")
-                {
-                    // Super Admin: todo es pasado en la solicitud
-                    idGEMP = filterRequest.IdGEMP ?? throw new ArgumentException("El IdGEMP es obligatorio para Super Admin.");
-                    idSucursal = filterRequest.IdSucursal ?? throw new ArgumentException("El IdSucursal es obligatorio para Super Admin.");
-                }
-                else
-                {
-                    // Si no es un rol válido
-                    return Forbid(ResponseFromService<string>.Failure(HttpStatusCode.Forbidden, "No tiene permisos para acceder a este recurso.").Message);
-                }
-
-                // Llamar al servicio para obtener las recetas filtradas
-                var recetas = await _recetaService.GetFilteredRecetasAsync(
-                    rol,
-                    idGEMP,
-                    idSucursal,
-                    filterRequest.StartDate,
-                    filterRequest.EndDate,
-                    filterRequest.DateFilter
-                );
-
-                if (!recetas.Any())
-                {
-                    // Retornar un modelo vacío y un mensaje
-                    return Ok(ResponseFromService<List<RecetaList>>.Success(new List<RecetaList>(), "No se encontraron recetas con los filtros especificados."));
-                }
-
-                return Ok(ResponseFromService<IEnumerable<RecetaList>>.Success(recetas, "Recetas obtenidas exitosamente."));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            catch (Exception ex)
+
+            // Extraer rol y claims
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            var idGempClaim = User.FindFirstValue("GEMP");
+            var idSucursalClaim = User.FindFirstValue("IdSucursal");
+            if (string.IsNullOrEmpty(rol) || string.IsNullOrEmpty(idGempClaim))
             {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
+
+            var idGemp = Guid.Parse(idGempClaim);
+            Guid? idSucursal = null;
+
+            if (rol is "EMPLEADO DE FARMACIA" or "ENCARGADO DE FARMACIA")
+            {
+                if (string.IsNullOrEmpty(idSucursalClaim))
+                {
+                    var notif = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                    return BadRequest(ResponseFromService<string>.Failure(notif));
+                }
+                idSucursal = Guid.Parse(idSucursalClaim);
+            }
+            else if (rol is "SUPERVISOR SUCURSALES" or "MEDICO" or "PARTICULAR")
+            {
+                if (!filterRequest.IdSucursal.HasValue)
+                {
+                    var notif = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("RECETAS", "SUCURSAL_REQUERIDA");
+                    return BadRequest(ResponseFromService<string>.Failure(notif));
+                }
+                idSucursal = filterRequest.IdSucursal;
+            }
+            else if (rol == "SUPER ADMIN")
+            {
+                if (!filterRequest.IdGEMP.HasValue)
+                {
+                    var notif = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                    return BadRequest(ResponseFromService<string>.Failure(notif));
+                }
+                idGemp = filterRequest.IdGEMP.Value;
+                idSucursal = filterRequest.IdSucursal;
+            }
+
+            // 5) Llamada al servicio y validación de toast
+            var response = await _recetaService.GetFilteredRecetasAsync(
+                rol, idGemp, idSucursal,
+                filterRequest.Folio,
+                filterRequest.StartDate,
+                filterRequest.EndDate,
+                filterRequest.DateFilter
+            );
+
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
+        }
+
+        [HttpPost("GetFilteredRecetasByIdMedico")]
+        public async Task<IActionResult> GetFilteredRecetasByIdMedico([FromBody] RecetaFilterByMedicoRequest filterRequest)
+        {
+            if (!HasPermission("GetFilteredRecetasByIdMedico"))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            if (filterRequest == null || !ModelState.IsValid)
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            if (!Guid.TryParse(User.FindFirstValue("IdUsuario"), out var idUsuario) ||
+                !Guid.TryParse(User.FindFirstValue("GEMP"), out var idGemp))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            Guid? idSucursal = null;
+            if (Guid.TryParse(User.FindFirstValue("IdSucursal"), out var tmp))
+                idSucursal = tmp;
+
+            var response = await _recetaService.GetFilteredRecetasByIdMedicoAsync(
+                idUsuario, idGemp, idSucursal,
+                filterRequest.Folio,
+                filterRequest.StartDate,
+                filterRequest.EndDate,
+                filterRequest.DateFilter
+            );
+
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
         [HttpPost("GetRecetaByIdReceta")]
         public async Task<IActionResult> GetRecetaByIdReceta([FromBody] RecetaRequest request)
         {
-            try
+            if (!HasPermission("GetRecetaByIdReceta"))
             {
-                if (request == null || request.IdReceta == Guid.Empty || request.IdPaciente == Guid.Empty)
-                {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Parámetros inválidos."));
-                }
-
-                // Llamar al servicio para obtener el PDF
-                var htmlContent = await _recetaService.GetRecetaByIdRecetaAsync(request.IdReceta, request.IdPaciente);
-
-                if (htmlContent == null || htmlContent.Length == 0)
-                {
-                    return Ok(ResponseFromService<string>.Success(null, "No se encontró la receta especificada."));
-                }
-
-                // Retornar el PDF como archivo descargable
-                //return File(htmlContent, "application/pdf", "receta_medica.pdf");
-                // Retornar el HTML
-                return Content(htmlContent, "text/html");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            catch (Exception ex)
+
+            if (request == null
+                || request.IdReceta == Guid.Empty
+                || request.IdPaciente == Guid.Empty)
             {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
+            // 1) Llamada al servicio
+            var response = await _recetaService.GetRecetaByIdRecetaAsync(request.IdReceta, request.IdPaciente);
+
+            // 2) Validación de toast + caso “no encontrada”
+            if (response.Toast == "error" || response.Toast == "warning")
+            {
+                return BadRequest(response);
+            }
+            if (string.IsNullOrEmpty(response.Data))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("RECETAS", "RECETA_NO_ENCONTRADA");
+                return Ok(ResponseFromService<string>.Success(null, notif));
+            }
+
+            // 3) Éxito
+            return Content(response.Data, "text/html");
         }
-
-
 
         [HttpPost("GetRecetasByIdPaciente")]
         public async Task<IActionResult> GetRecetasByIdPaciente([FromBody] RecetaFilterByPacienteRequest filterRequest)
         {
-            try
+            if (!HasPermission("GetRecetasByIdPaciente"))
             {
-                var recetas = await _recetaService.GetRecetasByIdPacienteAsync(
-                    filterRequest.IdPaciente, 
-                    filterRequest.StartDate,
-                    filterRequest.EndDate,
-                    filterRequest.DateFilter
-                );
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
 
-                if (recetas.Count == 0)
+            if (filterRequest == null || !ModelState.IsValid)
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            if (!Guid.TryParse(User.FindFirstValue("IdUsuario"), out var idUsuario))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            // 1) Obtener paciente
+            if (!filterRequest.IdPaciente.HasValue)
+            {
+                var pacienteResp = await _recetaService.GetIdPacienteByUsuarioAsync(idUsuario);
+                if (pacienteResp.Toast == "error" || pacienteResp.Toast == "warning")
                 {
-                    // Retornar un modelo vacío y un mensaje
-                    return Ok(ResponseFromService<List<RecetaList>>.Success(new List<RecetaList>(), "No se encontraron recetas con los filtros especificados."));
+                    return NotFound(pacienteResp);
                 }
+                filterRequest.IdPaciente = pacienteResp.Data.Value;
+            }
 
-                return Ok(ResponseFromService<IEnumerable<RecetaList>>.Success(recetas, "Recetas obtenidas exitosamente."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+            // 2) Llamada al servicio principal
+            var response = await _recetaService.GetRecetasByIdPacienteAsync(
+                idUsuario,
+                filterRequest.IdPaciente.Value,
+                filterRequest.StartDate,
+                filterRequest.EndDate,
+                filterRequest.DateFilter
+            );
+
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
-        //private bool IsUserAuthorized()
-        //{
-        //    var user = _httpContextAccessor.HttpContext?.User;
-        //    var roleIdClaim = user?.FindFirst("IdRol")?.Value;
 
-        //    // Validar si el IdRol del token es uno de los permitidos
-        //    return roleIdClaim == "7905213C-B0CB-4D42-A997-20094EF41F9C" ||
-        //           roleIdClaim == "DE5DFDDC-F6CC-4B7F-B805-286732501E57";
-        //}
+
+        [HttpPost("GetQRByIdReceta")]
+        public async Task<IActionResult> GetQRByIdReceta([FromBody] Guid IdReceta)
+        {
+            if (!HasPermission("GetQRByIdReceta"))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            var idUsuarioClaim = User.FindFirstValue("IdUsuario");
+            if (!Guid.TryParse(idUsuarioClaim, out var idUsuario))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            var pacienteResp = await _recetaService.GetIdPacienteByUsuarioAsync(idUsuario);
+            if(pacienteResp.Toast == "error" || pacienteResp.Toast == "warning")
+            {
+                return NotFound(pacienteResp);
+            }
+           
+
+            var response = await _recetaService.GetQRAsync(IdReceta, pacienteResp.Data.Value);
+
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
+        }
+        private bool HasPermission(string endpointName)
+        {
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+            return RolesPermissions.RecetaController.EndpointRolesRecetaController[endpointName].Contains(rol);
+        }
     }
 }

@@ -1,13 +1,7 @@
-﻿using RMD.Extensions;
+﻿using RMD.Interface.Notificaciones;
 using RMD.Interface.Recetas;
 using RMD.Models.Recetas;
 using RMD.Models.Responses;
-using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 
 namespace RMD.Controllers.Recetas
 {
@@ -15,118 +9,132 @@ namespace RMD.Controllers.Recetas
     [ApiController]
     [Authorize]
     [ServiceFilter(typeof(ValidateTokenFilter))]
-    public class DetalleRecetasController(IDetalleRecetaService detalleRecetaService, IHttpContextAccessor httpContextAccessor) : ControllerBase
+    public class DetalleRecetasController : ControllerBase
     {
-        private readonly IDetalleRecetaService _detalleRecetaService = detalleRecetaService;
-        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IDetalleRecetaService _detalleRecetaService;
+        private readonly ICatalogoNotificacionService _catalogoNotificacionService;
 
-        /// <summary>
-        /// Obtiene el detalle de una receta por su ID.
-        /// </summary>
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetDetalleRecetaById(Guid id)
+        public DetalleRecetasController(IDetalleRecetaService detalleRecetaService, ICatalogoNotificacionService catalogoNotificacionService)
         {
-            var detalle = await _detalleRecetaService.GetDetalleRecetaByIdAsync(id);
-
-            if (detalle == null)
-            {
-                return Ok(ResponseFromService<DetalleReceta>.Success(new DetalleReceta(), "No se encontró el detalle de la receta."));
-            }
-
-            return Ok(ResponseFromService<DetalleReceta>.Success(detalle));
+            _detalleRecetaService = detalleRecetaService;
+            _catalogoNotificacionService = catalogoNotificacionService;
         }
 
-        /// <summary>
-        /// Obtiene los detalles de una receta por el ID de la receta.
-        /// </summary>
-        [HttpGet("receta/{idReceta}")]
-        public async Task<IActionResult> GetDetalleRecetasByReceta(Guid idReceta)
+        [HttpPost("GetDetallesByIdReceta")]
+        public async Task<IActionResult> GetDetallesByIdReceta([FromBody] Guid idReceta)
         {
-            var detalles = (await _detalleRecetaService.GetDetalleRecetasByRecetaAsync(idReceta)).ToList();
+            // 1) Permisos
+            //if (!HasPermission("GetDetallesByIdReceta"))
+            //{
+            //    var notif = await _catalogoNotificacionService
+            //        .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+            //    return BadRequest(ResponseFromService<string>.Failure(notif));
+            //}
 
-            if (detalles == null || detalles.Count == 0)
-            {
-                return Ok(ResponseFromService<List<DetalleReceta>>.Success(new List<DetalleReceta>(), "No se encontraron detalles para la receta proporcionada."));
-            }
-
-            return Ok(ResponseFromService<List<DetalleReceta>>.Success(detalles));
-        }
-
-        /// <summary>
-        /// Obtiene la reacción de una receta por ID de receta.
-        /// </summary>
-        [HttpGet("reaccion")]
-        public async Task<IActionResult> GetReaccionByIdReceta([FromBody] DetalleRecetaRequest request)
-        {
-            var user = _httpContextAccessor.HttpContext?.User;
-            var idUsuarioString = user?.FindFirst("IdUsuario")?.Value;
-
+            // 2) Validar token
+            var idUsuarioString = User.FindFirst("IdUsuario")?.Value;
             if (!Guid.TryParse(idUsuarioString, out var idUsuario))
             {
-                return BadRequest("El IdUsuario no es un GUID válido.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
 
-            var detalle = await _detalleRecetaService.GetReaccionByIdRecetaAsync(request, idUsuario);
+            // 3) Llamada al servicio
+            var response = await _detalleRecetaService.GetDetallesByIdReceta(idUsuario, idReceta);
 
-            if (detalle == null)
-            {
-                return Ok(ResponseFromService<DetalleRecetaResponse>.Failure(HttpStatusCode.NotFound, "No se encontró la reacción de la receta."));
-            }
-
-            return Ok(ResponseFromService<DetalleRecetaResponse>.Success(detalle));
+            // 4) Validación de toast
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
-
-        /// <summary>
-        /// Crea o actualiza una reacción en la receta.
-        /// </summary>
-        [HttpPost("crear-actualizar")]
+        [HttpPost("reaccion-crear-actualizar")]
         public async Task<IActionResult> CreateUpdateReaccion([FromBody] DetalleRecetaRequest request)
         {
-            var user = _httpContextAccessor.HttpContext?.User;
-            var idUsuarioString = user?.FindFirst("IdUsuario")?.Value;
+            // 1) Permisos
+            //if (!HasPermission("CreateUpdateReaccion"))
+            //{
+            //    var notif = await _catalogoNotificacionService
+            //        .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+            //    return BadRequest(ResponseFromService<string>.Failure(notif));
+            //}
 
+            // 2) Validar token
+            var idUsuarioString = User.FindFirst("IdUsuario")?.Value;
             if (!Guid.TryParse(idUsuarioString, out var idUsuario))
             {
-                return BadRequest("El IdUsuario no es un GUID válido.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
 
-            (bool resultado, string outMessage) = await _detalleRecetaService.CreateUpdateReaccionAsync(request, idUsuario);
+            // 3) Llamada al servicio
+            var response = await _detalleRecetaService.CreateUpdateReaccionAsync(request, idUsuario);
 
-            if (resultado)
-            {
-                return Ok(ResponseFromService<bool>.Success(resultado, outMessage));
-            }
-            else
-            {
-                return BadRequest(ResponseFromService<bool>.Failure(HttpStatusCode.BadRequest, outMessage));
-            }
+            // 4) Validación de toast
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
-
-        /// <summary>
-        /// Borra lógicamente una reacción de la receta.
-        /// </summary>
-        [HttpDelete("delete")]
+        [HttpDelete("reaccion-delete")]
         public async Task<IActionResult> DeleteReaccion([FromBody] DetalleRecetaRequest request)
         {
-            var user = _httpContextAccessor.HttpContext?.User;
-            var idUsuarioString = user?.FindFirst("IdUsuario")?.Value;
+            // 1) Permisos
+            //if (!HasPermission("DeleteReaccion"))
+            //{
+            //    var notif = await _catalogoNotificacionService
+            //        .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+            //    return BadRequest(ResponseFromService<string>.Failure(notif));
+            //}
 
+            // 2) Validar token
+            var idUsuarioString = User.FindFirst("IdUsuario")?.Value;
             if (!Guid.TryParse(idUsuarioString, out var idUsuario))
             {
-                return BadRequest("El IdUsuario no es un GUID válido.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            var (resultado, outMessage) = await _detalleRecetaService.DeleteReaccionAsync(request, idUsuario);
 
-            if (resultado)
-            {
-                return Ok(ResponseFromService<bool>.Success(resultado, outMessage));
-            }
-            else
-            {
-                return BadRequest(ResponseFromService<bool>.Failure(HttpStatusCode.BadRequest, outMessage));
-            }
+            // 3) Llamada al servicio
+            var response = await _detalleRecetaService.DeleteReaccionAsync(request, idUsuario);
+
+            // 4) Validación de toast
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
+
+        [HttpGet("GetSoloMedicamentosActivos")]
+        public async Task<IActionResult> GetSoloMedicamentosActivos()
+        {
+            // 1) Permisos
+            //if (!HasPermission("GetSoloMedicamentosActivos"))
+            //{
+            //    var notif = await _catalogoNotificacionService
+            //        .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+            //    return BadRequest(ResponseFromService<string>.Failure(notif));
+            //}
+
+            // 2) Validar token
+            var idUsuarioString = User.FindFirst("IdUsuario")?.Value;
+            if (!Guid.TryParse(idUsuarioString, out var idUsuario))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            // 3) Llamada al servicio
+            var response = await _detalleRecetaService.GetSoloMedicamentosActivos(idUsuario);
+
+            // 4) Validación de toast
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
+        }
+
     }
 }
