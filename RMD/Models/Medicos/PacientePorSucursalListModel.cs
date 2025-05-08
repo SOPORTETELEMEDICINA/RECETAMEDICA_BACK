@@ -10,6 +10,9 @@ public class PacientePorSucursalListModel
     public string Nombres { get; set; }
     public string PrimerApellido { get; set; }
     public string SegundoApellido { get; set; }
+    public int IdTipoIdentificacion { get; set; }
+    public string TipoIdentificacion { get; set;}
+    public string NumeroIdentificacion { get; set; }
     public string FechaNacimiento { get; set; }
     public int Edad { get; set; }
     public int IdEntidadNacimiento { get; set; }
