@@ -1,4 +1,4 @@
-﻿using RMD.Extensions;
+﻿using RMD.Interface.Notificaciones;
 using RMD.Interface.Sucursales;
 using RMD.Models.Responses;
 using RMD.Models.Sucursales;
@@ -9,148 +9,140 @@ namespace RMD.Controllers.Sucursales
     [ApiController]
     [Authorize]
     [ServiceFilter(typeof(ValidateTokenFilter))]
-    public class SucursalesController(ISucursalService sucursalService
-            //, IHttpContextAccessor httpContextAccessor
-            ) : ControllerBase
+    public class SucursalesController : ControllerBase
     {
-        private readonly ISucursalService _sucursalService = sucursalService;
+        private readonly ISucursalService _sucursalService;
+        private readonly ICatalogoNotificacionService _catalogoNotificacionService;
+
+        public SucursalesController(ISucursalService sucursalService, ICatalogoNotificacionService catalogoNotificacionService)
+        {
+            _sucursalService = sucursalService;
+            _catalogoNotificacionService = catalogoNotificacionService;
+        }
+
 
         [HttpPost]
-        public async Task<ActionResult<ResponseFromService<bool>>> CreateSucursal([FromBody] CreateSucursalModel model)
+        public async Task<IActionResult> CreateSucursal([FromBody] CreateSucursalModel model)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.SucursalesController.EndpointRolesSucursalesController["CreateSucursal"].Contains(rol))
+            if (!HasPermission("CreateSucursal"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            if (model == null || !ModelState.IsValid)
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
 
             var result = await _sucursalService.CreateSucursalAsync(model);
-            if (!result)
-            {
-                return BadRequest(ResponseFromService<bool>.Failure(HttpStatusCode.BadRequest, "Error al crear la sucursal."));
-            }
-            return Ok(ResponseFromService<bool>.Success(true, "Sucursal creada exitosamente."));
+            return (result.Toast == "success" || result.Toast == "info")
+                ? Ok(result)
+                : BadRequest(result);
         }
 
-        [HttpPut("{id}")]
-        public async Task<ActionResult<ResponseFromService<bool>>> UpdateSucursal(Guid id, [FromBody] UpdateSucursalModel model)
+        [HttpPut("{id:guid}")]
+        public async Task<IActionResult> UpdateSucursal(Guid id, [FromBody] UpdateSucursalModel model)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.SucursalesController.EndpointRolesSucursalesController["UpdateSucursal"].Contains(rol))
+            if (!HasPermission("UpdateSucursal"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            //if (!IsUserAuthorized("Editar"))
-            //{
-            //    return Forbid("No tiene permisos para realizar esta acción.");
-            //}
+
+            if (id == Guid.Empty || model == null || !ModelState.IsValid)
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
 
             var result = await _sucursalService.UpdateSucursalAsync(id, model);
-            if (!result)
-            {
-                return BadRequest(ResponseFromService<bool>.Failure(HttpStatusCode.BadRequest, "Error al actualizar la sucursal."));
-            }
-            return Ok(ResponseFromService<bool>.Success(true, "Sucursal actualizada exitosamente."));
+            return (result.Toast == "success" || result.Toast == "info")
+                ? Ok(result)
+                : BadRequest(result);
         }
 
-        [HttpDelete("{id}")]
-        public async Task<ActionResult<ResponseFromService<bool>>> DeleteSucursal(Guid id)
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> DeleteSucursal(Guid id)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.SucursalesController.EndpointRolesSucursalesController["DeleteSucursal"].Contains(rol))
+            if (!HasPermission("DeleteSucursal"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
 
-            //if (!IsUserAuthorized("Delete"))
-            //{
-            //    return Forbid("No tiene permisos para realizar esta acción.");
-            //}
+            if (id == Guid.Empty)
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
 
             var result = await _sucursalService.DeleteSucursalAsync(id);
-            if (!result)
-            {
-                return BadRequest(ResponseFromService<bool>.Failure(HttpStatusCode.BadRequest, "Error al eliminar la sucursal."));
-            }
-            return Ok(ResponseFromService<bool>.Success(true, "Sucursal eliminada (lógicamente) exitosamente."));
+            return (result.Toast == "success" || result.Toast == "info")
+                ? Ok(result)
+                : BadRequest(result);
         }
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<ResponseFromService<SucursalRequest>>> GetSucursalById(Guid id)
+        [HttpGet("{id:guid}")]
+        public async Task<IActionResult> GetSucursalById(Guid id)
+        {
+            if (!HasPermission("GetSucursalById"))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            if (id == Guid.Empty)
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            var result = await _sucursalService.GetSucursalByIdSucursalAsync(id);
+
+            return (result.Toast == "success" || result.Toast == "info")
+                ? Ok(result)
+                : (result.Toast == "warning"
+                    ? NotFound(result)
+                    : BadRequest(result));
+        }
+                
+        [HttpGet("gemp/{idGEMP:guid}")]
+        public async Task<IActionResult> GetSucursalesByGEMP(Guid idGEMP)
+        {
+            if (!HasPermission("GetSucursalesByGEMP"))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            if (idGEMP == Guid.Empty)
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            var result = await _sucursalService.GetSucursalesByIdGEMPAsync(idGEMP);
+            return (result.Toast == "success" || result.Toast == "info")
+                ? Ok(result)
+                : BadRequest(result);
+        }
+
+        private bool HasPermission(string endpointName)
         {
             var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.SucursalesController.EndpointRolesSucursalesController["GetSucursalById"].Contains(rol))
-            {
-                return Forbid("No tiene permisos para acceder a este recurso.");
-            }
-            try
-            {
-                var sucursal = await _sucursalService.GetSucursalByIdSucursalAsync(id);
-                return Ok(ResponseFromService<SucursalRequest>.Success(sucursal, "Sucursal encontrada exitosamente."));
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ResponseFromService<SucursalRequest>.Failure(HttpStatusCode.NotFound, ex.Message));
-            }
+            return RolesPermissions.SucursalesController.EndpointRolesSucursalesController[endpointName].Contains(rol);
         }
-
-        [HttpGet("gemp/{idGEMP}")]
-        public async Task<ActionResult<ResponseFromService<IEnumerable<SucursalRequest>>>> GetSucursalesByGEMP(Guid idGEMP)
-        {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.SucursalesController.EndpointRolesSucursalesController["GetSucursalesByGEMP"].Contains(rol))
-            {
-                return Forbid("No tiene permisos para acceder a este recurso.");
-            }
-            //if (!IsUserAuthorized("Consulta"))
-            //{
-            //    return Forbid("No tiene permisos para realizar esta acción.");
-            //}
-            var sucursales = await _sucursalService.GetSucursalesByIdGEMPAsync(idGEMP);
-            if (sucursales == null || !sucursales.Any())
-            {
-                return NotFound(ResponseFromService<IEnumerable<SucursalRequest>>.Failure(HttpStatusCode.NotFound, "No se encontraron sucursales para este grupo empresarial."));
-            }
-
-            return Ok(ResponseFromService<IEnumerable<SucursalRequest>>.Success(sucursales, "Sucursales encontradas exitosamente."));
-        }
-
-        [HttpGet("gemp/{idGEMP}/asentamiento/{idAsentamiento}")]
-        public async Task<ActionResult<ResponseFromService<IEnumerable<SucursalRequest>>>> GetSucursalesByGEMPAndAsentamiento(Guid idGEMP, int idAsentamiento)
-        {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.SucursalesController.EndpointRolesSucursalesController["GetSucursalesByGEMPAndAsentamiento"].Contains(rol))
-            {
-                return Forbid("No tiene permisos para acceder a este recurso.");
-            }
-            var sucursales = await _sucursalService.GetSucursalesByIdGEMPAndIdAsentamientoAsync(idGEMP, idAsentamiento);
-            if (sucursales == null || !sucursales.Any())
-            {
-                return NotFound(ResponseFromService<IEnumerable<SucursalRequest>>.Failure(HttpStatusCode.NotFound, "No se encontraron sucursales para el grupo empresarial y asentamiento especificados."));
-            }
-
-            return Ok(ResponseFromService<IEnumerable<SucursalRequest>>.Success(sucursales, "Sucursales encontradas exitosamente."));
-        }
-
-        //private bool IsUserAuthorized( string accion)
-        //{
-        //    var user = _httpContextAccessor.HttpContext?.User;
-        //    var roleIdClaim = user?.FindFirst("IdRol")?.Value?.ToUpper();  // Convertir a mayúsculas
-
-        //    if (accion == "Crear" || accion == "Editar" || accion == "Delete" || accion == "Consultar")
-        //    {
-        //        return roleIdClaim == "7905213C-B0CB-4D42-A997-20094EF41F9C" ||
-        //          roleIdClaim == "68C87CA4-2499-4A9C-B0DC-EEE99B7078BF";
-        //    }
-        //    else
-        //    {
-        //        return roleIdClaim == "7905213C-B0CB-4D42-A997-20094EF41F9C" ||
-        //          roleIdClaim == "DE5DFDDC-F6CC-4B7F-B805-286732501E57" ||
-        //          roleIdClaim == "68C87CA4-2499-4A9C-B0DC-EEE99B7078BF";
-        //    }
-        //    // Validar si el IdRol del token es uno de los permitidos
-           
-        //}
-
     }
 }

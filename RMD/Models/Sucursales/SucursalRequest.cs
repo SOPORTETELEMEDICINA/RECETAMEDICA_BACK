@@ -69,5 +69,36 @@ namespace RMD.Models.Sucursales
 
         [MaxLength(20)]
         public string Status { get; set; } = string.Empty;
+        public static SucursalRequest FromDataReader(SqlDataReader reader)
+        {
+            return new SucursalRequest
+            {
+                IdSucursal = reader.GetGuid(reader.GetOrdinal("IdSucursal")),
+                IdGEMP = reader.GetGuid(reader.GetOrdinal("IdGEMP")),
+                Numero = reader.GetInt32(reader.GetOrdinal("Numero")),
+                Nombre = reader.GetString(reader.GetOrdinal("Nombre")),
+                RegistroSanitario = reader.GetString(reader.GetOrdinal("RegistroSanitario")),
+                Responsable = reader.GetString(reader.GetOrdinal("Responsable")),
+                CedulaResponsable = reader.GetString(reader.GetOrdinal("CedulaResponsable")),
+                TelefonoResponsable = reader.GetString(reader.GetOrdinal("TelefonoResponsable")),
+                EmailResponsable = reader.GetString(reader.GetOrdinal("EmailResponsable")),
+                Domicilio = reader.GetString(reader.GetOrdinal("Domicilio")),
+                IdAsentamiento = reader.GetInt32(reader.GetOrdinal("IdAsentamiento")),
+                NombreAsentamiento = reader.GetString(reader.GetOrdinal("NombreAsentamiento")),
+                IdTipoAsentamiento = reader.GetInt32(reader.GetOrdinal("IdTipoAsentamiento")),
+                TipoAsentamiento = reader.GetString(reader.GetOrdinal("TipoAsentamiento")),
+                IdCP = reader.GetInt32(reader.GetOrdinal("IdCP")),
+                CodigoPostal = reader.GetString(reader.GetOrdinal("CodigoPostal")),
+                IdMunicipio = reader.GetInt32(reader.GetOrdinal("IdMunicipio")),
+                NoMunicipio = (short)reader.GetInt16(reader.GetOrdinal("NoMunicipio")),
+                Municipio = reader.GetString(reader.GetOrdinal("Municipio")),
+                IdCiudad = reader.GetInt32(reader.GetOrdinal("IdCiudad")),
+                Ciudad = reader.GetString(reader.GetOrdinal("Ciudad")),
+                IdEntidad = reader.GetInt32(reader.GetOrdinal("IdEntidad")),
+                Estado = reader.GetString(reader.GetOrdinal("Estado")),
+                Abreviatura = reader.GetString(reader.GetOrdinal("Abreviatura")),
+                Status = reader.GetString(reader.GetOrdinal("Status"))
+            };
+        }
     }
 }
