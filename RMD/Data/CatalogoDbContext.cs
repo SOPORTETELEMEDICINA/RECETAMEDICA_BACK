@@ -11,6 +11,7 @@ namespace RMD.Data
         public DbSet<CatCP> CatCP { get; set; }
         public DbSet<CatCiudades> CatCiudades { get; set; }
         public DbSet<AsentamientoResultModel> AsentamientoResultModel { get; set; }
+        public DbSet<CatEventosDeSalud> CatEventosDeSalud { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -58,6 +59,9 @@ namespace RMD.Data
             modelBuilder.Entity<CatTipoAsentamiento>().ToTable("CatTipoAsentamiento");
             modelBuilder.Entity<CatCP>().ToTable("CatCP"); // Si en SQL sigue siendo CatCP2
             modelBuilder.Entity<CatCiudades>().ToTable("CatCiudades");
+
+            modelBuilder.Entity<CatEventosDeSalud>().HasKey(e => e.IdEvento);
+            modelBuilder.Entity<CatEventosDeSalud>().ToTable("CatEventosDeSalud");
         }
     }
 }

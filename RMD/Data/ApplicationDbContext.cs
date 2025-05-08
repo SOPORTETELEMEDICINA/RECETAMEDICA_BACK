@@ -1,64 +1,31 @@
-﻿//using RMD.Models.Catalogo;
-//using RMD.Models.Consulta;
+﻿using RMD.Models.CatalogoErrors;
+using RMD.Models.Login;
+using RMD.Models.Responses;
 
-//namespace RMD.Data
-//{
-//    public class ApplicationDbContext : DbContext
-//    {
-//        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
+public class ApplicationDbContext : DbContext
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options)
+    {
+    }
 
-//        //public DbSet<CatalogoRequest> Catalogos { get; set; }
-//        //public DbSet<Asentamiento> Asentamiento { get; set; }
-//        //public DbSet<CatalogoDetail> CatalogoDetail { get; set; }
-//        //public DbSet<Ciudad> Ciudad { get; set; }
-//        //public DbSet<CP> CP { get; set; }
-//        //public DbSet<Entidad> Entidad { get; set; }
-//        //public DbSet<Municipio> Municipio { get; set; }
+    public DbSet<RegistroPeticion> RegistroPeticiones { get; set; }
+    public DbSet<ErrorCatalog> CatalogoErrores { get; set; }
+    public DbSet<CatalogoNotificacion> CatalogoNotificaciones { get; set; }
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<RegistroPeticion>().ToTable("RegistroPeticiones");
+        modelBuilder.Entity<ErrorCatalog>(entity =>
+        {
+            entity.ToTable("CatalogoErrores", "Configuracion"); // Mapea al esquema "Configuracion"
+            entity.HasKey(e => e.CodigoError); // Especifica la clave primaria
+        });
 
-//        //public DbSet<AsentamientoResultModel> AsentamientoResultModel { get; set; }
-
-//        protected override void OnModelCreating(ModelBuilder modelBuilder)
-//        {
-//            base.OnModelCreating(modelBuilder);
-
-//            //modelBuilder.Entity<AsentamientoResultModel>()
-//            //.HasNoKey();
-
-//            //modelBuilder.Entity<CatalogoRequest>(entity =>
-//            //{
-//            //    entity.HasNoKey();
-//            //    entity.ToView(null); // Se asegura de que no sea tratado como una vista
-//            //});
-//            //modelBuilder.Entity<Asentamiento>(entity =>
-//            //{
-//            //    entity.HasNoKey();
-//            //    entity.ToView(null); // Se asegura de que no sea tratado como una vista
-//            //});
-//            //modelBuilder.Entity<CatalogoDetail>(entity =>
-//            //{
-//            //    entity.HasNoKey();
-//            //    entity.ToView(null); // Se asegura de que no sea tratado como una vista
-//            //});
-//            //modelBuilder.Entity<Ciudad>(entity =>
-//            //{
-//            //    entity.HasNoKey();
-//            //    entity.ToView(null); // Se asegura de que no sea tratado como una vista
-//            //});
-//            //modelBuilder.Entity<CP>(entity =>
-//            //{
-//            //    entity.HasNoKey();
-//            //    entity.ToView(null); // Se asegura de que no sea tratado como una vista
-//            //});
-//            //modelBuilder.Entity<Entidad>(entity =>
-//            //{
-//            //    entity.HasNoKey();
-//            //    entity.ToView(null); // Se asegura de que no sea tratado como una vista
-//            //});
-//            //modelBuilder.Entity<Municipio>(entity =>
-//            //{
-//            //    entity.HasNoKey();
-//            //    entity.ToView(null); // Se asegura de que no sea tratado como una vista
-//            //});
-//        }
-//    }
-//}
+        modelBuilder.Entity<CatalogoNotificacion>(entity =>
+        {
+            entity.ToTable("CatalogoNotificaciones", "Configuracion"); // Mapea al esquema "Configuracion"
+            entity.HasKey(e => e.CodigoNotificacion); // Especifica la clave primaria
+        });
+    }
+    
+}

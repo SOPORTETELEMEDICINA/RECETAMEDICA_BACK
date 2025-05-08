@@ -1,4 +1,5 @@
-﻿using RMD.Models.Login;
+﻿using RMD.Data.Models;
+using RMD.Models.Login;
 using RMD.Models.Sucursales;
 using RMD.Models.Usuarios;
 
@@ -12,13 +13,13 @@ namespace RMD.Data
         public DbSet<RequestUsuario> RequestUsuario { get; set; }
         
         public DbSet<UsuarioSucursal> UsuarioSucursales { get; set; }
-        public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
+        //public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
         public DbSet<UsuarioDetalle> UsuarioDetalle { get; set; }
         public DbSet<UsuarioImagenRequest> UsuarioImagenes { get; set; }
         public DbSet<SucursalResponse> SucursalResponses { get; set; }
         public DbSet<CrearPacienteRequest> CrearPacienteRequests { get; set; }
 
-
+        public DbSet<AuthToken> AuthTokens { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -37,6 +38,8 @@ namespace RMD.Data
                 // Configuración para el campo LogoBase64
                 entity.Property(e => e.LogoBase64)
                     .HasColumnType("nvarchar(max)"); // Usamos nvarchar(max) para almacenar grandes cantidades de texto (como Base64)
+                entity.Property(e => e.Abreviatura)
+                   .HasColumnType("nvarchar(3)");
             });
 
 
@@ -117,16 +120,49 @@ namespace RMD.Data
             {
                 entity.HasNoKey();  
             });
-            // Configuración para BlacklistedTokens
-            modelBuilder.Entity<BlacklistedToken>(entity =>
+            //// Configuración para BlacklistedTokens
+            //modelBuilder.Entity<BlacklistedToken>(entity =>
+            //{
+            //    entity.ToTable("BlacklistedTokens"); // Asegúrate de que coincide con el nombre de la tabla en la base de datos
+            //    entity.HasKey(e => e.Id); // Configura Id como clave primaria
+            //    entity.Property(e => e.Token)
+            //        .IsRequired()
+            //        .HasColumnType("nvarchar(max)"); // Permitir valores largos
+            //    entity.Property(e => e.ExpirationDate)
+            //          .IsRequired(); // Asegura que el campo es obligatorio
+            //});
+            // AuthTokens
+            modelBuilder.Entity<AuthToken>(entity =>
             {
-                entity.ToTable("BlacklistedTokens"); // Asegúrate de que coincide con el nombre de la tabla en la base de datos
-                entity.HasKey(e => e.Id); // Configura Id como clave primaria
+                entity.ToTable("AuthTokens", "auth");
+                entity.HasKey(e => e.IdToken);
+
+                entity.Property(e => e.IdToken)
+                      .HasColumnName("IdToken")
+                      .IsRequired();
+
+                entity.Property(e => e.IdUsuario)
+                      .HasColumnName("IdUsuario")
+                      .IsRequired();
+
                 entity.Property(e => e.Token)
-                    .IsRequired()
-                    .HasColumnType("nvarchar(max)"); // Permitir valores largos
-                entity.Property(e => e.ExpirationDate)
-                      .IsRequired(); // Asegura que el campo es obligatorio
+                      .HasColumnName("Token")
+                      .IsRequired()
+                      .HasColumnType("nvarchar(max)");
+
+                entity.Property(e => e.CreatedAt)
+                      .HasColumnName("CreatedAt")
+                      .IsRequired();
+
+                entity.Property(e => e.ExpiresAt)
+                      .HasColumnName("ExpiresAt")
+                      .IsRequired();
+
+                entity.Property(e => e.RevokedAt)
+                      .HasColumnName("RevokedAt");
+
+                entity.Property(e => e.LastAuth2F)
+                      .HasColumnName("LastAuth2F");
             });
         }
     }

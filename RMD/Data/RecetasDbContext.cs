@@ -4,11 +4,11 @@ namespace RMD.Data
 {
     public class RecetasDbContext(DbContextOptions<RecetasDbContext> options) : DbContext(options)
     {
-
+       // public DbSet<PacienteSimple> Pacientes { get; set; } // Solo trae el IdPaciente
         // DbSet para las entidades relacionadas con recetas
         public DbSet<Receta> Receta { get; set; } // Usado por `RecetaService`
         public DbSet<DetalleReceta> DetalleRecetas { get; set; } // Usado por `DetalleRecetaService`
-
+        public DbSet<Receta> Recetas { get; set; }
         // DbSet para las consultas de SP
         public DbSet<RecetaWithDetalleModel> RecetaWithDetalles { get; set; } // Usado por `RecetaService`
         public DbSet<RecetaList> RecetaList { get; set; } // Usado por `RecetaService`
@@ -17,9 +17,12 @@ namespace RMD.Data
         public DbSet<AllergyModel> AllergyModels { get; set; } // Usado por `RecetaService`
         public DbSet<MoleculeModel> MoleculeModels { get; set; } // Usado por `RecetaService`
         public DbSet<CIM10Model> CIM10Models { get; set; } // Usado por `RecetaService`
+        public DbSet<DetalleRecetaRequest> DetalleRecetaRequest { get; set; }
 
+        public DbSet<MedicamentoActivoConsulta> MedicamentoActivoConsulta { get; set; }
+        
         // DbSet para detalles de recetas
-        public DbSet<DetalleRecetaRequest> DetalleRecetaRequest { get; set; } // Usado por `DetalleRecetaService`
+        public DbSet<Detalle_RecetaDetalleRequest> Detalle_RecetaDetalleRequestDetalleRecetaRequest { get; set; } // Usado por `DetalleRecetaService`
         public DbSet<DetalleRecetaResponse> DetalleRecetaResponse { get; set; } // Usado por `DetalleRecetaService`
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -80,6 +83,11 @@ namespace RMD.Data
 
             // Configuración para DetalleRecetaResponse
             modelBuilder.Entity<DetalleRecetaResponse>().HasNoKey(); // Utilizado para SP
+            modelBuilder.Entity<Detalle_RecetaDetalleRequest>().HasNoKey(); // Utilizado para SP
+            modelBuilder.Entity<MedicamentoActivoConsulta>().HasNoKey(); // Utilizado para SP
+            
+
+
         }
     }
 }
