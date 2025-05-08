@@ -1,5 +1,5 @@
-﻿using RMD.Extensions;
-using RMD.Interface.Medicos;
+﻿using RMD.Interface.Medicos;
+using RMD.Interface.Notificaciones;
 using RMD.Models.Medicos;
 using RMD.Models.Responses;
 
@@ -9,205 +9,211 @@ namespace RMD.Controllers.Medicos
     [ApiController]
     [Authorize]
     [ServiceFilter(typeof(ValidateTokenFilter))]
-    public class MedicosController(IMedicoService medicoService) : ControllerBase
+    public class MedicosController : ControllerBase
     {
-        private readonly IMedicoService _medicoService = medicoService;
+        private readonly IMedicoService _medicoService;
+        private readonly ICatalogoNotificacionService _catalogoNotificacionService;
+
+        public MedicosController(
+            IMedicoService medicoService,
+            ICatalogoNotificacionService catalogoNotificacionService)
+        {
+            _medicoService = medicoService;
+            _catalogoNotificacionService = catalogoNotificacionService;
+        }
 
         [HttpGet("ByIdMedico/{idMedico}")]
         public async Task<IActionResult> GetMedicoByIdMedico(Guid idMedico)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.MedicosController.EndpointRolesMedicosController["GetMedicoByIdMedico"].Contains(rol))
+            if (!HasPermission("GetMedicoByIdMedico"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+            if (idMedico == Guid.Empty)
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
 
-            try
-            {
-                var medico = await _medicoService.GetMedicoByIdMedicoAsync(idMedico);
-                if (medico == null)
-                {
-                    return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "Médico no encontrado."));
-                }
-
-                return Ok(ResponseFromService<MedicoConsultaRequest>.Success(medico, "Médico obtenido con éxito."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+            var response = await _medicoService.GetMedicoByIdMedicoAsync(idMedico);
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
         [HttpGet("BySucursal/{idSucursal}")]
         public async Task<IActionResult> GetMedicosBySucursal(Guid idSucursal)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.MedicosController.EndpointRolesMedicosController["GetMedicosBySucursal"].Contains(rol))
+            if (!HasPermission("GetMedicosBySucursal"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+            if (idSucursal == Guid.Empty)
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
 
-            try
-            {
-                var medicos = await _medicoService.GetMedicosBySucursalAsync(idSucursal);
-                if (!medicos.Any())
-                {
-                    return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "No se encontraron médicos para la sucursal especificada."));
-                }
-
-                return Ok(ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Success(medicos, "Médicos obtenidos con éxito."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+            var response = await _medicoService.GetMedicosBySucursalAsync(idSucursal);
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
         [HttpGet("ByGEMP/{idGEMP}")]
         public async Task<IActionResult> GetMedicosByGEMP(Guid idGEMP)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.MedicosController.EndpointRolesMedicosController["GetMedicosByGEMP"].Contains(rol))
+            if (!HasPermission("GetMedicosByGEMP"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+            if (idGEMP == Guid.Empty)
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
 
-            try
-            {
-                var medicos = await _medicoService.GetMedicosByGEMPAsync(idGEMP);
-                if (!medicos.Any())
-                {
-                    return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "No se encontraron médicos para el GEMP especificado."));
-                }
-
-                return Ok(ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Success(medicos, "Médicos obtenidos con éxito."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+            var response = await _medicoService.GetMedicosByGEMPAsync(idGEMP);
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
-        [HttpGet("ByIdUsuario/{id}")]
-        public async Task<IActionResult> GetMedicoByIdUsuario(Guid id)
+        [HttpGet("ByIdUsuario/{idUsuario}")]
+        public async Task<IActionResult> GetMedicoByIdUsuario(Guid idUsuario)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.MedicosController.EndpointRolesMedicosController["GetMedicoByIdUsuario"].Contains(rol))
+            if (!HasPermission("GetMedicoByIdUsuario"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+            if (idUsuario == Guid.Empty)
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
 
-            try
-            {
-                var medico = await _medicoService.GetMedicoByIdUsuarioAsync(id);
-                if (medico == null)
-                {
-                    return NotFound(ResponseFromService<string>.Failure(HttpStatusCode.NotFound, "Médico no encontrado."));
-                }
-
-                return Ok(ResponseFromService<MedicoConsultaRequest>.Success(medico, "Médico obtenido con éxito."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+            var response = await _medicoService.GetMedicoByIdUsuarioAsync(idUsuario);
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateMedico([FromBody] MedicoCreate medico)
+        public async Task<IActionResult> CreateMedico([FromBody] MedicoCreate model)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.MedicosController.EndpointRolesMedicosController["CreateMedico"].Contains(rol))
+            if (!HasPermission("CreateMedico"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+            if (!ModelState.IsValid || model == null)
+            {
+                var errores = string.Join(" | ", ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                notif.Mensaje = errores;
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
 
-            try
+            var idRolClaim = User.FindFirstValue("IdRol");
+            if (!Guid.TryParse(idRolClaim, out var idRol))
             {
-                var idRol = User.FindFirstValue("IdRol");
-
-                if (!Guid.TryParse(idRol, out Guid idRolGuid))
-                {
-                    return BadRequest("IdRol no es válido.");
-                }
-
-                var result = await _medicoService.CreateMedicoAsync(medico, idRolGuid);
-                if (!result)
-                {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Error al crear el médico."));
-                }
-
-                return Ok(ResponseFromService<string>.Success(null, "Médico creado con éxito."));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+
+            var response = await _medicoService.CreateMedicoAsync(model, idRol);
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdateMedico([FromBody] Medico medico)
+        public async Task<IActionResult> UpdateMedico([FromBody] Medico model)
         {
-            var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.MedicosController.EndpointRolesMedicosController["UpdateMedico"].Contains(rol))
+            if (!HasPermission("UpdateMedico"))
             {
-                return Forbid("No tiene permisos para acceder a este recurso.");
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+            if (!ModelState.IsValid || model == null)
+            {
+                var errores = string.Join(" | ", ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                notif.Mensaje = errores;
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
 
-            try
+            var idUsuarioClaim = User.FindFirstValue("IdUsuario");
+            if (!Guid.TryParse(idUsuarioClaim, out var idUsuario))
             {
-                var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
-
-                if (!Guid.TryParse(idUsuarioSolicitante, out Guid idUsuarioSolicitanteGuid))
-                {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "IdUsuario no es válido."));
-                }
-
-                var resultMessage = await _medicoService.UpdateMedicoAsync(medico, idUsuarioSolicitanteGuid);
-
-                if (resultMessage == "Médico actualizado con éxito.")
-                {
-                    return Ok(ResponseFromService<string>.Success(null, resultMessage));
-                }
-
-                return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, resultMessage));
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+
+            var response = await _medicoService.UpdateMedicoAsync(model, idUsuario);
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
         }
 
         [HttpDelete("{idMedico}")]
         public async Task<IActionResult> DeleteMedico(Guid idMedico)
         {
+            if (!HasPermission("DeleteMedico"))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+            if (idMedico == Guid.Empty)
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            var idUsuarioClaim = User.FindFirstValue("IdUsuario");
+            if (!Guid.TryParse(idUsuarioClaim, out var idUsuario))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            var response = await _medicoService.DeleteMedicoAsync(idMedico, idUsuario);
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
+        }
+
+        private bool HasPermission(string endpointName)
+        {
             var rol = User.FindFirstValue(ClaimTypes.Role);
-            if (!RolesPermissions.MedicosController.EndpointRolesMedicosController["DeleteMedico"].Contains(rol))
-            {
-                return Forbid("No tiene permisos para acceder a este recurso.");
-            }
-
-            try
-            {
-                var idUsuarioSolicitante = User.FindFirstValue("IdUsuario");
-
-                if (!Guid.TryParse(idUsuarioSolicitante, out Guid idUsuarioSolicitanteGuid))
-                {
-                    return BadRequest("IdUsuario no es válido.");
-                }
-
-                var result = await _medicoService.DeleteMedicoAsync(idMedico, idUsuarioSolicitanteGuid);
-                if (!result)
-                {
-                    return BadRequest(ResponseFromService<string>.Failure(HttpStatusCode.BadRequest, "Error al eliminar el médico."));
-                }
-
-                return Ok(ResponseFromService<string>.Success(null, "Médico eliminado con éxito."));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error en el servidor: {ex.Message}"));
-            }
+            return RolesPermissions.MedicosController
+                       .EndpointRolesMedicosController[endpointName]
+                   .Contains(rol);
         }
     }
 }

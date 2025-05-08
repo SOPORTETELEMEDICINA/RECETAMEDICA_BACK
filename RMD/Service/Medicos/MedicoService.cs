@@ -1,245 +1,507 @@
-﻿using RMD.Data;
+﻿using System.Xml;
+using System.Xml.Linq;
+using RMD.Data;
 using RMD.Extensions;
 using RMD.Interface.Medicos;
+using RMD.Interface.Notificaciones;
 using RMD.Models.Medicos;
-using System.Xml;
-using System.Xml.Linq;
+using RMD.Models.Responses;
 
 namespace RMD.Service.Medicos
 {
-    public class MedicoService(MedicosDbContext context, HttpClient httpClient, IConfiguration configuration) : IMedicoService
+    public class MedicoService : IMedicoService
     {
-        private readonly MedicosDbContext _context = context;
-        private readonly HttpClient _httpClient = httpClient;
-        private readonly string _baseUrl = configuration["VidalApi:BaseUrl"] ?? throw new ArgumentNullException(nameof(_baseUrl));
-        private readonly string _appId = configuration["VidalApi:AppId"] ?? throw new ArgumentNullException(nameof(_appId));
-        private readonly string _appKey = configuration["VidalApi:AppKey"] ?? throw new ArgumentNullException(nameof(_appKey));
+        private readonly MedicosDbContext _context;
+        private readonly HttpClient _httpClient;
+        private readonly string _baseUrl;
+        private readonly string _appId;
+        private readonly string _appKey;
+        private readonly ICatalogoNotificacionService _catalogoNotificacionService;
 
-
-        public async Task<MedicoConsultaRequest> GetMedicoByIdUsuarioAsync(Guid idUsuario)
+        public MedicoService(
+            MedicosDbContext context,
+            HttpClient httpClient,
+            IConfiguration configuration,
+            ICatalogoNotificacionService catalogoNotificacionService)
         {
-            var idUsuarioParam = new SqlParameter("@IdUsuario", idUsuario);
-
-            var result = await _context.MedicoConsultaRequest
-                .FromSqlRaw("EXEC Medicos_GetMedicoByIdUsuario @IdUsuario", idUsuarioParam)
-                .ToListAsync(); // Ejecuta la consulta sin intentar componerla
-
-            return result.FirstOrDefault(); // Retorna el primer resultado
+            _context = context;
+            _httpClient = httpClient;
+            _baseUrl = configuration["VidalApi:BaseUrl"] ?? throw new ArgumentNullException(nameof(configuration), "BaseUrl not configured");
+            _appId = configuration["VidalApi:AppId"] ?? throw new ArgumentNullException(nameof(configuration), "AppId not configured");
+            _appKey = configuration["VidalApi:AppKey"] ?? throw new ArgumentNullException(nameof(configuration), "AppKey not configured");
+            _catalogoNotificacionService = catalogoNotificacionService;
         }
 
-        public async Task<MedicoConsultaRequest> GetMedicoByIdMedicoAsync(Guid idMedico)
-        {
-            var idMedicoParam = new SqlParameter("@IdMedico", idMedico);
-
-            var medico = await _context.MedicoConsultaRequest
-                .FromSqlRaw("EXEC Medicos_GetMedicoByIdMedico @IdMedico", idMedicoParam)
-                .ToListAsync(); // Ejecuta la consulta
-
-            return medico.FirstOrDefault(); // Retorna el primer resultado
-        }
-
-        public async Task<IEnumerable<MedicoConsultaRequest>> GetMedicosBySucursalAsync(Guid idSucursal)
-        {
-            var idSucursalParam = new SqlParameter("@IdSucursal", idSucursal);
-
-            var medicos = await _context.MedicoConsultaRequest
-                .FromSqlRaw("EXEC Medicos_GetMedicosBySucursal @IdSucursal", idSucursalParam)
-                .ToListAsync(); // Ejecuta la consulta y retorna la lista completa
-
-            return medicos;
-        }
-
-        public async Task<IEnumerable<MedicoConsultaRequest>> GetMedicosByGEMPAsync(Guid idGEMP)
-        {
-            var idGEMPParam = new SqlParameter("@IdGEMP", idGEMP);
-
-            var medicos = await _context.MedicoConsultaRequest
-                .FromSqlRaw("EXEC Medicos_GetMedicosByGEMP @IdGEMP", idGEMPParam)
-                .ToListAsync(); // Ejecuta la consulta y retorna la lista completa
-
-            return medicos;
-        }
-
-        public async Task<IEnumerable<MedicoConsultaRequest>> GetMedicoByNameAsync(string nombreBusqueda)
-        {
-            var nombreParam = new SqlParameter("@NombreBusqueda", nombreBusqueda);
-
-            var result = await _context.MedicoConsultaRequest
-                .FromSqlRaw("EXEC Medicos_GetMedicoByName @NombreBusqueda", nombreParam)
-                .ToListAsync(); // Ejecuta la consulta y evita composiciones
-
-            return result;
-        }
-
-        public async Task<bool> CreateMedicoAsync(MedicoCreate medico, Guid idRol)
+        public async Task<ResponseFromService<MedicoConsultaRequest>> GetMedicoByIdUsuarioAsync(Guid idUsuario)
         {
             try
             {
-                var medicoTable = new List<MedicoCreate> { medico }.ToDataTable(); // Convierte la lista a DataTable
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
 
-                var medicoParam = new SqlParameter("@MedicoTable", SqlDbType.Structured)
+                using var command = new SqlCommand("Medicos_GetMedicoByIdUsuario", connection)
                 {
-                    TypeName = "dbo.MedicoCreateTableType",
-                    Value = medicoTable
+                    CommandType = CommandType.StoredProcedure
                 };
+                command.Parameters.AddWithValue("@IdUsuario", idUsuario);
 
-                var idRolParam = new SqlParameter("@IdRol", idRol);
+                using var reader = await command.ExecuteReaderAsync();
 
-                var outputMessageParam = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 500)
+                // 1) Leer código de notificación
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<MedicoConsultaRequest>.Failure(notificacion);
+
+                // 2) Leer datos del médico
+                MedicoConsultaRequest medico = null;
+                if (await reader.NextResultAsync() && await reader.ReadAsync())
                 {
-                    Direction = ParameterDirection.Output
-                };
+                    medico = MedicoConsultaRequest.FromDataReader(reader);
+                }
+                else
+                {
+                    // Si no viene fila, devolvemos failure con la misma notificación
+                    return ResponseFromService<MedicoConsultaRequest>.Failure(notificacion);
+                }
 
-                var rowsAffected = await _context.Database.ExecuteSqlRawAsync(
-                    "EXEC Medicos_CreateMedico @MedicoTable, @IdRol, @OutputMessage OUTPUT",
-                    medicoParam, idRolParam, outputMessageParam
-                );
-
-                var outputMessage = outputMessageParam.Value.ToString();
-                Console.WriteLine($"Resultado del SP: {outputMessage}");
-
-                return rowsAffected > 0 || outputMessage.Contains("éxito");
+                return ResponseFromService<MedicoConsultaRequest>.Success(medico, notificacion);
             }
             catch (SqlException sqlEx)
             {
-                Console.WriteLine($"Error SQL: {sqlEx.Message}");
-                return false;
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<MedicoConsultaRequest>.Exeption(sqlEx, error);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error general: {ex.Message}");
-                return false;
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<MedicoConsultaRequest>.Exeption(ex, error);
             }
         }
 
-
-
-        public async Task<string> UpdateMedicoAsync(Medico medico, Guid idUsuarioSolicitante)
+        public async Task<ResponseFromService<MedicoConsultaRequest>> GetMedicoByIdMedicoAsync(Guid idMedico)
         {
-            var medicoTable = new List<Medico> { medico }.ToDataTable();
-
-            var medicoParam = new SqlParameter("@MedicoTable", SqlDbType.Structured)
+            try
             {
-                TypeName = "dbo.MedicoTableType",
-                Value = medicoTable
-            };
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
 
-            var idUsuarioSolicitanteParam = new SqlParameter("@IdUsuarioSolicitante", idUsuarioSolicitante);
-
-            var outputMessageParam = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 500)
-            {
-                Direction = ParameterDirection.Output
-            };
-
-            await _context.Database.ExecuteSqlRawAsync(
-                "EXEC Medicos_UpdateMedico @MedicoTable, @IdUsuarioSolicitante, @OutputMessage OUTPUT",
-                medicoParam, idUsuarioSolicitanteParam, outputMessageParam
-            );
-
-            return outputMessageParam.Value?.ToString();
-        }
-
-
-
-        public async Task<bool> DeleteMedicoAsync(Guid idMedico, Guid idUsuarioSolicitante)
-        {
-            var idMedicoParam = new SqlParameter("@IdMedico", idMedico);
-            var idUsuarioSolicitanteParam = new SqlParameter("@IdUsuarioSolicitante", idUsuarioSolicitante);
-
-            var outputMessageParam = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 500)
-            {
-                Direction = ParameterDirection.Output
-            };
-
-            var rowsAffected = await _context.Database.ExecuteSqlRawAsync(
-                "EXEC Medicos_DeleteMedico @IdMedico, @IdUsuarioSolicitante, @OutputMessage OUTPUT",
-                idMedicoParam, idUsuarioSolicitanteParam, outputMessageParam
-            );
-
-            var outputMessage = outputMessageParam.Value.ToString();
-            Console.WriteLine($"Resultado del SP: {outputMessage}");
-
-            return rowsAffected > 0 || outputMessage.Contains("éxito");
-        }
-
-
-
-        public async Task<IEnumerable<PacientePorSucursalListModel>> GetPacientesBySucursalListAsync(Guid idUsuario)
-        {
-            var idUsuarioParam = new SqlParameter("@IdUsuario", idUsuario);
-
-            var pacientes = await _context.PacientesPorSucursal
-                .FromSqlRaw("EXEC Medicos_GetPacientesBySucursal @IdUsuario", idUsuarioParam)
-                .ToListAsync();
-
-            var resultados = new List<PacientePorSucursalListModel>();
-
-            foreach (var p in pacientes)
-            {
-                var patologias = new List<PatologiaModel>();
-
-                // Verificamos si el string de patologías contiene el prefijo
-                if (p.Patologias.Contains("vidal://cim10/code/"))
+                using var command = new SqlCommand("Medicos_GetMedicoByIdMedico", connection)
                 {
-                    // Procesamos cada código que comienza con el prefijo correcto
-                    var codigos = p.Patologias.Split(',')
-                        .Select(code => code.Trim())
-                        .Where(code => code.StartsWith("vidal://cim10/code/")) // Filtramos solo los códigos válidos
-                        .ToList();
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.AddWithValue("@IdMedico", idMedico);
 
-                    // Creamos los modelos de patologías
-                    foreach (var codigo in codigos)
+                using var reader = await command.ExecuteReaderAsync();
+
+                // 1) Leer código de notificación
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<MedicoConsultaRequest>.Failure(notificacion);
+
+                // 2) Leer datos del médico
+                MedicoConsultaRequest medico = null;
+                if (await reader.NextResultAsync() && await reader.ReadAsync())
+                {
+                    medico = MedicoConsultaRequest.FromDataReader(reader);
+                }
+                else
+                {
+                    return ResponseFromService<MedicoConsultaRequest>.Failure(notificacion);
+                }
+
+                return ResponseFromService<MedicoConsultaRequest>.Success(medico, notificacion);
+            }
+            catch (SqlException sqlEx)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<MedicoConsultaRequest>.Exeption(sqlEx, error);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<MedicoConsultaRequest>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<IEnumerable<MedicoConsultaRequest>>> GetMedicosBySucursalAsync(Guid idSucursal)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("Medicos_GetMedicosBySucursal", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.AddWithValue("@IdSucursal", idSucursal);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                // 1) Leer código de notificación
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Failure(notificacion);
+
+                // 2) Leer lista de médicos
+                var lista = new List<MedicoConsultaRequest>();
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
                     {
-                        var patologia = new PatologiaModel
-                        {
-                            VidalId = codigo,
-                            VidalName = await GetVidalNameAsync(codigo.Substring(codigo.LastIndexOf('/') + 1)) // Obtenemos solo el código
-                        };
-
-                        patologias.Add(patologia);
+                        lista.Add(MedicoConsultaRequest.FromDataReader(reader));
                     }
                 }
 
-                resultados.Add(new PacientePorSucursalListModel
+                return ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Success(lista, notificacion);
+            }
+            catch (SqlException sqlEx)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Exeption(sqlEx, error);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<IEnumerable<MedicoConsultaRequest>>> GetMedicosByGEMPAsync(Guid idGEMP)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("Medicos_GetMedicosByGEMP", connection)
                 {
-                    IdUsuario = p.IdUsuario,
-                    IdPaciente = p.IdPaciente,
-                    IdGEMP = p.IdGEMP,
-                    LogoGEMP = p.LogoGEMP,
-                    IdSucursal = p.IdSucursal,
-                    Nombres = p.Nombres,
-                    PrimerApellido = p.PrimerApellido,
-                    SegundoApellido = p.SegundoApellido,
-                    FechaNacimiento = p.FechaNacimiento,
-                    Edad = p.Edad,
-                    IdEntidadNacimiento = p.IdEntidadNacimiento,
-                    Genero = p.Genero,
-                    Alergias = string.IsNullOrEmpty(p.Alergias) ? new List<string>() : p.Alergias.Split(',').ToList(), // Manejo de nulos o vacíos
-                    Molecules = string.IsNullOrEmpty(p.Molecules) ? new List<string>() : p.Molecules.Split(',').ToList(), // Manejo de nulos o vacíos
-                    Patologias = patologias, // Asignamos la lista de patologías ya procesada
-                    Movil = p.Movil,
-                    Email = p.Email,
-                    Domicilio = p.Domicilio,
-                    IdAsentamiento = p.IdAsentamiento,
-                    Asentamiento = p.Asentamiento,
-                    IdTipoAsentamiento = p.IdTipoAsentamiento,
-                    TipoAsentamiento = p.TipoAsentamiento,
-                    IdCP = p.IdCP,
-                    CodigoPostal = p.CodigoPostal,
-                    IdMunicipio = p.IdMunicipio,
-                    NoMunicipio = p.NoMunicipio,
-                    Municipio = p.Municipio,
-                    IdCiudad = p.IdCiudad,
-                    Ciudad = p.Ciudad,
-                    IdEntidad = p.IdEntidad,
-                    Estado = p.Estado,
-                    Abreviatura = p.Abreviatura,
-                    Status = p.Status
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.AddWithValue("@IdGEMP", idGEMP);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                // 1) Leer código de notificación
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Failure(notificacion);
+
+                // 2) Leer lista de médicos
+                var lista = new List<MedicoConsultaRequest>();
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        lista.Add(MedicoConsultaRequest.FromDataReader(reader));
+                    }
+                }
+
+                return ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Success(lista, notificacion);
+            }
+            catch (SqlException sqlEx)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Exeption(sqlEx, error);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<IEnumerable<MedicoConsultaRequest>>> GetMedicoByNameAsync(string nombreBusqueda)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("Medicos_GetMedicoByName", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.AddWithValue("@NombreBusqueda", nombreBusqueda);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                // 1) Leer código de notificación
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Failure(notificacion);
+
+                // 2) Leer lista de médicos
+                var lista = new List<MedicoConsultaRequest>();
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        lista.Add(MedicoConsultaRequest.FromDataReader(reader));
+                    }
+                }
+
+                return ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Success(lista, notificacion);
+            }
+            catch (SqlException sqlEx)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Exeption(sqlEx, error);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<MedicoConsultaRequest>>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<bool>> CreateMedicoAsync(MedicoCreate medico, Guid idRol)
+        {
+            try
+            {
+                // 1) Preparar conexión y comando
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+                using var command = new SqlCommand("Medicos_CreateMedico", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+
+                // 2) Parámetros
+                var medicoTable = new List<MedicoCreate> { medico }.ToDataTable();
+                command.Parameters.Add(new SqlParameter("@MedicoTable", SqlDbType.Structured)
+                {
+                    TypeName = "dbo.MedicoCreateTableType",
+                    Value = medicoTable
+                });
+                command.Parameters.Add(new SqlParameter("@IdRol", idRol));
+
+                // 3) Ejecutar y leer código de notificación
+                using var reader = await command.ExecuteReaderAsync();
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+
+                // 4) Si es error, devolvemos Failure
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<bool>.Failure(notificacion);
+
+                // 5) Interpretar resultado (true sólo si función es MEDICO_CREADO)
+                bool created = notificacion.Funcion.Equals("MEDICO_CREADO", StringComparison.OrdinalIgnoreCase);
+                return ResponseFromService<bool>.Success(created, notificacion);
+            }
+            catch (SqlException sqlEx)
+            {
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<bool>.Exeption(sqlEx, error);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<bool>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<string>> UpdateMedicoAsync(Medico medico, Guid idUsuarioSolicitante)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("Medicos_UpdateMedico", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+
+                // 1) tabla de parámetros
+                var medicoTable = new List<Medico> { medico }.ToDataTable();
+                command.Parameters.Add(new SqlParameter("@MedicoTable", SqlDbType.Structured)
+                {
+                    TypeName = "dbo.MedicoTableType",
+                    Value = medicoTable
                 });
 
-            }
+                // 2) parámetro del solicitante
+                command.Parameters.AddWithValue("@IdUsuarioSolicitante", idUsuarioSolicitante);
 
-            return resultados;
+                // 3) ejecutar y leer código de notificación
+                using var reader = await command.ExecuteReaderAsync();
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+
+                // 4) si es error, devolvemos failure
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<string>.Failure(notificacion);
+
+                // 5) caso exitoso, retornamos la descripción de la notificación
+                return ResponseFromService<string>.Success(notificacion.Descripcion, notificacion);
+            }
+            catch (SqlException sqlEx)
+            {
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(sqlEx, error);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<string>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<bool>> DeleteMedicoAsync(Guid idMedico, Guid idUsuarioSolicitante)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("Medicos_DeleteMedico", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.AddWithValue("@IdMedico", idMedico);
+                command.Parameters.AddWithValue("@IdUsuarioSolicitante", idUsuarioSolicitante);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                // 1) Leer código de notificación
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                {
+                    return ResponseFromService<bool>.Failure(notificacion);
+                }
+
+                // 2) No hay segundo result set: el SP ya hizo el borrado lógico
+                return ResponseFromService<bool>.Success(true, notificacion);
+            }
+            catch (SqlException sqlEx)
+            {
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<bool>.Exeption(sqlEx, error);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<bool>.Exeption(ex, error);
+            }
+        }
+
+        public async Task<ResponseFromService<IEnumerable<PacientePorSucursalListModel>>> GetPacientesBySucursalListAsync(Guid idUsuario)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
+                await connection.OpenAsync();
+
+                using var command = new SqlCommand("Medicos_GetPacientesBySucursal", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                command.Parameters.AddWithValue("@IdUsuario", idUsuario);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                // 1) Leer código de notificación
+                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                    return ResponseFromService<IEnumerable<PacientePorSucursalListModel>>.Failure(notificacion);
+
+                // 2) Leer segundo conjunto: fila por fila
+                var resultados = new List<PacientePorSucursalListModel>();
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        // Parseo de historial de patologías
+                        var patologias = new List<PatologiaModel>();
+                        var rawPatologias = reader.GetString(reader.GetOrdinal("Patologias"));
+                        if (!string.IsNullOrEmpty(rawPatologias) && rawPatologias.Contains("vidal://cim10/code/"))
+                        {
+                            var codes = rawPatologias
+                                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                .Select(s => s.Trim())
+                                .Where(s => s.StartsWith("vidal://cim10/code/"));
+
+                            foreach (var code in codes)
+                            {
+                                var vidalId = code.Substring(code.LastIndexOf('/') + 1);
+                                var vidalName = await GetVidalNameAsync(vidalId);
+                                patologias.Add(new PatologiaModel { VidalId = code, VidalName = vidalName });
+                            }
+                        }
+
+                        resultados.Add(new PacientePorSucursalListModel
+                        {
+                            IdUsuario = reader.GetGuid(reader.GetOrdinal("IdUsuario")),
+                            IdPaciente = reader.GetGuid(reader.GetOrdinal("IdPaciente")),
+                            IdGEMP = reader.GetGuid(reader.GetOrdinal("IdGEMP")),
+                            LogoGEMP = reader.GetString(reader.GetOrdinal("LogoGEMP")),
+                            IdSucursal = reader.GetGuid(reader.GetOrdinal("IdSucursal")),
+                            Nombres = reader.GetString(reader.GetOrdinal("Nombres")),
+                            PrimerApellido = reader.GetString(reader.GetOrdinal("PrimerApellido")),
+                            SegundoApellido = reader.GetString(reader.GetOrdinal("SegundoApellido")),
+                            IdTipoIdentificacion = reader.GetInt32(reader.GetOrdinal("IdTipoIdentificacion")),
+                            TipoIdentificacion = reader.GetString(reader.GetOrdinal("TipoIdentificacion")),
+                            NumeroIdentificacion = reader.GetString(reader.GetOrdinal("NumeroIdentificacion")),
+                            FechaNacimiento = reader.GetString(reader.GetOrdinal("FechaNacimiento")),
+                            Edad = reader.GetInt32(reader.GetOrdinal("Edad")),
+                            IdEntidadNacimiento = reader.GetInt32(reader.GetOrdinal("IdEntidadNacimiento")),
+                            Genero = reader.GetString(reader.GetOrdinal("Genero")),
+                            Alergias = reader.IsDBNull(reader.GetOrdinal("Alergias"))
+                                                       ? new List<string>()
+                                                       : reader.GetString(reader.GetOrdinal("Alergias")).Split(',').ToList(),
+                            Molecules = reader.IsDBNull(reader.GetOrdinal("Molecules"))
+                                                       ? new List<string>()
+                                                       : reader.GetString(reader.GetOrdinal("Molecules")).Split(',').ToList(),
+                            Patologias = patologias,
+                            Movil = reader.GetString(reader.GetOrdinal("Movil")),
+                            Email = reader.GetString(reader.GetOrdinal("Email")),
+                            Domicilio = reader.GetString(reader.GetOrdinal("Domicilio")),
+                            IdAsentamiento = reader.GetInt32(reader.GetOrdinal("IdAsentamiento")),
+                            Asentamiento = reader.GetString(reader.GetOrdinal("Asentamiento")),
+                            IdTipoAsentamiento = reader.GetInt32(reader.GetOrdinal("IdTipoAsentamiento")),
+                            TipoAsentamiento = reader.GetString(reader.GetOrdinal("TipoAsentamiento")),
+                            IdCP = reader.GetInt32(reader.GetOrdinal("IdCP")),
+                            CodigoPostal = reader.GetString(reader.GetOrdinal("CodigoPostal")),
+                            IdMunicipio = reader.GetInt32(reader.GetOrdinal("IdMunicipio")),
+                            NoMunicipio = reader.GetInt16(reader.GetOrdinal("NoMunicipio")),
+                            Municipio = reader.GetString(reader.GetOrdinal("Municipio")),
+                            IdCiudad = reader.GetInt32(reader.GetOrdinal("IdCiudad")),
+                            Ciudad = reader.GetString(reader.GetOrdinal("Ciudad")),
+                            IdEntidad = reader.GetInt32(reader.GetOrdinal("IdEntidad")),
+                            Estado = reader.GetString(reader.GetOrdinal("Estado")),
+                            Abreviatura = reader.GetString(reader.GetOrdinal("Abreviatura")),
+                            Status = reader.GetString(reader.GetOrdinal("Status"))
+                        });
+                    }
+                }
+
+                // 3) Devolver respuesta exitosa con la notificación leída
+                return ResponseFromService<IEnumerable<PacientePorSucursalListModel>>.Success(resultados, notificacion);
+            }
+            catch (SqlException sqlEx)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<PacientePorSucursalListModel>>.Exeption(sqlEx, error);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<PacientePorSucursalListModel>>.Exeption(ex, error);
+            }
         }
 
         private async Task<string> GetVidalNameAsync(string code)
@@ -247,33 +509,28 @@ namespace RMD.Service.Medicos
             try
             {
                 var apiUrl = $"{_baseUrl}/pathologies?filter=CIM10&code={code}&app_id={_appId}&app_key={_appKey}";
-
-                // Lógica para hacer la llamada HTTP y obtener el XML
                 var response = await _httpClient.GetAsync(apiUrl);
                 response.EnsureSuccessStatusCode();
 
                 var xmlContent = await response.Content.ReadAsStringAsync();
-                var vidalName = ParseVidalNameFromXml(xmlContent); // Implementa este método para obtener el vidalName del XML
+                var vidalName = ParseVidalNameFromXml(xmlContent);
 
                 return vidalName;
             }
             catch (HttpRequestException httpEx)
             {
-                // Manejo de errores de HTTP
-                Console.WriteLine($"Error en la solicitud HTTP: {httpEx.Message}");
-                throw; // Re-lanzar la excepción si es necesario
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                throw new ApplicationException($"{notificacion.Descripcion} Detalle (HTTP): {httpEx.Message}");
             }
             catch (XmlException xmlEx)
             {
-                // Manejo de errores de XML
-                Console.WriteLine($"Error al parsear el XML: {xmlEx.Message}");
-                throw; // Re-lanzar la excepción si es necesario
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                throw new ApplicationException($"{notificacion.Descripcion} Detalle (XML): {xmlEx.Message}");
             }
             catch (Exception ex)
             {
-                // Manejo de errores generales
-                Console.WriteLine($"Error inesperado: {ex.Message}");
-                throw; // Re-lanzar la excepción si es necesario
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                throw new ApplicationException($"{notificacion.Descripcion} Detalle: {ex.Message}");
             }
         }
 
@@ -281,28 +538,22 @@ namespace RMD.Service.Medicos
         {
             try
             {
-                // Lógica para parsear el XML y obtener el <vidal:name>
                 var document = XDocument.Parse(xmlContent);
-                return document.Descendants(XName.Get("name", "http://api.vidal.net/-/spec/vidal-api/1.0/"))
-                               .Select(x => x.Value)
-                               .FirstOrDefault();
+                var name = document.Descendants(XName.Get("name", "http://api.vidal.net/-/spec/vidal-api/1.0/"))
+                                   .Select(x => x.Value)
+                                   .FirstOrDefault();
+                return name ?? string.Empty;
             }
             catch (XmlException xmlEx)
             {
-                // Manejo de errores de XML
-                Console.WriteLine($"Error al parsear el XML: {xmlEx.Message}");
-                throw; // Re-lanzar la excepción si es necesario
+                var notificacion = _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA").Result;
+                throw new ApplicationException($"{notificacion.Descripcion} Detalle (XML): {xmlEx.Message}");
             }
             catch (Exception ex)
             {
-                // Manejo de errores generales
-                Console.WriteLine($"Error inesperado al parsear el XML: {ex.Message}");
-                throw; // Re-lanzar la excepción si es necesario
+                var notificacion = _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA").Result;
+                throw new ApplicationException($"{notificacion.Descripcion} Detalle: {ex.Message}");
             }
         }
-
-
-
-
     }
 }
