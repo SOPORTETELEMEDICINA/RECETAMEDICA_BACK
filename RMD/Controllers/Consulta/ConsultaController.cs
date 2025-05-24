@@ -304,6 +304,71 @@ namespace RMD.Controllers.Consulta
                 : BadRequest(response);
         }
 
+        // Controllers/ConsultaController.cs
+        [HttpPut("ActualizarReceta")]
+        public async Task<IActionResult> ActualizarReceta([FromBody] ActualizarRecetaRequestModel request)
+        {
+            if (!HasPermission("ActualizarReceta"))
+            {
+                var n = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(n));
+            }
+
+            if (!ModelState.IsValid || request == null || request.IdReceta == Guid.Empty)
+            {
+                var errores = string.Join(" | ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+                var n = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                n.Mensaje = errores;
+                return BadRequest(ResponseFromService<string>.Failure(n));
+            }
+
+            var idUsuarioClaim = User.FindFirstValue("IdUsuario");
+            if (!Guid.TryParse(idUsuarioClaim, out var idUsuario))
+            {
+                var n = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(n));
+            }
+
+            var resp = await _consultaService.ActualizarRecetaAsync(request, idUsuario);
+            return (resp.Toast == "success" || resp.Toast == "info") ? Ok(resp) : BadRequest(resp);
+        }
+
+
+        [HttpPost("TimbrarReceta")]
+        public async Task<IActionResult> TimbrarReceta([FromBody] GenerarQRRequest request)
+        {
+            // 1) Permiso
+            if (!HasPermission("TimbrarReceta"))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            // 2) Validar input
+            if (request == null || request.IdReceta == Guid.Empty)
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            var idUsuarioClaim = User.FindFirstValue("IdUsuario");
+            if (!Guid.TryParse(idUsuarioClaim, out var idUsuario))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+            // 4) Llamada al servicio
+            var response = await _consultaService.TimbrarAsync(request, idUsuario);
+
+            // 5) Evaluar Toast
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
+        }
+
         [HttpDelete("EliminarReceta/{idReceta}")]
         public async Task<IActionResult> EliminarReceta(Guid idReceta)
         {

@@ -166,7 +166,7 @@ namespace RMD.Service.Consulta
             }
         }
 
-        public async Task<ResponseFromService<string>> GetIdsFromLink(int id, string idType, string relacionType)
+        public async Task<ResponseFromService<object>> GetIdsFromLink(int id, string idType, string relacionType)
         {
             try
             {
@@ -181,7 +181,7 @@ namespace RMD.Service.Consulta
                     if (link.Toast == "ERROR")
                     {
                         var error = await _catalogoNotificacionService.GetNotificationByCodeAsync(link.Code);
-                        return ResponseFromService<string>.Failure(error);
+                        return ResponseFromService<object>.Failure(error);
                     }
                     do
                     {
@@ -193,7 +193,7 @@ namespace RMD.Service.Consulta
                         if (ids == null || ids.Count == 0)
                             break;
                         idList.AddRange(ids);
-                        if (totalResults == 0)
+                        if (ids.Count == 0)
                         {
                             totalResults = xmlContent.GetOpenSearchValue<int>("totalResults");
                             if (totalResults == 0)
@@ -207,7 +207,7 @@ namespace RMD.Service.Consulta
                     if (idList.Count == 0)
                     {
                         var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
-                        return ResponseFromService<string>.Success("{}", success);
+                        return ResponseFromService<object>.Success("{}", success);
                     }
 
                     using var connection = new SqlConnection(_context.Database.GetDbConnection().ConnectionString);
@@ -221,7 +221,11 @@ namespace RMD.Service.Consulta
                     var idTable = new DataTable();
                     idTable.Columns.Add("Id", typeof(int));
                     foreach (var idItem in idList)
-                        idTable.Rows.Add(idItem);
+                    {
+                        var row = idTable.NewRow();
+                        row["Id"] = idItem;
+                        idTable.Rows.Add(row);
+                    }
                     var idsParam = new SqlParameter
                     {
                         ParameterName = "@Ids",
@@ -231,20 +235,31 @@ namespace RMD.Service.Consulta
                     };
                     command.Parameters.Add(idsParam);
                     using var reader = await command.ExecuteReaderAsync();
+                    // 1) Leer código de notificación
+                    if (!await reader.ReadAsync())
+                        throw new Exception("No se obtuvo CódigoNotificacion");
+
+                    int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                    var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+
+                    // 2) Leer resultados reales (segundo result set)
                     var resultList = new List<Dictionary<string, object>>();
-                    while (await reader.ReadAsync())
+                    if (await reader.NextResultAsync())
                     {
-                        var row = new Dictionary<string, object>();
-                        for (int i = 0; i < reader.FieldCount; i++)
+                        while (await reader.ReadAsync())
                         {
-                            var columnName = reader.GetName(i);
-                            row[columnName] = reader.GetValue(i);
+                            var row = new Dictionary<string, object>();
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                var columnName = reader.GetName(i);
+                                row[columnName] = reader.GetValue(i);
+                            }
+                            resultList.Add(row);
                         }
-                        resultList.Add(row);
                     }
                     var jsonResult = JsonSerializer.Serialize(resultList, _jsonSerializerOptions);
                     var successMsg = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
-                    return ResponseFromService<string>.Success(jsonResult, successMsg);
+                    return ResponseFromService<object>.Success(resultList, successMsg);
                 }
                 else
                 {
@@ -278,17 +293,17 @@ namespace RMD.Service.Consulta
                     if (indicationList.Count == 0)
                     {
                         var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
-                        return ResponseFromService<string>.Success("{}", success);
+                        return ResponseFromService<object>.Success("{}", success);
                     }
                     var jsonResult = JsonSerializer.Serialize(indicationList, _jsonSerializerOptions);
                     var successMsg2 = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
-                    return ResponseFromService<string>.Success(jsonResult, successMsg2);
+                    return ResponseFromService<object>.Success(jsonResult, successMsg2);
                 }
             }
             catch (Exception ex)
             {
                 var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-                return ResponseFromService<string>.Exeption(ex, error);
+                return ResponseFromService<object>.Exeption(ex, error);
             }
         }
 
@@ -603,8 +618,8 @@ namespace RMD.Service.Consulta
                     Patologias = ConvertirListaAString(request.Paciente.Patologias),
                     IdSucursal = Guid.Parse(idSucursal),
                     IdGEMP = Guid.Parse(idGEMP),
-                    FechaCreacion = DateTime.Now,
-                    FechaUltimaModificacion = DateTime.Now
+                    FechaCreacion = DateTime.UtcNow,
+                    FechaUltimaModificacion = DateTime.UtcNow
                 };
 
                 var actualizarResponse = await ActualizarPacienteDesdeReceta(
@@ -612,7 +627,7 @@ namespace RMD.Service.Consulta
                     ConvertirListaAString(request.AlergiasCronicas)?.Replace(",", ";") ?? "",
                     ConvertirListaAString(request.MoleculasCronicas)?.Replace(",", ";") ?? "",
                     ConvertirListaAString(request.PatologiasCronicas)?.Replace(",", ";") ?? "",
-                    DateTime.Now
+                    DateTime.UtcNow
                 );
     
 
@@ -649,33 +664,33 @@ namespace RMD.Service.Consulta
                 }
                 await _context.SaveChangesAsync();
 
-                try
-                {
-                    var textoOriginal = $"{nuevaReceta.IdReceta}|{nuevaReceta.IdMedico}|{nuevaReceta.FechaUltimaModificacion}";
-                    var textoEncriptado = EncryptionHelper.Encrypt(textoOriginal);
-                    var qrCodeBase64 = QRGenerator.GenerarQR(textoEncriptado);
-                    if (string.IsNullOrEmpty(qrCodeBase64))
-                    {
-                        var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-                        return ResponseFromService<Guid>.Failure(error);
-                    }
-                    var recetaQR = new RecetaQR
-                    {
-                        IdReceta = nuevaReceta.IdReceta,
-                        IdPaciente = request.IdPaciente,
-                        QRData = qrCodeBase64,
-                        Estatus = true,
-                        FechaCreacion = DateTime.Now,
-                        FechaUltimaModificacion = DateTime.Now
-                    };
-                    _context.Set<RecetaQR>().Add(recetaQR);
-                    await _context.SaveChangesAsync();
-                }
-                catch (Exception ex)
-                {
-                    // No se retorna error por problemas en la generación de QR, solo se registra el mensaje.
-                    Console.WriteLine($"Error al generar QR: {ex.Message}");
-                }
+                //try
+                //{
+                //    var textoOriginal = $"{nuevaReceta.IdReceta}|{nuevaReceta.IdMedico}|{nuevaReceta.FechaUltimaModificacion}";
+                //    var textoEncriptado = EncryptionHelper.Encrypt(textoOriginal);
+                //    var qrCodeBase64 = QRGenerator.GenerarQR(textoEncriptado);
+                //    if (string.IsNullOrEmpty(qrCodeBase64))
+                //    {
+                //        var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                //        return ResponseFromService<Guid>.Failure(error);
+                //    }
+                //    var recetaQR = new RecetaQR
+                //    {
+                //        IdReceta = nuevaReceta.IdReceta,
+                //        IdPaciente = request.IdPaciente,
+                //        QRData = qrCodeBase64,
+                //        Estatus = true,
+                //        FechaCreacion = DateTime.UtcNow,
+                //        FechaUltimaModificacion = DateTime.UtcNow
+                //    };
+                //    _context.Set<RecetaQR>().Add(recetaQR);
+                //    await _context.SaveChangesAsync();
+                //}
+                //catch (Exception ex)
+                //{
+                //    // No se retorna error por problemas en la generación de QR, solo se registra el mensaje.
+                //    Console.WriteLine($"Error al generar QR: {ex.Message}");
+                //}
                 var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
                 return ResponseFromService<Guid>.Success(nuevaReceta.IdReceta, success);
             }
@@ -692,6 +707,179 @@ namespace RMD.Service.Consulta
             }
         }
 
+        // Services/ConsultaService.cs
+        public async Task<ResponseFromService<bool>> ActualizarRecetaAsync(ActualizarRecetaRequestModel req, Guid idUsuario)
+        {
+            try
+            {
+                var receta = await _context.Recetas.FirstOrDefaultAsync(r => r.IdReceta == req.IdReceta);
+                if (receta == null)
+                    return ResponseFromService<bool>.Failure(
+                        await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CONSULTA", "NO_ENCONTRADA"));
+                if (receta.Timbrada)
+                    return ResponseFromService<bool>.Failure(
+                        await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CONSULTA", "RECETA_YA_TIMBRADA"));
+
+                var idMedico = await GetMedicoIdOrThrowAsync(idUsuario);
+                if (receta.IdMedico != idMedico)
+                    return ResponseFromService<bool>.Failure(
+                        await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CONSULTA", "NO_PERMITIDO"));
+
+                var recetaJson = JsonSerializer.Serialize(new
+                {
+                    req.IdReceta,
+                    req.IdPaciente,
+                    PacPeso = req.Paciente.Peso,
+                    PacTalla = req.Paciente.Talla,
+                    PacEmbarazo = req.Paciente.Embarazo,
+                    PacSemAmenorrea = req.Paciente.SemanasAmenorrea ?? 0,
+                    PacLactancia = req.Paciente.Lactancia,
+                    PacCreatinina = req.Paciente.Creatinina ?? 0m,
+                    Alergias = ConvertirListaAString(req.Paciente.Alergias),
+                    Molecules = ConvertirListaAString(req.Paciente.Moleculas),
+                    Patologias = ConvertirListaAString(req.Paciente.Patologias),
+                    IdSucursal = receta.IdSucursal,
+                    IdGEMP = receta.IdGEMP
+                });
+                var detallesJson = JsonSerializer.Serialize(req.PrescriptionLines);
+
+                await _context.Database.ExecuteSqlRawAsync(
+                    "EXEC dbo.Consulta_ActualizarReceta @RecetaJson={0}, @DetallesJson={1}",
+                    recetaJson, detallesJson
+                );
+
+                var s = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                return ResponseFromService<bool>.Success(true, s);
+            }
+            catch (Exception ex)
+            {
+                var e = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<bool>.Exeption(ex, e);
+            }
+        }
+
+        public async Task<ResponseFromService<bool>> EliminarRecetaAsync(Guid idReceta)
+        {
+            try
+            {
+                var receta = await _context.RecetasSql.FirstOrDefaultAsync(r => r.IdReceta == idReceta);
+                if (receta == null)
+                {
+                    var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NO_ENCONTRADO");
+                    return ResponseFromService<bool>.Failure(notificacion);
+                }
+                receta.Estatus = 3; // 3 = Cancelada
+                receta.FechaUltimaModificacion = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                return ResponseFromService<bool>.Success(true, success);
+            }
+            catch (Exception ex)
+            {
+                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<bool>.Exeption(ex, notificacion);
+            }
+        }
+
+        public async Task<ResponseFromService<Guid>> TimbrarAsync( GenerarQRRequest request, Guid idUsuarioClaim)
+        {
+            try
+            {
+                var idMedico = await GetMedicoIdOrThrowAsync(idUsuarioClaim);
+
+                var receta = await _context.Recetas
+                    .FirstOrDefaultAsync(r => r.IdReceta == request.IdReceta && r.Timbrada == false);
+                if (receta == null)
+                    return ResponseFromService<Guid>.Failure(
+                        await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CONSULTA", "RECETA_YA_TIMBRADA"));
+
+                if (receta.IdMedico != idMedico)
+                    return ResponseFromService<Guid>.Success(
+                        request.IdReceta,
+                        await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CONSULTA", "NO_TIMBRAR"));
+
+                receta.Timbrada = true;
+                receta.FechaUltimaModificacion = DateTime.UtcNow;
+                receta.FechaCreacion = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                return await GenerarRecetaQRAsync(request, idUsuarioClaim);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                var err = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<Guid>.Failure(err);
+            }
+            catch (Exception ex)
+            {
+                var err = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<Guid>.Exeption(ex, err);
+            }
+        }
+
+        public async Task<ResponseFromService<Guid>> GenerarRecetaQRAsync( GenerarQRRequest request, Guid idUsuarioClaim)
+        {
+            try
+            {
+                var idMedico = await GetMedicoIdOrThrowAsync(idUsuarioClaim);
+
+                var receta = await _context.Recetas
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.IdReceta == request.IdReceta);
+                if (receta == null)
+                    return ResponseFromService<Guid>.Failure(
+                        await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA"));
+
+                if (receta.IdMedico != idMedico)
+                    return ResponseFromService<Guid>.Success(
+                        request.IdReceta,
+                        await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CONSULTA", "NO_TIMBRAR"));
+
+                var texto = $"{receta.IdReceta}|{receta.IdMedico}|{DateTime.UtcNow:O}";
+                var qrBase64 = QRGenerator.GenerarQR(EncryptionHelper.Encrypt(texto));
+                if (string.IsNullOrEmpty(qrBase64))
+                    return ResponseFromService<Guid>.Failure(
+                        await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA"));
+
+                var recetaQR = new RecetaQR
+                {
+                    IdReceta = receta.IdReceta,
+                    IdPaciente = receta.IdPaciente,
+                    QRData = qrBase64,
+                    Estatus = true,
+                    FechaCreacion = DateTime.UtcNow,
+                    FechaUltimaModificacion = DateTime.UtcNow
+                };
+                _context.Set<RecetaQR>().Add(recetaQR);
+                await _context.SaveChangesAsync();
+
+                return ResponseFromService<Guid>.Success(
+                    request.IdReceta,
+                    await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("CONSULTA", "TIMBRAR_EXITOSO"));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                var err = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<Guid>.Failure(err);
+            }
+            catch (Exception ex)
+            {
+                var err = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<Guid>.Exeption(ex, err);
+            }
+        }
+        private async Task<Guid> GetMedicoIdOrThrowAsync(Guid idUsuarioClaim)
+        {
+            var idMedico = await _context.Medicos
+                .Where(m => m.IdUsuario == idUsuarioClaim)
+                .Select(m => m.IdMedico)
+                .FirstOrDefaultAsync();
+
+            if (idMedico == Guid.Empty)
+                throw new UnauthorizedAccessException();
+
+            return idMedico;
+        }
         private async Task<ResponseFromService<List<PrescriptionLineModel>>> GetMedicamentoActivoFromDatabase(Guid idPaciente)
         {
             try
@@ -740,29 +928,7 @@ namespace RMD.Service.Consulta
             }
         }
 
-        public async Task<ResponseFromService<bool>> EliminarRecetaAsync(Guid idReceta)
-        {
-            try
-            {
-                var receta = await _context.RecetasSql.FirstOrDefaultAsync(r => r.IdReceta == idReceta);
-                if (receta == null)
-                {
-                    var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "NO_ENCONTRADO");
-                    return ResponseFromService<bool>.Failure(notificacion);
-                }
-                receta.Estatus = 3; // 3 = Cancelada
-                receta.FechaUltimaModificacion = DateTime.Now;
-                await _context.SaveChangesAsync();
-                var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
-                return ResponseFromService<bool>.Success(true, success);
-            }
-            catch (Exception ex)
-            {
-                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-                return ResponseFromService<bool>.Exeption(ex, notificacion);
-            }
-        }
-
+        
         public async Task<ResponseFromService<RecetaGetRequest>> ConsultarRecetaAsync(Guid idReceta)
         {
             try

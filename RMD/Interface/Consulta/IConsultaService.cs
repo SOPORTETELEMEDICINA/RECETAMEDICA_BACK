@@ -46,7 +46,8 @@ namespace RMD.Interface.Consulta
         Task<ResponseFromService<IEnumerable<RequestSearchAllergy>>> GetAllergiesByNameAsync(string name);
         Task<ResponseFromService<IEnumerable<RequestSearchMolecules>>> GetMoleculeByNameAsync(string name);
         Task<ResponseFromService<IEnumerable<RequestSearchCIM10>>> GetCIM10sByNameAsync(string name);
-        Task<ResponseFromService<string>> GetIdsFromLink(int id, string idType, string relacionType);
+        // Task<ResponseFromService<string>> GetIdsFromLink(int id, string idType, string relacionType);
+        Task<ResponseFromService<object>> GetIdsFromLink(int id, string idType, string relacionType);
         Task<ResponseFromService<PrescriptionResponseHTML>> ProcessPrescriptionRequest(PrescriptionModel request);
         Task<ResponseFromService<PrescriptionResponseXML>> ProcessPrescriptionXMLRequest(PrescriptionModel request);
         Task<ResponseFromService<IEnumerable<Medicamentos>>> GetMedicamentoByNameAsync(string name);
@@ -60,5 +61,7 @@ namespace RMD.Interface.Consulta
         Task<ResponseFromService<IEnumerable<DetalleRecetaResponse>>> GetReaccionMedicamentoPrevioAsync(Guid idPaciente);
         Task<ResponseFromService<bool>> GetTieneEventoSaludAsync(Guid idPaciente);
         Task<ResponseFromService<bool>> GetTieneEventoMedicamentosoAsync(Guid idPaciente);
+        Task<ResponseFromService<Guid>> TimbrarAsync(GenerarQRRequest request, Guid idUsuarioClaim);
+        Task<ResponseFromService<bool>> ActualizarRecetaAsync(ActualizarRecetaRequestModel req, Guid idUsuario);
     }
 }
