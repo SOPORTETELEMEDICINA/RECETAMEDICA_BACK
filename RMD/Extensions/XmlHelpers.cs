@@ -1,16 +1,20 @@
 ﻿using System.Xml.Linq;
 
-public static class XmlHelpers
+namespace RMD.Extensions
 {
-    public static T GetOpenSearchValue<T>(this string xmlContent, string elementName)
+    public static class XmlHelpers
     {
-        var doc = XDocument.Parse(xmlContent);
-        var ns = XNamespace.Get("http://a9.com/-/spec/opensearch/1.1/");
-        var element = doc.Descendants(ns + elementName).FirstOrDefault();
-        if (element != null && typeof(T) == typeof(int))
+        public static T GetOpenSearchValue<T>(this string xmlContent, string elementName)
         {
-            return (T)(object)int.Parse(element.Value);
+            var doc = XDocument.Parse(xmlContent);
+            var ns = XNamespace.Get("http://a9.com/-/spec/opensearch/1.1/");
+            var element = doc.Descendants(ns + elementName).FirstOrDefault();
+            if (element != null && typeof(T) == typeof(int))
+            {
+                return (T)(object)int.Parse(element.Value);
+            }
+            return default!;
         }
-        return default;
     }
 }
+

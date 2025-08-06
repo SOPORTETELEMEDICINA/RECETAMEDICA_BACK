@@ -1,15 +1,12 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Text;
-using Microsoft.Extensions.Caching.Memory;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using RMD.Data;
-using RMD.Data.Models;
 using RMD.Interface.Auth;
-using RMD.Interface.Notificaciones;
 using RMD.Interface.Usuarios;
-using RMD.Models.Login;
-using RMD.Models.Responses;
-using RMD.Models.Usuarios;
+using RMD.Shared.Models.Login;
+using RMD.Shared.Models.Usuarios;
+using System.Globalization;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace RMD.Service.Auth
 {
@@ -21,8 +18,7 @@ namespace RMD.Service.Auth
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly CifradoHelper _cifradoHelper;
         private readonly ICatalogoNotificacionService _catalogoNotificacionService;
-        private readonly IMemoryCache _cache;
-        private readonly HttpClient _httpClient;
+        private readonly JwtKeyHolder _jwtKey;
 
         public AuthService(
             IUsuarioService usuarioService,
@@ -31,8 +27,8 @@ namespace RMD.Service.Auth
             IHttpContextAccessor httpContextAccessor,
             CifradoHelper cifradoHelper,
             ICatalogoNotificacionService catalogoNotificacionService,
-            IMemoryCache cache,
-            IHttpClientFactory httpClientFactory)
+            IHttpClientFactory httpClientFactory,
+            JwtKeyHolder jwtKey)
         {
             _usuarioService = usuarioService;
             _context = context;
@@ -40,8 +36,8 @@ namespace RMD.Service.Auth
             _httpContextAccessor = httpContextAccessor;
             _cifradoHelper = cifradoHelper;
             _catalogoNotificacionService = catalogoNotificacionService;
-            _cache = cache;
-            _httpClient = httpClientFactory.CreateClient("WhatsAppBusiness");
+            httpClientFactory.CreateClient("WhatsAppBusiness");
+            _jwtKey = jwtKey;
         }
 
         // Inicia sesión y retorna un token nuevo envuelto en ResponseFromService<string>
@@ -52,44 +48,22 @@ namespace RMD.Service.Auth
                 // Validar las credenciales del usuario.
 
                 var validateResponse = await _usuarioService.ValidateUserCredentialsAsync(credentials.Usr, credentials.Password);
-                if (validateResponse == null || !validateResponse.Data)
+                if (!validateResponse.Data)
                 {
-                    var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                    var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("AUTHC", "USUARIO_PASS_INCORRECTA");
                     return ResponseFromService<string>.Failure(error);
                 }
                 ResponseFromService<UsuarioDetalle> usuarioResponse = new();
                 if (credentials.Plataform == "MOVIL") 
                 {
                     usuarioResponse = await _usuarioService.GetUsuarioPacienteByUsernameAsync(credentials.Usr);
-                    if (usuarioResponse == null || usuarioResponse.Data == null)
-                    {
-                        var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("USUARIOSSP", "USUARIONOEXISTE");
-                        return ResponseFromService<string>.Failure(error);
-                    }
                 }
                 else if(credentials.Plataform == "WEB")
                 {
                     // Obtener los detalles del usuario.
                     usuarioResponse = await _usuarioService.GetUsuarioByUsernameAsync(credentials.Usr);
-                    if (usuarioResponse == null || usuarioResponse.Data == null)
-                    {
-                        var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("USUARIOSSP", "USUARIONOEXISTE");
-                        return ResponseFromService<string>.Failure(error);
-                    }
                 }
                 
-
-                //// Si el usuario no es Super Admin, invalidar cualquier token activo existente.
-                //if (usuarioResponse.Data.TipoUsuario != "Super Admin")
-                //{
-                //    var tokenActivo = await _context.BlacklistedTokens
-                //        .FirstOrDefaultAsync(t => t.IdUsuario == usuarioResponse.Data.IdUsuario && t.ExpirationDate > DateTime.UtcNow);
-                //    if (tokenActivo != null)
-                //    {
-                //        tokenActivo.ExpirationDate = DateTime.UtcNow;
-                //        await _context.SaveChangesAsync();
-                //    }
-                //}
                 // Si el usuario no es Super Admin, revocar cualquier token activo existente.
                 if (usuarioResponse.Data.TipoUsuario != "Super Admin")
                 {
@@ -166,12 +140,6 @@ namespace RMD.Service.Auth
 
                 // 2) Obtener UsuarioDetalle completo desde BD
                 var usuarioResponse = await _usuarioService.GetUsuarioByUsernameAsync(username);
-                if (usuarioResponse?.Data == null)
-                {
-                    var err = await _catalogoNotificacionService
-                        .GetNotificationByTipoAndFuncionAsync("USUARIOSSP", "USUARIONOEXISTE");
-                    return ResponseFromService<string>.Failure(err);
-                }
 
                 // 3) (Opcional) Revocar el token viejo
                 var currentToken = _httpContextAccessor.HttpContext.Request
@@ -316,7 +284,10 @@ namespace RMD.Service.Auth
             {
                 // 1) Generar JWT con todos los claims
                 var handler = new JwtSecurityTokenHandler();
-                var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
+                var key = _jwtKey.Key; // 
+
+                var signingKey = new SymmetricSecurityKey(key);
+
                 var issuer = _configuration["Jwt:Issuer"]!;
                 var aud = _configuration["Jwt:Audience"]!;
                 var horas = int.Parse(_configuration["Jwt:TokenExpirationHours"] ?? "1");
@@ -335,7 +306,7 @@ namespace RMD.Service.Auth
                     Expires = DateTime.UtcNow.AddHours(horas),
                     Issuer = issuer,
                     Audience = aud,
-                    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
+                    SigningCredentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256)
                 };
 
                 var token = handler.CreateToken(desc);
@@ -374,28 +345,25 @@ namespace RMD.Service.Auth
             try
             {
                 var handler = new JwtSecurityTokenHandler();
-                var key = _configuration["Jwt:Key"] 
-                    ?? throw new ArgumentNullException(nameof(_configuration), "JWT:KEY is missing in configuration");
 
                 var minutos = int.Parse(_configuration["Jwt:ResetTokenExpirationMinutes"] ?? "20");
+
+                var signingKey = new SymmetricSecurityKey(_jwtKey.Key); // <- Usa JwtKeyHolder
 
                 var desc = new SecurityTokenDescriptor
                 {
                     Subject = new ClaimsIdentity(new[]
                     {
-                        new Claim("IdUsuario",  userId.ToString()),
-                        new Claim("GeneratedAt", DateTime.UtcNow.ToString())
+                        new Claim("IdUsuario", userId.ToString()),
+                        new Claim("GeneratedAt", DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture))
                     }),
                     Expires = DateTime.UtcNow.AddMinutes(minutos),
-                    SigningCredentials = new SigningCredentials(
-                        new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
-                        SecurityAlgorithms.HmacSha256Signature)
+                    SigningCredentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256Signature)
                 };
 
                 var token = handler.CreateToken(desc);
                 var tokenString = handler.WriteToken(token);
 
-                // ← Aquí guardamos el reset-token en auth.AuthTokens
                 _context.AuthTokens.Add(new AuthToken
                 {
                     IdToken = Guid.NewGuid(),
@@ -425,13 +393,11 @@ namespace RMD.Service.Auth
             try
             {
                 var tokenHandler = new JwtSecurityTokenHandler();
-                var key = _configuration["Jwt:Key"]
-                          ?? throw new ArgumentNullException(nameof(_configuration), "JWT:KEY is missing in configuration");
 
                 var validationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+                    IssuerSigningKey = new SymmetricSecurityKey(_jwtKey.Key), // ← Usa JwtKeyHolder
                     ValidateIssuer = false,
                     ValidateAudience = false,
                     ValidateLifetime = true,
@@ -439,7 +405,7 @@ namespace RMD.Service.Auth
                 };
 
                 // 1) Validar firma, expiración, etc.
-                var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
+                var principal = tokenHandler.ValidateToken(token, validationParameters, out _);
 
                 // 2) Revisar en la tabla auth.AuthTokens si está revocado
                 bool isRevoked = await _context.AuthTokens
@@ -491,6 +457,7 @@ namespace RMD.Service.Auth
             }
         }
 
+
         // AuthService.cs (añadir métodos al final de la clase)
         public async Task<ResponseFromService<string>> ChangeSucursalAsync(Guid newSucursalId)
         {
@@ -512,7 +479,6 @@ namespace RMD.Service.Auth
                 claims.Add(new Claim("IdSucursal", newSucursalId.ToString()));
 
                 // 3) Generar nuevo JWT con mismas configuraciones
-                var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
                 var issuer = _configuration["Jwt:Issuer"]!;
                 var aud = _configuration["Jwt:Audience"]!;
                 var horas = int.Parse(_configuration["Jwt:TokenExpirationHours"] ?? "1");
@@ -522,7 +488,7 @@ namespace RMD.Service.Auth
                     Expires = DateTime.UtcNow.AddHours(horas),
                     Issuer = issuer,
                     Audience = aud,
-                    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
+                    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(_jwtKey.Key), SecurityAlgorithms.HmacSha256)
                 };
                 var newToken = handler.WriteToken(handler.CreateToken(desc));
 
@@ -564,18 +530,19 @@ namespace RMD.Service.Auth
                     .ToList();
                 claims.Add(new Claim("GEMP", newGempId.ToString()));
 
-                var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
                 var issuer = _configuration["Jwt:Issuer"]!;
                 var aud = _configuration["Jwt:Audience"]!;
                 var horas = int.Parse(_configuration["Jwt:TokenExpirationHours"] ?? "1");
+
                 var desc = new SecurityTokenDescriptor
                 {
                     Subject = new ClaimsIdentity(claims),
                     Expires = DateTime.UtcNow.AddHours(horas),
                     Issuer = issuer,
                     Audience = aud,
-                    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
+                    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(_jwtKey.Key), SecurityAlgorithms.HmacSha256)
                 };
+
                 var newToken = handler.WriteToken(handler.CreateToken(desc));
 
                 var record = await _context.AuthTokens.FirstOrDefaultAsync(t => t.Token == oldToken);
@@ -587,7 +554,7 @@ namespace RMD.Service.Auth
                     await _context.SaveChangesAsync();
                 }
 
-                var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("AUTHS", "RENEW_EXITOSO");
+                var notif = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("AUTHC", "RENEW_EXITOSO");
                 return ResponseFromService<string>.Success(newToken, notif);
             }
             catch (Exception ex)
@@ -683,289 +650,8 @@ namespace RMD.Service.Auth
         //}
     }
 
-    public class ResetTokenValidationResult
-    {
-        public bool IsValid { get; set; }
-        public string ErrorMessage { get; set; } = string.Empty;
-        public Guid UserId { get; set; }
-    }
+   
 }
 
 
 
-
-
-
-//// Cierra la sesión invalidando el token recibido.
-//public async Task<ResponseFromService<bool>> LogoutAsync(string token)
-//{
-//    try
-//    {
-//        var tokenEnTabla = await _context.BlacklistedTokens
-//            .FirstOrDefaultAsync(t => t.Token == token);
-//        if (tokenEnTabla != null)
-//        {
-//            _context.BlacklistedTokens.Remove(tokenEnTabla);
-//            await _context.SaveChangesAsync();
-//        }
-//        var success = await _catalogoNotificacionService
-//            .GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
-//        return ResponseFromService<bool>.Success(true, success);
-//    }
-//    catch (Exception ex)
-//    {
-//        var error = await _catalogoNotificacionService
-//            .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-//        return ResponseFromService<bool>.Exeption(ex, error);
-//    }
-//}
-
-
-// Renueva el token para el usuario autenticado
-//public async Task<ResponseFromService<string>> RenewTokenAsync()
-//{
-//    try
-//    {
-//        var username = _httpContextAccessor.HttpContext?.User.Identity?.Name;
-//        if (string.IsNullOrEmpty(username))
-//        {
-//            var error = await _catalogoNotificacionService
-//                .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
-//            return ResponseFromService<string>.Failure(error);
-//        }
-
-//        var usuarioResponse = await _usuarioService.GetUsuarioByUsernameAsync(username);
-//        if (usuarioResponse == null || usuarioResponse.Data == null)
-//        {
-//            var error = await _catalogoNotificacionService
-//                .GetNotificationByTipoAndFuncionAsync("USUARIOSSP", "USUARIONOEXISTE");
-//            return ResponseFromService<string>.Failure(error);
-//        }
-
-//        // Generar un nuevo token usando el método que retorna ResponseFromService<string>.
-//        var tokenResponse = await GenerateTokenAsync(usuarioResponse.Data);
-//        // Se retorna directamente el tokenResponse, que ya contiene éxito o fallo según corresponda.
-//        return tokenResponse;
-//    }
-//    catch (Exception ex)
-//    {
-//        var error = await _catalogoNotificacionService
-//            .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-//        return ResponseFromService<string>.Exeption(ex, error);
-//    }
-//}
-
-
-//public async Task<ResponseFromService<bool>> IsTokenActiveAsync(string token)
-//{
-//    try
-//    {
-//        var tokenEnTabla = await _context.BlacklistedTokens
-//            .FirstOrDefaultAsync(t => t.Token == token && t.ExpirationDate > DateTime.UtcNow);
-//        var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
-//        return ResponseFromService<bool>.Success(tokenEnTabla != null, success);
-//    }
-//    catch (Exception ex)
-//    {
-//        var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-//        return ResponseFromService<bool>.Exeption(ex, error);
-//    }
-//}
-
-
-//public async Task<ResponseFromService<bool>> RevokeTokenAsync(string token, DateTime expirationDate)
-//{
-//    try
-//    {
-//        _context.BlacklistedTokens.Add(new BlacklistedToken
-//        {
-//            Id = Guid.NewGuid(),
-//            Token = token,
-//            ExpirationDate = expirationDate
-//        });
-//        await _context.SaveChangesAsync();
-//        var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
-//        return ResponseFromService<bool>.Success(true, success);
-//    }
-//    catch (Exception ex)
-//    {
-//        var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-//        return ResponseFromService<bool>.Exeption(ex, error);
-//    }
-//}
-
-
-//public async Task<ResponseFromService<bool>> LimpiarTokensExpiradosAsync()
-//{
-//    try
-//    {
-//        var tokensExpirados = await _context.BlacklistedTokens
-//            .Where(t => t.ExpirationDate <= DateTime.UtcNow)
-//            .ToListAsync();
-//        if (tokensExpirados.Any())
-//        {
-//            _context.BlacklistedTokens.RemoveRange(tokensExpirados);
-//            await _context.SaveChangesAsync();
-//        }
-//        var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
-//        return ResponseFromService<bool>.Success(true, success);
-//    }
-//    catch (Exception ex)
-//    {
-//        var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-//        return ResponseFromService<bool>.Exeption(ex, error);
-//    }
-//}
-
-
-// Método privado estandarizado para generar el token y guardar el token en la BD.
-//private async Task<ResponseFromService<string>> GenerateTokenAsync(UsuarioDetalle usuarioDetalle)
-//{
-//    try
-//    {
-//        var tokenHandler = new JwtSecurityTokenHandler();
-//        var key = _configuration["Jwt:Key"] ?? throw new ArgumentNullException(nameof(_configuration), "Jwt:Key is missing in configuration");
-//        var audience = _configuration["Jwt:Audience"] ?? throw new ArgumentNullException(nameof(_configuration), "Jwt:Audience is missing in configuration");
-//        var issuer = _configuration["Jwt:Issuer"] ?? throw new ArgumentNullException(nameof(_configuration), "Jwt:Issuer is missing in configuration");
-//        var tokenExpirationHours = int.Parse(_configuration["Jwt:TokenExpirationHours"] ?? "1");
-
-//        var tokenDescriptor = new SecurityTokenDescriptor
-//        {
-//            Subject = new ClaimsIdentity(new[]
-//            {
-//                new Claim(ClaimTypes.Name, usuarioDetalle.Usr),
-//                new Claim(ClaimTypes.Role, usuarioDetalle.TipoUsuario),
-//                new Claim("GEMP", usuarioDetalle.IdGEMP?.ToString() ?? string.Empty),
-//                new Claim("IdSucursal", usuarioDetalle.IdSucursal?.ToString() ?? string.Empty),
-//                new Claim("IdUsuario", usuarioDetalle.IdUsuario.ToString()),
-//                new Claim("IdRol", usuarioDetalle.IdTipoUsuario.ToString())
-//            }),
-//            Expires = DateTime.UtcNow.AddHours(tokenExpirationHours),
-//            Audience = audience,
-//            Issuer = issuer,
-//            SigningCredentials = new SigningCredentials(
-//                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
-//                SecurityAlgorithms.HmacSha256Signature)
-//        };
-
-//        var token = tokenHandler.CreateToken(tokenDescriptor);
-//        var tokenString = tokenHandler.WriteToken(token);
-
-//        _context.BlacklistedTokens.Add(new BlacklistedToken
-//        {
-//            Id = Guid.NewGuid(),
-//            IdUsuario = usuarioDetalle.IdUsuario,
-//            Token = tokenString,
-//            ExpirationDate = tokenDescriptor.Expires ?? DateTime.UtcNow.AddHours(tokenExpirationHours)
-//        });
-
-//        await _context.SaveChangesAsync();
-
-//        var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
-//        return ResponseFromService<string>.Success(tokenString, success);
-//    }
-//    catch (Exception ex)
-//    {
-//        var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-//        return ResponseFromService<string>.Exeption(ex, error);
-//    }
-//}
-
-// Retorna un token de reseteo de contraseña estandarizado.
-//public async Task<ResponseFromService<string>> GeneratePasswordResetTokenAsync(Guid userId)
-//{
-//    try
-//    {
-//        var tokenHandler = new JwtSecurityTokenHandler();
-//        var key = _configuration["Jwt:Key"] ?? throw new ArgumentNullException(nameof(_configuration), "JWT:KEY is missing in configuration");
-//        var tokenExpirationMinutes = int.Parse(_configuration["Jwt:ResetTokenExpirationMinutes"] ?? "20");
-
-//        var tokenDescriptor = new SecurityTokenDescriptor
-//        {
-//            Subject = new ClaimsIdentity(new[]
-//            {
-//                new Claim("IdUsuario", userId.ToString()),
-//                new Claim("GeneratedAt", DateTime.UtcNow.ToString())
-//            }),
-//            Expires = DateTime.Now.AddMinutes(tokenExpirationMinutes),
-//            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)), SecurityAlgorithms.HmacSha256Signature)
-//        };
-
-//        var token = tokenHandler.CreateToken(tokenDescriptor);
-//        var tokenString = tokenHandler.WriteToken(token);
-
-//        var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
-//        return ResponseFromService<string>.Success(tokenString, success);
-//    }
-//    catch (Exception ex)
-//    {
-//        var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-//        return ResponseFromService<string>.Exeption(ex, error);
-//    }
-//}
-
-// Valida el token de reseteo y devuelve un objeto ResetTokenValidationResult estandarizado.
-//public async Task<ResponseFromService<ResetTokenValidationResult>> ValidateResetTokenAsync(string token)
-//{
-//    try
-//    {
-//        var tokenHandler = new JwtSecurityTokenHandler();
-//        var key = _configuration["Jwt:Key"] ?? throw new ArgumentNullException(nameof(_configuration), "JWT:KEY is missing in configuration");
-
-//        var tokenValidationParameters = new TokenValidationParameters
-//        {
-//            ValidateIssuerSigningKey = true,
-//            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
-//            ValidateIssuer = false,
-//            ValidateAudience = false,
-//            ValidateLifetime = true
-//        };
-
-//        var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out var validatedToken);
-
-//        // Si el token ya expiró
-//        if (validatedToken is JwtSecurityToken jwtToken && jwtToken.ValidTo < DateTime.UtcNow)
-//        {
-//            var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-//            var result = new ResetTokenValidationResult { IsValid = false, ErrorMessage = error.Mensaje, UserId = Guid.Empty };
-//            return ResponseFromService<ResetTokenValidationResult>.Failure(error);
-//        }
-
-//        // Si el token ya está en la lista negra
-//        bool isTokenBlacklisted = await _context.BlacklistedTokens.AnyAsync(t => t.Token == token);
-//        if (isTokenBlacklisted)
-//        {
-//            var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-//            var result = new ResetTokenValidationResult { IsValid = false, ErrorMessage = error.Mensaje, UserId = Guid.Empty };
-//            return ResponseFromService<ResetTokenValidationResult>.Failure(error);
-//        }
-
-//        var userIdClaim = principal.Claims.FirstOrDefault(c => c.Type == "IdUsuario");
-//        if (userIdClaim == null)
-//        {
-//            var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-//            var result = new ResetTokenValidationResult { IsValid = false, ErrorMessage = error.Mensaje, UserId = Guid.Empty };
-//            return ResponseFromService<ResetTokenValidationResult>.Failure(error);
-//        }
-
-//        var validationResult = new ResetTokenValidationResult
-//        {
-//            IsValid = true,
-//            ErrorMessage = string.Empty,
-//            UserId = Guid.Parse(userIdClaim.Value)
-//        };
-
-//        var success = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
-//        return ResponseFromService<ResetTokenValidationResult>.Success(validationResult, success);
-//    }
-//    catch (SecurityTokenException ste)
-//    {
-//        var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-//        return ResponseFromService<ResetTokenValidationResult>.Exeption(ste, error);
-//    }
-//    catch (Exception ex)
-//    {
-//        var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-//        return ResponseFromService<ResetTokenValidationResult>.Exeption(ex, error);
-//    }
-//}

@@ -1,0 +1,16 @@
+<!--<resources>
+	--><!-- Tema principal sin ActionBar, con fondo transparente y sin barras visibles --><!--
+	<style name="Maui.MainTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+		--><!-- Transparencia completa en barras --><!--
+		<item name="android:statusBarColor">@android:color/transparent</item>
+		<item name="android:navigationBarColor">@android:color/transparent</item>
+		<item name="android:windowTranslucentStatus">true</item>
+		<item name="android:windowTranslucentNavigation">true</item>
+		<item name="android:windowDrawsSystemBarBackgrounds">true</item>
+
+		--><!-- Ajustes clave para evitar padding en la raíz --><!--
+		<item name="android:fitsSystemWindows">false</item>
+		<item name="android:windowFullscreen">true</item>
+		<item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+	</style>
+</resources>--><resources><!-- Tema principal sin ActionBar y con barra transparente --><style name="Maui.MainTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar"><item name="android:windowTranslucentStatus">true</item><item name="android:windowTranslucentNavigation">true</item><item name="android:windowDrawsSystemBarBackgrounds">true</item><item name="android:statusBarColor">@android:color/transparent</item><item name="android:navigationBarColor">@android:color/transparent</item></style></resources>

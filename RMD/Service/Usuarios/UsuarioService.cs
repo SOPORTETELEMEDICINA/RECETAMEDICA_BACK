@@ -1,394 +1,345 @@
-﻿using RMD.Data;
+﻿using Dapper;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using RMD.Data;
 using RMD.Extensions;
-using RMD.Interface.Notificaciones;
+using RMD.Interface.Security;
 using RMD.Interface.Usuarios;
-using RMD.Models.Responses;
-using RMD.Models.Usuarios;
+using RMD.Shared.Models.Usuarios;
+using System.Data;
 
 namespace RMD.Service.Usuarios
 {
     public class UsuarioService : IUsuarioService
     {
-        private readonly UsuariosDBContext _context;
+        private readonly CatalogoDbContext _catalogo;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ICatalogoNotificacionService _catalogoNotificacionService;
         //private readonly Guid _IdUsuario;
         private readonly CifradoHelper _cifradoHelper;
-        private readonly string _connectionString;
+        private readonly IDapperService _dapperService;
 
         public UsuarioService(
-           IHttpContextAccessor httpContextAccessor,
-           UsuariosDBContext context,
-           CifradoHelper cifradoHelper,
-           ICatalogoNotificacionService catalogoNotificacionService,
-           string connectionString)  // Se inyecta la cadena
+            IHttpContextAccessor httpContextAccessor,
+            CatalogoDbContext catalogo,
+            CifradoHelper cifradoHelper,
+            ICatalogoNotificacionService catalogoNotificacionService,
+            IDapperService dapperService)  // Se inyecta la cadena
         {
-            _context = context;
+            _catalogo = catalogo;
             _cifradoHelper = cifradoHelper;
             _httpContextAccessor = httpContextAccessor;
             _catalogoNotificacionService = catalogoNotificacionService;
-            _connectionString = connectionString;
-        }
-
-        // Helper para leer el código de error desde el primer conjunto
-
+            _dapperService = dapperService;
+        }       
         public async Task<ResponseFromService<IEnumerable<RequestUsuario>>> GetUsuariosByGEMPAsync(Guid idGEMP)
         {
             try
             {
-                // Obtener los valores del token.
+                // 1. Obtener los valores del token.
                 var idUsuarioSolicitante = _httpContextAccessor.HttpContext.User.FindFirstValue("IdUsuario");
                 var idRolSolicitante = _httpContextAccessor.HttpContext.User.FindFirstValue("IdRol");
 
-                // Validar que se puedan convertir a Guid.
+                // 2. Validar que se puedan convertir a Guid.
                 if (!Guid.TryParse(idUsuarioSolicitante, out var parsedIdUsuario) ||
                     !Guid.TryParse(idRolSolicitante, out var parsedIdRol))
                 {
-                    var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO"); // "PROBLEMAS AL VALIDAR LOS CAMPOS DEL TOKEN."
-                    return ResponseFromService<IEnumerable<RequestUsuario>>.Failure(notificacion);
+                    var notificacionfail = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                    return ResponseFromService<IEnumerable<RequestUsuario>>.Failure(notificacionfail);
                 }
 
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
-
-                using var command = new SqlCommand("Usuarios_GetUsuariosByGEMP", connection)
+                // 3. Ejecutar SP con Dapper.
+                var parameters = new
                 {
-                    CommandType = CommandType.StoredProcedure
+                    IdGEMP = idGEMP,
+                    IdUsuarioSolicitante = parsedIdUsuario,
+                    IdRolSolicitante = parsedIdRol
                 };
-                command.Parameters.AddWithValue("@IdGEMP", idGEMP);
-                command.Parameters.AddWithValue("@IdUsuarioSolicitante", parsedIdUsuario);
-                command.Parameters.AddWithValue("@IdRolSolicitante", parsedIdRol);
 
-                using var reader = await command.ExecuteReaderAsync();
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Usuarios_GetUsuariosByGEMP",
+                    parameters
+                );
 
-                // Leer el primer conjunto para obtener el Código de Notificación.
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
-                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
-                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
-                {
-                    return ResponseFromService<IEnumerable<RequestUsuario>>.Failure(spNotificacion);
-                }
+                // 4. Leer el código de notificación del primer result set.
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
-                // 2) Moverte al segundo result set (la lista de usuarios)
-                if (await reader.NextResultAsync())
-                {
-                    var usuarios = new List<RequestUsuario>();
-                    // 3) Iterar filas
-                    while (await reader.ReadAsync())
-                    {
-                        usuarios.Add(RequestUsuario.FromDataReader(reader));
-                    }
-                    return ResponseFromService<IEnumerable<RequestUsuario>>.Success(usuarios, spNotificacion);
-                }
-                else
-                {
-                    // No vino result set de usuarios
-                    return ResponseFromService<IEnumerable<RequestUsuario>>.Success(Enumerable.Empty<RequestUsuario>(), spNotificacion);
-                }
+                // 5. Si la notificación indica error, salir.
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
+                    return ResponseFromService<IEnumerable<RequestUsuario>>.Failure(notificacion);
+
+                // 6. Leer usuarios del segundo result set.
+                var usuarios = multi.Read<RequestUsuario>().ToList();
+
+                // 7. Retornar respuesta exitosa.
+                return ResponseFromService<IEnumerable<RequestUsuario>>.Success(usuarios, notificacion);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA"); // EXCEPCIÓN DETECTADA
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<IEnumerable<RequestUsuario>>.Exeption(ex, error);
             }
-        }
-
+        }        
         public async Task<ResponseFromService<string>> CambiarPasswordAsync(Guid idUsuario, string nuevaPassword)
         {
             try
             {
                 var nuevaPasswordCifrada = _cifradoHelper.HashPassword(nuevaPassword);
 
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
-
-                using var command = connection.CreateCommand();
-                command.CommandText = "Usuarios_CambiarPassword";
-                command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.Add(new SqlParameter("@IdUsuario", idUsuario));
-                command.Parameters.Add(new SqlParameter("@NuevaPassword", nuevaPasswordCifrada));
-
-                using var reader = await command.ExecuteReaderAsync();
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
-
-
-                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
-
-                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
+                var parameters = new
                 {
-                    return ResponseFromService<string>.Failure(spNotificacion);
-                }
-                else
+                    IdUsuario = idUsuario,
+                    NuevaPassword = nuevaPasswordCifrada
+                };
+
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Usuarios_CambiarPassword",
+                    parameters
+                );
+
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
                 {
-                    return ResponseFromService<string>.Success(spNotificacion.Descripcion, spNotificacion);
+                    return ResponseFromService<string>.Failure(notificacion);
                 }
 
+                return ResponseFromService<string>.Success(notificacion.Descripcion, notificacion);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA"); // EXCEPCIÓN DETECTADA
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<string>.Exeption(ex, error);
             }
-        }
-
+        }        
         public async Task<ResponseFromService<IEnumerable<RequestUsuario>>> GetUsuariosBySucursalAsync(Guid idSucursal)
         {
             try
             {
-                // Obtener los valores del token
+                // 1. Obtener los valores del token
                 var idUsuarioSolicitante = _httpContextAccessor.HttpContext.User.FindFirstValue("IdUsuario");
                 var idRolSolicitante = _httpContextAccessor.HttpContext.User.FindFirstValue("IdRol");
 
-                // Validar que los valores del token puedan convertirse a Guid
+                // 2. Validar que los valores del token puedan convertirse a Guid
                 if (!Guid.TryParse(idUsuarioSolicitante, out var parsedIdUsuario) ||
                     !Guid.TryParse(idRolSolicitante, out var parsedIdRol))
                 {
-                    var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO"); // "PROBLEMAS AL VALIDAR LOS CAMPOS DEL TOKEN."
-                    return ResponseFromService<IEnumerable<RequestUsuario>>.Failure(notificacion);
+                    var error = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("GENERAL", "TOKEN_INVALIDO");
+                    return ResponseFromService<IEnumerable<RequestUsuario>>.Failure(error);
                 }
 
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
-
-                using var command = new SqlCommand("Usuarios_GetUsuariosBySucursal", connection)
+                // 3. Ejecutar SP con Dapper
+                var parameters = new
                 {
-                    CommandType = CommandType.StoredProcedure
+                    IdSucursal = idSucursal,
+                    IdUsuarioSolicitante = parsedIdUsuario,
+                    IdRolSolicitante = parsedIdRol
                 };
 
-                command.Parameters.AddWithValue("@IdSucursal", idSucursal);
-                command.Parameters.AddWithValue("@IdUsuarioSolicitante", parsedIdUsuario);
-                command.Parameters.AddWithValue("@IdRolSolicitante", parsedIdRol);
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Usuarios_GetUsuariosBySucursal",
+                    parameters
+                );
 
-                using var reader = await command.ExecuteReaderAsync();
+                // 4. Leer código de notificación
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
-                // Leer el primer conjunto: se espera el Código de Notificación.
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
-                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
-                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
-                {
-                    return ResponseFromService<IEnumerable<RequestUsuario>>.Failure(spNotificacion);
-                }                
+                // 5. Verificar si hay error
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
+                    return ResponseFromService<IEnumerable<RequestUsuario>>.Failure(notificacion);
 
-                var usuarios = new List<RequestUsuario>();
-                while (await reader.ReadAsync())
-                {
-                    usuarios.Add(RequestUsuario.FromDataReader(reader));
-                }
+                // 6. Leer usuarios del segundo result set
+                var usuarios = multi.Read<RequestUsuario>().ToList();
 
-                return ResponseFromService<IEnumerable<RequestUsuario>>.Success(usuarios, spNotificacion);
+                // 7. Retornar resultado
+                return ResponseFromService<IEnumerable<RequestUsuario>>.Success(usuarios, notificacion);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA"); // EXCEPCIÓN DETECTADA
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<IEnumerable<RequestUsuario>>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<object>> AddUsuarioAsync(UsuarioCreate usuario, Guid idRol, string rol, Guid idGemp, Guid idSucursal)
         {
             try
             {
-                // Cifrar la contraseña si se proporciona.
+                // Validar asentamiento
+                var asentamientoExiste = await _catalogo.CatAsentamientos
+                    .AnyAsync(a => a.IdAsentamiento == usuario.IdAsentamiento);
+
+                if (!asentamientoExiste)
+                {
+                    var error = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("CATALOGOS", "ASENTAMIENTO_NO_ENCONTRADO");
+                    return ResponseFromService<object>.Failure(error);
+                }
+
+                // Cifrar password si aplica
                 if (!string.IsNullOrEmpty(usuario.Password))
                 {
                     usuario.Password = _cifradoHelper.HashPassword(usuario.Password);
                 }
 
-                // Preparar el parámetro de tabla.
-                var parameter = new SqlParameter("@UsuarioData", SqlDbType.Structured)
+                // Preparar parámetros
+                var tableParam = new SqlParameter("@UsuarioData", SqlDbType.Structured)
                 {
                     TypeName = "dbo.UsuarioCreateTableType",
                     Value = new List<UsuarioCreate> { usuario }.ToDataTable()
                 };
 
-                // Generar un nuevo Id para el usuario.
-                Guid _IdUsuario = Guid.NewGuid();
-                var idUsuarioParameter = new SqlParameter("@IdUsuario", SqlDbType.UniqueIdentifier) { Value = _IdUsuario };
-                var idRolParameter = new SqlParameter("@IdRol", SqlDbType.UniqueIdentifier) { Value = idRol };
-                var idGempParameter = new SqlParameter("@IdGemp", SqlDbType.UniqueIdentifier) { Value = idGemp };
-                var idSucursalParameter = new SqlParameter("@IdSucursal", SqlDbType.UniqueIdentifier) { Value = idSucursal };
+                var parametros = new DynamicParameters();
+                parametros.Add("@UsuarioData", tableParam.Value, DbType.Object);
+                parametros.Add("@IdRol", idRol);
+                parametros.Add("@IdGemp", idGemp);
+                parametros.Add("@IdSucursal", idSucursal);
 
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                // Ejecutar SP con Dapper
+                using var multi = await _dapperService.QueryMultipleAsync("Usuarios_CreateUSR", parametros);
 
-                using var command = new SqlCommand("Usuarios_CreateUSR", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                command.Parameters.Add(parameter);
-                command.Parameters.Add(idUsuarioParameter);
-                command.Parameters.Add(idRolParameter);
-                command.Parameters.Add(idGempParameter);
-                command.Parameters.Add(idSucursalParameter);
+                // Leer código de notificación
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
-                using var reader = await command.ExecuteReaderAsync();
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
+                    return ResponseFromService<object>.Failure(notificacion);
 
-                // Leer el código de notificación (primer conjunto).
-                int codigoError = await ValidationHelper.ReadErrorCodeAsync(reader);
-                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoError);
-                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
-                {
-                    return ResponseFromService<object>.Failure(spNotificacion);
-                }
+                // Leer Id generado
+                var idCreado = multi.ReadFirstOrDefault<Guid>();
 
-                Guid generatedIdUsuario = Guid.Empty;
-                if (await reader.ReadAsync())
-                {
-                    generatedIdUsuario = reader.GetGuid(0);
-                }
-                return ResponseFromService<object>.Success(generatedIdUsuario, spNotificacion);
+                return ResponseFromService<object>.Success(idCreado, notificacion);
             }
             catch (SqlException ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<object>.Exeption(ex, error);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<object>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<string>> UpdateUsuarioAsync(Usuario usuario, Guid idUsuarioSolicitante)
         {
             try
             {
-                // Validar que el usuario no sea nulo y tenga un Id válido.
-                if (usuario == null || usuario.IdUsuario == Guid.Empty)
+                // Validar asentamiento
+                var asentamientoExiste = await _catalogo.CatAsentamientos
+                    .AnyAsync(a => a.IdAsentamiento == usuario.IdAsentamiento);
+
+                if (!asentamientoExiste)
                 {
-                    var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
-                    return ResponseFromService<string>.Failure(notificacion);
+                    var error = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("CATALOGOS", "ASENTAMIENTO_NO_ENCONTRADO");
+                    return ResponseFromService<string>.Failure(error);
                 }
 
-                // Si se proporcionó contraseña, cifrarla; si no, asignarla a null.
-                if (!string.IsNullOrEmpty(usuario.Password))
+                // Validar usuario
+                if (usuario.IdUsuario == Guid.Empty)
                 {
-                    usuario.Password = _cifradoHelper.HashPassword(usuario.Password);
-                }
-                else
-                {
-                    usuario.Password = null;
+                    var error = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                    return ResponseFromService<string>.Failure(error);
                 }
 
-                // Crear el parámetro para la tabla del usuario.
+                // Cifrar password si aplica
+                usuario.Password = !string.IsNullOrEmpty(usuario.Password)
+                    ? _cifradoHelper.HashPassword(usuario.Password)
+                    : null;
+
+                // Preparar parámetros
                 var usuarioParam = new SqlParameter("@UsuarioTable", SqlDbType.Structured)
                 {
                     TypeName = "dbo.UsuarioTableType",
                     Value = new List<Usuario> { usuario }.ToDataTable()
                 };
 
-                var idUsuarioSolicitanteParam = new SqlParameter("@IdUsuarioSolicitante", idUsuarioSolicitante);
+                var parametros = new DynamicParameters();
+                parametros.Add("@UsuarioTable", usuarioParam.Value, DbType.Object);
+                parametros.Add("@IdUsuarioSolicitante", idUsuarioSolicitante);
 
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                // Ejecutar SP
+                using var multi = await _dapperService.QueryMultipleAsync("Usuarios_UpdateUsuario", parametros);
 
-                using var command = new SqlCommand("Usuarios_UpdateUsuario", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
-                command.Parameters.Add(usuarioParam);
-                command.Parameters.Add(idUsuarioSolicitanteParam);
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
+                    return ResponseFromService<string>.Failure(notificacion);
 
-                using var reader = await command.ExecuteReaderAsync();
-
-                // Leer el código de notificación (primer conjunto).
-                int codigoError = await ValidationHelper.ReadErrorCodeAsync(reader);
-                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoError);
-
-                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
-                {
-                    return ResponseFromService<string>.Failure(spNotificacion);
-                }
-                else
-                {
-                    return ResponseFromService<string>.Success(null, spNotificacion);
-                }
+                return ResponseFromService<string>.Success(null, notificacion);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<string>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<UsuarioDetalle>> GetUsuarioByUsernameAsync(string username)
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                var parameters = new { Usr = username };
 
-                using var command = new SqlCommand("Usuarios_GetUsuarioByUsername", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                command.Parameters.Add(new SqlParameter("@Usr", username));
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Usuarios_GetUsuarioByUsername",
+                    parameters
+                );
 
-                using var reader = await command.ExecuteReaderAsync();
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
-                // Leer el primer conjunto para obtener el código de notificación.
-                int codigoError = await ValidationHelper.ReadErrorCodeAsync(reader);
-                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoError);
-                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
-                {
-                    return ResponseFromService<UsuarioDetalle>.Failure(spNotificacion);
-                }
-                UsuarioDetalle usuarioDetalle = null;
-            // Avanzar al segundo result set
-            if (await reader.NextResultAsync())
-            {
-                if (await reader.ReadAsync())
-                {
-                    usuarioDetalle = UsuarioDetalle.FromDataReader((SqlDataReader)reader);
-                }
-            }
-                return ResponseFromService<UsuarioDetalle>.Success(usuarioDetalle, spNotificacion);
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
+                    return ResponseFromService<UsuarioDetalle>.Failure(notificacion);
+
+                var usuarioDetalle = multi.Read<UsuarioDetalle>().FirstOrDefault();
+
+                return ResponseFromService<UsuarioDetalle>.Success(usuarioDetalle, notificacion);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<UsuarioDetalle>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<UsuarioDetalle>> GetUsuarioPacienteByUsernameAsync(string username)
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                var parameters = new { Usr = username };
 
-                using var command = new SqlCommand("Usuarios_GetUsuarioPacienteByUsername", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                command.Parameters.Add(new SqlParameter("@Usr", username));
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Usuarios_GetUsuarioPacienteByUsername",
+                    parameters
+                );
 
-                using var reader = await command.ExecuteReaderAsync();
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
-                // Leer el primer conjunto para obtener el código de notificación.
-                int codigoError = await ValidationHelper.ReadErrorCodeAsync(reader);
-                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoError);
-                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
-                {
-                    return ResponseFromService<UsuarioDetalle>.Failure(spNotificacion);
-                }
-                UsuarioDetalle usuarioDetalle = null;
-                // Avanzar al segundo result set
-                if (await reader.NextResultAsync())
-                {
-                    if (await reader.ReadAsync())
-                    {
-                        usuarioDetalle = UsuarioDetalle.FromDataReader((SqlDataReader)reader);
-                    }
-                }
-                return ResponseFromService<UsuarioDetalle>.Success(usuarioDetalle, spNotificacion);
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
+                    return ResponseFromService<UsuarioDetalle>.Failure(notificacion);
+
+                var usuarioDetalle = multi.Read<UsuarioDetalle>().FirstOrDefault();
+
+                return ResponseFromService<UsuarioDetalle>.Success(usuarioDetalle, notificacion);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<UsuarioDetalle>.Exeption(ex, error);
             }
         }
@@ -396,320 +347,266 @@ namespace RMD.Service.Usuarios
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
-
-                using var command = new SqlCommand("Usuarios_ObtenerUsuarios", connection)
+                var parameters = new
                 {
-                    CommandType = CommandType.StoredProcedure
+                    IdUsuario = idUsuario,
+                    IdTipoUsuario = idRol
                 };
-                command.Parameters.Add(new SqlParameter("@IdUsuario", idUsuario));
-                command.Parameters.Add(new SqlParameter("@IdTipoUsuario", idRol));
 
-                using var reader = await command.ExecuteReaderAsync();
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Usuarios_ObtenerUsuarios",
+                    parameters
+                );
 
-                // Leer código de notificación
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
-                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
-                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
-                {
-                    return ResponseFromService<IEnumerable<UsuarioDetalle>>.Failure(spNotificacion);
-                }
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
-                // Segundo conjunto: usuarios
-                var usuarios = new List<UsuarioDetalle>();
-                if (await reader.NextResultAsync())
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        usuarios.Add(UsuarioDetalle.FromDataReader((SqlDataReader)reader));
-                    }
-                }
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
+                    return ResponseFromService<IEnumerable<UsuarioDetalle>>.Failure(notificacion);
 
-                return ResponseFromService<IEnumerable<UsuarioDetalle>>.Success(usuarios, spNotificacion);
+                var usuarios = multi.Read<UsuarioDetalle>().ToList();
+
+                return ResponseFromService<IEnumerable<UsuarioDetalle>>.Success(usuarios, notificacion);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<IEnumerable<UsuarioDetalle>>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<string>> InactivarUsuarioAsync(Guid idUsuario, Guid idUsuarioSolicitante)
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
-
-                using var command = new SqlCommand("Usuarios_InactivarUsuario", connection)
+                var parameters = new
                 {
-                    CommandType = CommandType.StoredProcedure
+                    IdUsuario = idUsuario,
+                    IdUsuarioSolicitante = idUsuarioSolicitante
                 };
-                command.Parameters.AddWithValue("@IdUsuario", idUsuario);
-                command.Parameters.AddWithValue("@IdUsuarioSolicitante", idUsuarioSolicitante);
 
-                using var reader = await command.ExecuteReaderAsync();
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Usuarios_InactivarUsuario",
+                    parameters
+                );
 
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
-                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
                     return ResponseFromService<string>.Failure(notificacion);
 
                 return ResponseFromService<string>.Success("OK", notificacion);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<string>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<string?>> ObtenerFirmaPorIdUsuarioAsync(Guid idUsuario)
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                var parameters = new { IdUsuario = idUsuario };
 
-                using var command = new SqlCommand("Usuarios_ObtenerFirmaPorIdUsuario", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                command.Parameters.AddWithValue("@IdUsuario", idUsuario);
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Usuarios_ObtenerFirmaPorIdUsuario",
+                    parameters
+                );
 
-                using var reader = await command.ExecuteReaderAsync();
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
-                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
                     return ResponseFromService<string?>.Failure(notificacion);
 
-                if (!await reader.NextResultAsync())
-                    return ResponseFromService<string?>.Success(null, notificacion);
-
-                string? firma = null;
-                if (await reader.ReadAsync())
-                    firma = reader["Firma"] as string;
+                var firma = multi.Read<string?>().FirstOrDefault();
 
                 return ResponseFromService<string?>.Success(firma, notificacion);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<string?>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<string>> CrearActualizarImagenFirmaAsync(UsuarioImagenRequest request)
         {
-            if (request == null || (string.IsNullOrEmpty(request.Imagen) && string.IsNullOrEmpty(request.Firma)))
+            if ((string.IsNullOrEmpty(request.Imagen) && string.IsNullOrEmpty(request.Firma)))
             {
-                var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
-                return ResponseFromService<string>.Failure(notificacion);
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return ResponseFromService<string>.Failure(error);
             }
 
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
-
-                using var command = new SqlCommand("Usuarios_CrearActualizarImagenFirma", connection)
+                var parameters = new
                 {
-                    CommandType = CommandType.StoredProcedure
+                    request.IdUsuario,
+                    Imagen = string.IsNullOrEmpty(request.Imagen) ? null : request.Imagen,
+                    Firma = string.IsNullOrEmpty(request.Firma) ? null : request.Firma
                 };
-                command.Parameters.AddWithValue("@IdUsuario", request.IdUsuario);
-                command.Parameters.AddWithValue("@Imagen", string.IsNullOrEmpty(request.Imagen) ? DBNull.Value : request.Imagen);
-                command.Parameters.AddWithValue("@Firma", string.IsNullOrEmpty(request.Firma) ? DBNull.Value : request.Firma);
 
-                using var reader = await command.ExecuteReaderAsync();
-                int codigoNotificacion = await  ValidationHelper.ReadErrorCodeAsync(reader);
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Usuarios_CrearActualizarImagenFirma",
+                    parameters
+                );
 
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
-                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
                     return ResponseFromService<string>.Failure(notificacion);
 
                 return ResponseFromService<string>.Success(notificacion.Descripcion, notificacion);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<string>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<string>> EliminarFirmaAsync(Guid idUsuario)
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                var parameters = new { IdUsuario = idUsuario };
 
-                using var command = new SqlCommand("Usuarios_EliminarFirma", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                command.Parameters.AddWithValue("@IdUsuario", idUsuario);
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Usuarios_EliminarFirma",
+                    parameters
+                );
 
-                using var reader = await command.ExecuteReaderAsync();
-                int codigoNotificacion = await  ValidationHelper.ReadErrorCodeAsync(reader);
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
-                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
                     return ResponseFromService<string>.Failure(notificacion);
 
                 return ResponseFromService<string>.Success(notificacion.Descripcion, notificacion);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<string>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<string?>> ObtenerImagenPorIdUsuarioAsync(Guid idUsuario)
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                var parameters = new { IdUsuario = idUsuario };
 
-                using var command = new SqlCommand("Usuarios_ObtenerImagenPorIdUsuario", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                command.Parameters.AddWithValue("@IdUsuario", idUsuario);
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Usuarios_ObtenerImagenPorIdUsuario",
+                    parameters
+                );
 
-                using var reader = await command.ExecuteReaderAsync();
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
-                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
                     return ResponseFromService<string?>.Failure(notificacion);
 
-                if (!await reader.NextResultAsync())
-                    return ResponseFromService<string?>.Success(null, notificacion);
-
-                string? imagen = null;
-                if (await reader.ReadAsync())
-                    imagen = reader.IsDBNull(0) ? null : reader.GetString(0);
+                var imagen = multi.Read<string?>().FirstOrDefault();
 
                 return ResponseFromService<string?>.Success(imagen, notificacion);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<string?>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<string>> EliminarImagenAsync(Guid idUsuario)
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                var parameters = new { IdUsuario = idUsuario };
 
-                using var command = new SqlCommand("Usuarios_EliminarImagen", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                command.Parameters.AddWithValue("@IdUsuario", idUsuario);
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Usuarios_EliminarImagen",
+                    parameters
+                );
 
-                using var reader = await command.ExecuteReaderAsync();
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
-                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
                     return ResponseFromService<string>.Failure(notificacion);
 
                 return ResponseFromService<string>.Success("Imagen eliminada con éxito.", notificacion);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<string>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<bool>> ValidateUserCredentialsAsync(string usr, string password)
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                var parameters = new { Usr = usr };
 
-                using var command = new SqlCommand("Usuarios_GetPasswordHashByUsername", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                command.Parameters.Add(new SqlParameter("@Usr", usr));
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Usuarios_GetPasswordHashByUsername",
+                    parameters
+                );
 
-                using var reader = await command.ExecuteReaderAsync();
-
-                // Leer código de notificación
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
-                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
-                {
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
                     return ResponseFromService<bool>.Failure(notificacion);
-                }
 
-                if (!await reader.NextResultAsync() || !await reader.ReadAsync())
-                {
-                    return ResponseFromService<bool>.Success(false, notificacion);
-                }
-
-                var hash = reader.IsDBNull(0) ? null : reader.GetString(0);
+                var hash = multi.Read<string?>().FirstOrDefault();
                 var valido = !string.IsNullOrEmpty(hash) && _cifradoHelper.VerifyPassword(password, hash);
+
                 return ResponseFromService<bool>.Success(valido, notificacion);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<bool>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<UsuarioDetalle>> GetUsuarioByEmailAsync(string email)
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                var parameters = new { Email = email };
 
-                using var command = connection.CreateCommand();
-                command.CommandText = "Usuaruios_ValidarCorreoUsuario";
-                command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.Add(new SqlParameter("@Email", email));
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Usuaruios_ValidarCorreoUsuario",
+                    parameters
+                );
 
-                using var reader = await command.ExecuteReaderAsync();
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
-                // Leer el código de notificación
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
-                var spNotificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
+                    return ResponseFromService<UsuarioDetalle>.Failure(notificacion);
 
-                if (spNotificacion.ToastType.ToUpperInvariant() == "ERROR")
-                {
-                    return ResponseFromService<UsuarioDetalle>.Failure(spNotificacion);
-                }
+                var usuario = multi.Read<UsuarioDetalle>().FirstOrDefault();
 
-                UsuarioDetalle? usuario = null;
-                if (await reader.NextResultAsync() && await reader.ReadAsync())
-                {
-                    usuario = UsuarioDetalle.FromDataReader((SqlDataReader)reader);
-                }
-
-                return ResponseFromService<UsuarioDetalle>.Success(usuario, spNotificacion);
+                return ResponseFromService<UsuarioDetalle>.Success(usuario, notificacion);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<UsuarioDetalle>.Exeption(ex, error);
             }
-        }
-
+        }        
     }
 }
-

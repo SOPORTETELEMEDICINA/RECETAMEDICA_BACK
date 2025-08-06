@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Data;
+using System.Reflection;
 
 namespace RMD.Extensions
 {
@@ -12,7 +13,7 @@ namespace RMD.Extensions
 
             foreach (PropertyInfo prop in properties)
             {
-                dataTable.Columns.Add(prop.Name ?? string.Empty, Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType);
+                dataTable.Columns.Add(prop.Name, Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType);
             }
 
             foreach (T item in items)
@@ -26,5 +27,28 @@ namespace RMD.Extensions
             }
             return dataTable;
         }
+        public static DataTable ToDataTable<T>(this List<T> items, string tableName)
+        {
+            DataTable dataTable = new(tableName);
+
+            PropertyInfo[] properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+            foreach (PropertyInfo prop in properties)
+            {
+                dataTable.Columns.Add(prop.Name, Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType);
+            }
+
+            foreach (T item in items)
+            {
+                var values = new object[properties.Length];
+                for (int i = 0; i < properties.Length; i++)
+                {
+                    values[i] = properties[i].GetValue(item, null) ?? DBNull.Value;
+                }
+                dataTable.Rows.Add(values);
+            }
+            return dataTable;
+        }
+
     }
 }

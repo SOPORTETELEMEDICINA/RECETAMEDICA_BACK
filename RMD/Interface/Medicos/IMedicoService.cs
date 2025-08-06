@@ -1,8 +1,4 @@
-﻿using RMD.Models.Medicos;
-using RMD.Models.Responses;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using RMD.Shared.Models.Medicos;
 
 namespace RMD.Interface.Medicos
 {

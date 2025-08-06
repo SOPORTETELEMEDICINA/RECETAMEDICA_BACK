@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="RMD.Movil.Pages.RegionPage"
+             BackgroundColor="Transparent"
+             NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="*,Auto,*">
+
+        <!-- Fondo -->
+        <Image Source="fondo_login.png"
+               Aspect="AspectFill"
+               Grid.RowSpan="3"
+               Opacity="1" />
+
+        <!-- Contenido -->
+        <VerticalStackLayout
+            Grid.Row="1"
+            HorizontalOptions="Center"
+            VerticalOptions="Center"
+            Spacing="30">
+
+            <!-- Logo -->
+            <Image Source="logo_mid.png"
+                   WidthRequest="250"
+                   HeightRequest="120"
+                   HorizontalOptions="Center" />
+
+            <!-- Texto -->
+            <Label Text="Selecciona tu región"
+                   FontSize="24"
+                   HorizontalOptions="Center"
+                   TextColor="Black" />
+
+            <!-- Picker -->
+            <Border Stroke="#ddd"
+                    StrokeThickness="2"
+                    StrokeShape="RoundRectangle 12"
+                    BackgroundColor="White"
+                    WidthRequest="300"
+                    HeightRequest="60"
+                    Padding="10,0">
+                <!-- Nuevo: Padding para que el texto no quede pegado -->
+
+                <Picker x:Name="RegionPicker"
+                        Title="Elige una región"
+                        FontSize="16"
+                        TextColor="Black"
+                        TitleColor="Gray"
+                        HorizontalOptions="FillAndExpand"
+                        VerticalOptions="Center"
+                        ItemDisplayBinding="{Binding .}">
+                    <!-- Necesario para mostrar string correctamente -->
+
+                    <!-- Puedes mantener la lista aquí si no la manejas con Binding -->
+                    <Picker.ItemsSource>
+                        <x:Array Type="{x:Type x:String}">
+                            <x:String>México</x:String>
+                            <x:String>España</x:String>
+                        </x:Array>
+                    </Picker.ItemsSource>
+
+                </Picker>
+            </Border>
+
+            <!-- Botón -->
+            <Button Text="Confirmar"
+                    Clicked="OnConfirmarClicked"
+                    BackgroundColor="#268AAB"
+                    TextColor="White"
+                    FontSize="16"
+                    CornerRadius="12"
+                    HeightRequest="52"
+                    WidthRequest="300" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

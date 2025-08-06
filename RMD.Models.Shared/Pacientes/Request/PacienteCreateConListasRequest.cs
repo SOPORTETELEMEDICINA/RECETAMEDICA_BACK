@@ -1,0 +1,26 @@
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace RMD.Shared.Models.Pacientes.Request
+{
+    public class PacienteCreateConListasRequest
+    {
+        public Guid IdUsuario { get; set; }
+
+        public DateTime FechaNacimiento { get; set; }
+
+        public int IdEntidadNacimiento { get; set; }
+        public int IdTipoIdentificacion { get; set; }
+        public string NumeroIdentificacion { get; set; }
+
+        [Required]
+        [MaxLength(10)]
+        public string Genero { get; set; } = string.Empty;
+
+        public List<string> Alergias { get; set; } = new List<string>();
+
+        public List<string> Molecules { get; set; } = new List<string>();
+
+        public List<string> Patologias { get; set; } = new List<string>();
+    }
+
+}

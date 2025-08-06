@@ -1,7 +1,5 @@
-﻿using RMD.Interface.Notificaciones;
-using RMD.Interface.PuntoVenta;
+﻿using RMD.Interface.PuntoVenta;
 using RMD.Models.PuntoVenta;
-using RMD.Models.Responses;
 
 namespace RMD.Controllers.PuntoVenta
 {
@@ -13,9 +11,12 @@ namespace RMD.Controllers.PuntoVenta
     {
         private readonly IPuntoVentaService _puntoVentaService;
         private readonly ICatalogoNotificacionService _catalogoNotificacionService;
-
-        public PuntoVentaController(IPuntoVentaService puntoVentaService, ICatalogoNotificacionService catalogoNotificacionService)
+       // private readonly IConfiguration _configuration;
+        public PuntoVentaController(//IConfiguration configuration,
+            IPuntoVentaService puntoVentaService, 
+            ICatalogoNotificacionService catalogoNotificacionService)
         {
+           // _configuration = configuration;
             _puntoVentaService = puntoVentaService;
             _catalogoNotificacionService = catalogoNotificacionService;
         }
@@ -30,6 +31,7 @@ namespace RMD.Controllers.PuntoVenta
                     .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
                 return BadRequest(ResponseFromService<string>.Failure(notif));
             }
+
             // 2) Validar input
             if (string.IsNullOrEmpty(qrEncriptado))
             {
@@ -37,54 +39,14 @@ namespace RMD.Controllers.PuntoVenta
                     .GetNotificationByTipoAndFuncionAsync("PUNTOVENTA", "DATOS_INVALIDOS");
                 return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            // 3) Desencriptar y parsear
-            var partes = EncryptionHelper.Decrypt(qrEncriptado).Split('|');
-            if (partes.Length != 3
-                || !Guid.TryParse(partes[0], out var idReceta)
-                || !Guid.TryParse(partes[1], out var idMedico)
-                || !DateTime.TryParse(partes[2].Trim(),
-                     CultureInfo.InvariantCulture,
-                     DateTimeStyles.None,
-                     out var fechaUltimaModificacion))
-            {
-                var notif = await _catalogoNotificacionService
-                    .GetNotificationByTipoAndFuncionAsync("PUNTOVENTA", "DATOS_INVALIDOS");
-                return BadRequest(ResponseFromService<string>.Failure(notif));
-            }
-            // 4) Llamada al servicio
-            var response = await _puntoVentaService
-                .ObtenerRecetaAsync(idReceta, idMedico, fechaUltimaModificacion);
-            // 5) Evaluar toast
-            return (response.Toast == "success" || response.Toast == "info")
-                ? Ok(response)
-                : NotFound(response);
+
+            // 3) Llamada directa al servicio, él se encarga de desencriptar y validar
+            var response = await _puntoVentaService.ObtenerRecetaAsync(qrEncriptado);
+
+            // 4) Evaluar toast
+            return Ok(response);
         }
 
-        [HttpPost("surtir-medicamentos")]
-        public async Task<IActionResult> SurtirMedicamentos([FromBody] SurtirRecetaRequest request)
-        {
-            // 1) Permiso
-            if (!HasPermission("SurtirMedicamentos"))
-            {
-                var notif = await _catalogoNotificacionService
-                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
-                return BadRequest(ResponseFromService<string>.Failure(notif));
-            }
-            // 2) Validar input
-            if (request?.DetallesReceta == null || !request.DetallesReceta.Any())
-            {
-                var notif = await _catalogoNotificacionService
-                    .GetNotificationByTipoAndFuncionAsync("PUNTOVENTA", "DATOS_INVALIDOS");
-                return BadRequest(ResponseFromService<string>.Failure(notif));
-            }
-            // 3) Llamada al servicio
-            var response = await _puntoVentaService
-                .SurtirMedicamentosAsync(request.IdReceta, request.DetallesReceta);
-            // 4) Evaluar toast
-            return (response.Toast == "success" || response.Toast == "info")
-                ? Ok(response)
-                : BadRequest(response);
-        }
 
         [HttpGet("consultar-receta/{folio}")]
         public async Task<IActionResult> ConsultarRecetaPorId(string folio)
@@ -112,6 +74,46 @@ namespace RMD.Controllers.PuntoVenta
                 : NotFound(response);
         }
 
+        [HttpPost("surtir-medicamentos")]
+        public async Task<IActionResult> SurtirMedicamentos([FromBody] SurtirRecetaRequest request)
+        {
+            // 1) Permiso
+            if (!HasPermission("SurtirMedicamentos"))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+            // 2) Validar input
+            if (!request.DetallesReceta.Any())
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("PUNTOVENTA", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+            // 3) Llamada al servicio
+            var response = await _puntoVentaService
+                .SurtirMedicamentosAsync( request );
+            // 4) Evaluar toast
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
+        }
+        //[HttpPost("GetRepositoryPacienteByQR")]
+        //public async Task<IActionResult> GetRepositoryPacienteByQR([FromBody] string qrEncriptado)
+        //{
+        //    var country = _configuration["Country"];
+        //    if (!string.Equals(country, "ES", StringComparison.OrdinalIgnoreCase))
+        //    {
+        //        return NotFound();
+        //    }
+
+        //    var response = await _puntoVentaService.GetRepositoryPacienteByQR(qrEncriptado);
+
+        //    return (response.Toast == "success" || response.Toast == "info")
+        //        ? Ok(response)
+        //        : BadRequest(response);
+        //}
         private bool HasPermission(string endpointName)
         {
             var rol = User.FindFirstValue(ClaimTypes.Role);

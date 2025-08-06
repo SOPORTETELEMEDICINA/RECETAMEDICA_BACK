@@ -1,7 +1,5 @@
-﻿using RMD.Interface.Notificaciones;
-using RMD.Interface.Pacientes;
-using RMD.Models.Pacientes;
-using RMD.Models.Responses;
+﻿using RMD.Interface.Pacientes;
+using RMD.Shared.Models.Pacientes.Request;
 
 namespace RMD.Controllers.Pacientes
 {
@@ -68,77 +66,8 @@ namespace RMD.Controllers.Pacientes
                 : BadRequest(response);
         }
 
-        [HttpGet("BySucursal/{idSucursal}")]
-        public async Task<IActionResult> GetPacientesBySucursal(Guid idSucursal)
-        {
-            if (!HasPermission("GetPacientesBySucursal"))
-            {
-                var notif = await _catalogoNotificacionService
-                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
-                return BadRequest(ResponseFromService<string>.Failure(notif));
-            }
-
-            if (idSucursal == Guid.Empty)
-            {
-                var notif = await _catalogoNotificacionService
-                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
-                return BadRequest(ResponseFromService<string>.Failure(notif));
-            }
-
-            var response = await _pacienteService.GetPacientesBySucursalAsync(idSucursal);
-            return (response.Toast == "success" || response.Toast == "info")
-                ? Ok(response)
-                : BadRequest(response);
-        }
-
-        [HttpGet("ByGEMP/{idGEMP}")]
-        public async Task<IActionResult> GetPacientesByGEMP(Guid idGEMP)
-        {
-            if (!HasPermission("GetPacientesByGEMP"))
-            {
-                var notif = await _catalogoNotificacionService
-                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
-                return BadRequest(ResponseFromService<string>.Failure(notif));
-            }
-
-            if (idGEMP == Guid.Empty)
-            {
-                var notif = await _catalogoNotificacionService
-                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
-                return BadRequest(ResponseFromService<string>.Failure(notif));
-            }
-
-            var response = await _pacienteService.GetPacientesByGEMPAsync(idGEMP);
-            return (response.Toast == "success" || response.Toast == "info")
-                ? Ok(response)
-                : BadRequest(response);
-        }
-
-        [HttpGet("ByMedico/{idMedico}")]
-        public async Task<IActionResult> GetPacientesByMedico(Guid idMedico)
-        {
-            if (!HasPermission("GetPacientesByMedico"))
-            {
-                var notif = await _catalogoNotificacionService
-                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
-                return BadRequest(ResponseFromService<string>.Failure(notif));
-            }
-
-            if (idMedico == Guid.Empty)
-            {
-                var notif = await _catalogoNotificacionService
-                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
-                return BadRequest(ResponseFromService<string>.Failure(notif));
-            }
-
-            var response = await _pacienteService.GetPacientesByMedicoAsync(idMedico);
-            return (response.Toast == "success" || response.Toast == "info")
-                ? Ok(response)
-                : BadRequest(response);
-        }
-
         [HttpPost]
-        public async Task<IActionResult> CreatePaciente([FromBody] PacienteCreateConListas model)
+        public async Task<IActionResult> CreatePaciente([FromBody] PacienteCreateConListasRequest model)
         {
             if (!HasPermission("CreatePaciente"))
             {
@@ -147,7 +76,7 @@ namespace RMD.Controllers.Pacientes
                 return BadRequest(ResponseFromService<string>.Failure(notif));
             }
 
-            if (!ModelState.IsValid || model == null)
+            if (!ModelState.IsValid)
             {
                 var errores = string.Join(" | ", ModelState.Values
                     .SelectMany(v => v.Errors)
@@ -174,7 +103,7 @@ namespace RMD.Controllers.Pacientes
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdatePaciente([FromBody] PacienteConListas model)
+        public async Task<IActionResult> UpdatePaciente([FromBody] PacienteConListasRequest model)
         {
             if (!HasPermission("UpdatePaciente"))
             {
@@ -183,7 +112,7 @@ namespace RMD.Controllers.Pacientes
                 return BadRequest(ResponseFromService<string>.Failure(notif));
             }
 
-            if (!ModelState.IsValid || model == null)
+            if (!ModelState.IsValid)
             {
                 var errores = string.Join(" | ", ModelState.Values
                     .SelectMany(v => v.Errors)
@@ -204,16 +133,6 @@ namespace RMD.Controllers.Pacientes
             }
 
             var response = await _pacienteService.UpdatePacienteAsync(model, idUsuarioSolicitante);
-            return (response.Toast == "success" || response.Toast == "info")
-                ? Ok(response)
-                : BadRequest(response);
-        }
-
-        [HttpGet("entidades-federativas")]
-        public async Task<IActionResult> GetEntidadesFederativas()
-        {
-            // No hay permiso específico, sólo devolvemos el catálogo
-            var response = await _pacienteService.GetEntidadesFederativasAsync();
             return (response.Toast == "success" || response.Toast == "info")
                 ? Ok(response)
                 : BadRequest(response);

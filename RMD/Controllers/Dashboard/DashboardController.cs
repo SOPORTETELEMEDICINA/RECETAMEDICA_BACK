@@ -1,6 +1,4 @@
 ﻿using RMD.Interface.Dashboard;
-using RMD.Interface.Notificaciones;
-using RMD.Models.Responses;
 
 namespace RMD.Controllers.Dashboard
 {

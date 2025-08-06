@@ -1,5 +1,5 @@
-﻿using RMD.Models.Consulta;
-using RMD.Models.Shared;
+﻿using RMD.Shared.Models.Consulta;
+using RMD.Shared.Models.Shared;
 using System.Xml.Linq;
 
 namespace RMD.Extensions.Consulta
@@ -98,7 +98,7 @@ namespace RMD.Extensions.Consulta
 
             foreach (var entry in entries)
             {
-                var category = entry.Descendants(XName.Get("categories", "vidal"))?.FirstOrDefault()?.Value;
+                var category = entry.Descendants(XName.Get("categories", "vidal")).FirstOrDefault()?.Value;
 
                 switch (category)
                 {
@@ -163,78 +163,6 @@ namespace RMD.Extensions.Consulta
             };
         }
 
-        //public static List<int> ParseXmlForIds(this string xmlContent)
-        //{
-        //    try
-        //    {
-        //        // Definir los namespaces necesarios para el XML
-        //        XNamespace atom = "http://www.w3.org/2005/Atom";
-        //        XNamespace ns = "http://api.vidal.net/-/spec/vidal-api/1.0/";
-
-        //        var document = XDocument.Parse(xmlContent);
-        //        var idList = new List<int>();
-
-        //        // Buscar todas las entradas <entry> en el XML
-        //        var entries = document.Descendants(atom + "entry");
-
-        //        foreach (var entry in entries)
-        //        {
-        //            // Tratar de obtener el <vidal:unitId>
-        //            var unitIdElement = entry.Element(ns + "unitId");
-        //            if (unitIdElement != null && int.TryParse(unitIdElement.Value, out int unitId))
-        //            {
-        //                idList.Add(unitId);
-        //                continue;
-        //            }
-
-        //            // Si no hay <vidal:unitId>, tratar de obtener el <vidal:ref_unit>
-        //            var refUnitElement = entry.Element(ns + "ref_unit");
-        //            if (refUnitElement != null && int.TryParse(refUnitElement.Value, out int refUnitId))
-        //            {
-        //                idList.Add(refUnitId);
-        //                continue;
-        //            }
-
-        //            // Si no hay ninguno de los anteriores, tratar de obtener el <vidal:unit>
-        //            var unitElement = entry.Element(ns + "unit");
-        //            if (unitElement != null && int.TryParse(unitElement.Value, out int unit))
-        //            {
-        //                idList.Add(unit);
-        //                continue;
-        //            }
-
-        //            // Tratar de obtener el <vidal:id> para las rutas
-        //            var routeIdElement = entry.Element(ns + "id");
-        //            if (routeIdElement != null && routeIdElement.Value.StartsWith("vidal://route/"))
-        //            {
-        //                // Extraer solo el número ID después de "vidal://route/"
-        //                var routeIdValue = routeIdElement.Value.Replace("vidal://route/", "");
-        //                if (int.TryParse(routeIdValue, out int routeId))
-        //                {
-        //                    idList.Add(routeId);
-        //                }
-        //                continue;
-        //            }
-
-        //            // Si no hay ninguno de los anteriores, tratar de obtener el <vidal:routeId>
-        //            var vidalRouteIdElement = entry.Element(ns + "routeId");
-        //            if (vidalRouteIdElement != null && int.TryParse(vidalRouteIdElement.Value, out int routeIdFromVidal))
-        //            {
-        //                idList.Add(routeIdFromVidal);
-        //                continue;
-        //            }
-
-        //            // Agregar más condiciones si es necesario para otros tipos de IDs que quieras extraer
-        //        }
-
-        //        return idList;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Console.WriteLine($"Error al analizar el XML: {ex.Message}");
-        //        return new List<int>(); // En caso de error, devolver lista vacía
-        //    }
-        //}
 
 
         public static List<int> ParseXmlForIds(this string xmlContent)
@@ -311,7 +239,6 @@ namespace RMD.Extensions.Consulta
                     if (vidalRouteIdElement != null && int.TryParse(vidalRouteIdElement.Value, out int routeIdFromVidal))
                     {
                         idList.Add(routeIdFromVidal);
-                        continue;
                     }
 
                     // Agregar más condiciones si es necesario para otros tipos de IDs que quieras extraer

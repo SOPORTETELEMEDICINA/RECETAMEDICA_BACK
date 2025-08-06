@@ -1,6 +1,4 @@
-﻿using System.Text.Json;
-
-namespace RMD.Extensions.System
+﻿namespace RMD.Extensions.System
 {
     public class ErrorHandlerMiddleware
     {

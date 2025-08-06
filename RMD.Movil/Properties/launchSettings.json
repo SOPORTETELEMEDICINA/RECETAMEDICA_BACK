@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "Android Emulator": {
+      "commandName": "Project",
+      "platform": "android",
+      "nativeDebugging": false
+    },
+    "iOS Simulator": {
+      "commandName": "Project",
+      "platform": "ios",
+      "nativeDebugging": false
+    }
+  }
+}

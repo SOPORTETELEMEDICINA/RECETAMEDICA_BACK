@@ -59,6 +59,37 @@ namespace RMD.Extensions.System
             using var sr = new StreamReader(cs);
             return sr.ReadToEnd();
         }
+        public static string Encrypt(string plainText, byte[] key)
+        {
+            using var aes = Aes.Create();
+            aes.Key = key;
+            aes.GenerateIV();
 
+            using var encryptor = aes.CreateEncryptor();
+            var plainBytes = Encoding.UTF8.GetBytes(plainText);
+            var cipherBytes = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
+
+            // Prepend IV + cipher text
+            var combined = aes.IV.Concat(cipherBytes).ToArray();
+            return Convert.ToBase64String(combined);
+        }
+        public static string Decrypt(string encryptedBase64, byte[] key)
+        {
+            var fullCipher = Convert.FromBase64String(encryptedBase64);
+
+            using var aes = Aes.Create();
+            aes.Key = key;
+
+            // Separa el IV (primeros 16 bytes)
+            var iv = fullCipher.Take(16).ToArray();
+            var cipher = fullCipher.Skip(16).ToArray();
+
+            aes.IV = iv;
+
+            using var decryptor = aes.CreateDecryptor();
+            var plainBytes = decryptor.TransformFinalBlock(cipher, 0, cipher.Length);
+
+            return Encoding.UTF8.GetString(plainBytes);
+        }
     }
 }

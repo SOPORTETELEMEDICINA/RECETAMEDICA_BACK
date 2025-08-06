@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using Microsoft.Data.SqlClient;
 
 namespace RMD.Extensions.System
 {

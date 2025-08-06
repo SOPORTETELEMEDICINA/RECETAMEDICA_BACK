@@ -1,23 +1,22 @@
-﻿using RMD.Data.Models;
-using RMD.Models.Login;
-using RMD.Models.Sucursales;
-using RMD.Models.Usuarios;
+﻿using Microsoft.EntityFrameworkCore;
+using RMD.Shared.Models.Login;
+using RMD.Shared.Models.Sucursales;
+using RMD.Shared.Models.Usuarios;
 
 namespace RMD.Data
 {
     public class UsuariosDBContext(DbContextOptions<UsuariosDBContext> options) : DbContext(options)
     {
         public DbSet<CatGrupoEmpresarial> CatGrupoEmpresariales { get; set; }
-        public DbSet<TipoUsuario> TipoUsuarios { get; set; }
-        public DbSet<Usuario> Usuarios { get; set; }
-        public DbSet<RequestUsuario> RequestUsuario { get; set; }
+        //public DbSet<TipoUsuario> TipoUsuarios { get; set; }
+        //public DbSet<Usuario> Usuarios { get; set; }
+        //public DbSet<RequestUsuario> RequestUsuario { get; set; }
         
-        public DbSet<UsuarioSucursal> UsuarioSucursales { get; set; }
-        //public DbSet<BlacklistedToken> BlacklistedTokens { get; set; }
-        public DbSet<UsuarioDetalle> UsuarioDetalle { get; set; }
-        public DbSet<UsuarioImagenRequest> UsuarioImagenes { get; set; }
-        public DbSet<SucursalResponse> SucursalResponses { get; set; }
-        public DbSet<CrearPacienteRequest> CrearPacienteRequests { get; set; }
+        //public DbSet<UsuarioSucursal> UsuarioSucursales { get; set; }
+        //public DbSet<UsuarioDetalle> UsuarioDetalle { get; set; }
+        //public DbSet<UsuarioImagenRequest> UsuarioImagenes { get; set; }
+        //public DbSet<SucursalResponse> SucursalResponses { get; set; }
+        //public DbSet<CrearPacienteRequest> CrearPacienteRequests { get; set; }
 
         public DbSet<AuthToken> AuthTokens { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -120,17 +119,6 @@ namespace RMD.Data
             {
                 entity.HasNoKey();  
             });
-            //// Configuración para BlacklistedTokens
-            //modelBuilder.Entity<BlacklistedToken>(entity =>
-            //{
-            //    entity.ToTable("BlacklistedTokens"); // Asegúrate de que coincide con el nombre de la tabla en la base de datos
-            //    entity.HasKey(e => e.Id); // Configura Id como clave primaria
-            //    entity.Property(e => e.Token)
-            //        .IsRequired()
-            //        .HasColumnType("nvarchar(max)"); // Permitir valores largos
-            //    entity.Property(e => e.ExpirationDate)
-            //          .IsRequired(); // Asegura que el campo es obligatorio
-            //});
             // AuthTokens
             modelBuilder.Entity<AuthToken>(entity =>
             {

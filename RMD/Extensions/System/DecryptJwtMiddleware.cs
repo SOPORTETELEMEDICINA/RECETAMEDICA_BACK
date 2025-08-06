@@ -1,20 +1,18 @@
-﻿using System.Security.Cryptography;
+﻿using RMD.Shared.Models.Login;
+using System.Security.Cryptography;
 using System.Text;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
-using System.Threading.Tasks;
 
 namespace RMD.Extensions.System
 {
     public class DecryptJwtMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly byte[] _key;
+        private readonly JwtKeyHolder _jwtKeyHolder;
 
-        public DecryptJwtMiddleware(RequestDelegate next, IConfiguration cfg)
+        public DecryptJwtMiddleware(RequestDelegate next, JwtKeyHolder jwtKeyHolder)
         {
             _next = next;
-            _key = Convert.FromBase64String(cfg["Encryption:Key"]!.Trim());
+            _jwtKeyHolder = jwtKeyHolder;
         }
 
         public async Task Invoke(HttpContext context)
@@ -34,7 +32,7 @@ namespace RMD.Extensions.System
                             var cipherBytes = Convert.FromBase64String(parts[1]);
 
                             using var aes = Aes.Create();
-                            aes.Key = _key;
+                            aes.Key = _jwtKeyHolder.ResponseKey;
                             aes.IV = ivBytes;
 
                             using var decryptor = aes.CreateDecryptor();
@@ -45,7 +43,7 @@ namespace RMD.Extensions.System
                         }
                         catch
                         {
-                            // opcional: log o dejar pasar autenticar as usual
+                            // Si falla la desencriptación, no se reemplaza el header y sigue igual
                         }
                     }
                 }

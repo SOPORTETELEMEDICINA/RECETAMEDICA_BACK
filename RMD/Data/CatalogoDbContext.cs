@@ -1,5 +1,5 @@
-﻿using RMD.Models.Catalogo;
-using RMD.Models.Consulta;
+﻿using Microsoft.EntityFrameworkCore;
+using RMD.Shared.Models.Catalogo;
 
 namespace RMD.Data
 {
@@ -12,6 +12,9 @@ namespace RMD.Data
         public DbSet<CatCiudades> CatCiudades { get; set; }
         public DbSet<AsentamientoResultModel> AsentamientoResultModel { get; set; }
         public DbSet<CatEventosDeSalud> CatEventosDeSalud { get; set; }
+        public DbSet<CatAsentamientos> CatAsentamientos { get; set; }
+        public DbSet<CatAsentamientoCiudad> CatAsentamientoCiudad { get; set; }
+        public DbSet<CatPaises> CatPaises { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -59,9 +62,22 @@ namespace RMD.Data
             modelBuilder.Entity<CatTipoAsentamiento>().ToTable("CatTipoAsentamiento");
             modelBuilder.Entity<CatCP>().ToTable("CatCP"); // Si en SQL sigue siendo CatCP2
             modelBuilder.Entity<CatCiudades>().ToTable("CatCiudades");
+            modelBuilder.Entity<CatAsentamientos>()
+                .HasKey(a => a.IdAsentamiento);
+
+            modelBuilder.Entity<CatAsentamientoCiudad>()
+                .HasNoKey(); // No tiene PK definida
+
+            modelBuilder.Entity<CatAsentamientos>().ToTable("CatAsentamientos");
+            modelBuilder.Entity<CatAsentamientoCiudad>().ToTable("CatAsentamientoCiudad");
 
             modelBuilder.Entity<CatEventosDeSalud>().HasKey(e => e.IdEvento);
             modelBuilder.Entity<CatEventosDeSalud>().ToTable("CatEventosDeSalud");
+            modelBuilder.Entity<CatPaises>()
+                .HasKey(p => p.Id);
+
+            modelBuilder.Entity<CatPaises>().ToTable("CatPaises");
+
         }
     }
 }

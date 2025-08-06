@@ -1,57 +1,42 @@
-﻿using RMD.Data;
+﻿using Dapper;
+using Microsoft.Data.SqlClient;
 using RMD.Extensions; // Asegúrate de que ToDataTable() esté implementado
-using RMD.Interface.Notificaciones;
+using RMD.Interface.Security;
 using RMD.Interface.Usuarios;
-using RMD.Models.Responses;
-using RMD.Models.Usuarios;
+using RMD.Shared.Models.Usuarios;
+using System.Data;
 
 namespace RMD.Service.Usuarios
 {
     public class CatGrupoEmpresarialService : ICatGrupoEmpresarialService
     {
-        private readonly UsuariosDBContext _context;
         private readonly ICatalogoNotificacionService _catalogoNotificacionService;
-        private readonly string _connectionString;
+        private readonly IDapperService _dapperService;
 
         public CatGrupoEmpresarialService(
-            UsuariosDBContext context,
             ICatalogoNotificacionService catalogoNotificacionService,
-            string connectionString)
+            IDapperService dapperService)
         {
-            _context = context;
             _catalogoNotificacionService = catalogoNotificacionService;
-            _connectionString = connectionString;
+            _dapperService = dapperService;
         }
-
         public async Task<ResponseFromService<IEnumerable<CatGrupoEmpresarial>>> GetAllGrupoEmpresarialAsync()
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                using var multi = await _dapperService.QueryMultipleAsync("Usuarios_GetAllGrupoEmpresarial");
 
-                using var command = new SqlCommand("Usuarios_GetAllGrupoEmpresarial", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-
-                using var reader = await command.ExecuteReaderAsync();
-
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
-                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
                 {
                     return ResponseFromService<IEnumerable<CatGrupoEmpresarial>>.Failure(notificacion);
                 }
+                if (notificacion.ToastType.ToUpperInvariant() == "INFO")
+                    return ResponseFromService<IEnumerable<CatGrupoEmpresarial>>.Success( new List<CatGrupoEmpresarial>(), notificacion);
 
-                var grupos = new List<CatGrupoEmpresarial>();
-                if (await reader.NextResultAsync())
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        grupos.Add(CatGrupoEmpresarial.FromDataReader((SqlDataReader)reader));
-                    }
-                }
+                var grupos = multi.Read<CatGrupoEmpresarial>().ToList();
 
                 return ResponseFromService<IEnumerable<CatGrupoEmpresarial>>.Success(grupos, notificacion);
             }
@@ -66,35 +51,25 @@ namespace RMD.Service.Usuarios
                 return ResponseFromService<IEnumerable<CatGrupoEmpresarial>>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<CatGrupoEmpresarial>> GetGrupoEmpresarialByIdAsync(Guid id)
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Usuarios_GetGrupoEmpresarialById",
+                    new { IdGEMP = id },
+                    commandType: CommandType.StoredProcedure);
 
-                using var command = new SqlCommand("Usuarios_GetGrupoEmpresarialById", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-
-                command.Parameters.Add(new SqlParameter("@IdGEMP", id));
-
-                using var reader = await command.ExecuteReaderAsync();
-
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
-                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
-                {
-                    return ResponseFromService<CatGrupoEmpresarial>.Failure(notificacion);
-                }
 
-                CatGrupoEmpresarial grupo = null;
-                if (await reader.NextResultAsync() && await reader.ReadAsync())
-                {
-                    grupo = CatGrupoEmpresarial.FromDataReader((SqlDataReader)reader);
-                }
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
+                    return ResponseFromService<CatGrupoEmpresarial>.Failure(notificacion);
+
+                if (notificacion.ToastType.ToUpperInvariant() == "INFO")
+                    return ResponseFromService<CatGrupoEmpresarial>.Success(new CatGrupoEmpresarial(), notificacion);
+
+                var grupo = await multi.ReadFirstOrDefaultAsync<CatGrupoEmpresarial>();
                 return ResponseFromService<CatGrupoEmpresarial>.Success(grupo, notificacion);
             }
             catch (SqlException sqlEx)
@@ -108,46 +83,28 @@ namespace RMD.Service.Usuarios
                 return ResponseFromService<CatGrupoEmpresarial>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<string>> CreateGrupoEmpresarialAsync(CatGrupoEmpresarial grupoEmpresarial)
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                var parameters = new DynamicParameters();
+                var table = new List<CatGrupoEmpresarial> { grupoEmpresarial }.ToDataTable();
+                parameters.Add("@GrupoEmpresarial", table.AsTableValuedParameter("dbo.CatGrupoEmpresarialType"));
 
-                using var command = new SqlCommand("Usuarios_CreateGrupoEmpresarial", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
+                using var multi = await _dapperService.QueryMultipleAsync("Usuarios_CreateGrupoEmpresarial", parameters);
 
-                var parameter = new SqlParameter("@GrupoEmpresarial", SqlDbType.Structured)
-                {
-                    TypeName = "dbo.CatGrupoEmpresarialType",
-                    Value = new List<CatGrupoEmpresarial> { grupoEmpresarial }.ToDataTable()
-                };
-                command.Parameters.Add(parameter);
-
-                using var reader = await command.ExecuteReaderAsync();
-
-                int codigoNotificacion = 0;
-                if (await reader.ReadAsync())
-                {
-                    codigoNotificacion = reader.GetInt32(0);
-                }
-
+                int codigoNotificacion = await multi.ReadFirstOrDefaultAsync<int>();
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
-                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
+
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
                 {
                     return ResponseFromService<string>.Failure(notificacion);
                 }
 
-                // Intentar leer el ID generado (si es que se retorna)
-                Guid generatedId = Guid.Empty;
-                if (await reader.ReadAsync())
-                {
-                    generatedId = reader.GetGuid(0);
-                }
+                if (notificacion.ToastType.ToUpperInvariant() == "INFO")
+                    return ResponseFromService<string>.Success(string.Empty, notificacion);
+
+                Guid generatedId = await multi.ReadFirstOrDefaultAsync<Guid>();
                 return ResponseFromService<string>.Success($"Grupo empresarial ({generatedId}) creado exitosamente.", notificacion);
             }
             catch (SqlException sqlEx)
@@ -161,48 +118,36 @@ namespace RMD.Service.Usuarios
                 return ResponseFromService<string>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<string>> UpdateGrupoEmpresarialAsync(CatGrupoEmpresarial grupoEmpresarial)
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                var parameters = new DynamicParameters();
+                var table = new List<CatGrupoEmpresarial> { grupoEmpresarial }.ToDataTable();
+                parameters.Add("@GrupoEmpresarial", table.AsTableValuedParameter("dbo.CatGrupoEmpresarialType"));
 
-                using var command = new SqlCommand("Usuarios_UpdateGrupoEmpresarial", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
+                using var multi = await _dapperService.QueryMultipleAsync("Usuarios_UpdateGrupoEmpresarial", parameters);
 
-                var parameter = new SqlParameter("@GrupoEmpresarial", SqlDbType.Structured)
-                {
-                    TypeName = "dbo.CatGrupoEmpresarialType",
-                    Value = new List<CatGrupoEmpresarial> { grupoEmpresarial }.ToDataTable()
-                };
-                command.Parameters.Add(parameter);
-
-                using var reader = await command.ExecuteReaderAsync();
-
-                int codigoNotificacion = 0;
-                if (await reader.ReadAsync())
-                {
-                    codigoNotificacion = reader.GetInt32(0);
-                }
+                int codigoNotificacion = await multi.ReadFirstOrDefaultAsync<int>();
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+
                 return notificacion.ToastType.ToUpperInvariant() == "ERROR"
                     ? ResponseFromService<string>.Failure(notificacion)
                     : ResponseFromService<string>.Success(notificacion.Descripcion, notificacion);
             }
             catch (SqlException sqlEx)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<string>.Exeption(sqlEx, error);
             }
             catch (Exception ex)
             {
-                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<string>.Exeption(ex, error);
             }
         }
+
     }
 }

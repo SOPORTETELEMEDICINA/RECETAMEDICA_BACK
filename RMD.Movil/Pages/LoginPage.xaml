@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--<ContentPage 
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:converters="clr-namespace:RMD.Movil.Utilities.Converters"
+    xmlns:viewmodels="clr-namespace:RMD.Movil.PageModels"
+    x:Class="RMD.Movil.Pages.LoginPage"
+    x:DataType="viewmodels:LoginPageModel"
+    NavigationPage.HasNavigationBar="False"
+    BackgroundColor="Transparent">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
+            <converters:PasswordIconConverter x:Key="PasswordIconConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="*,Auto,*">
+        --><!-- Fondo --><!--
+        <Image Source="fondo_login.png"
+               Aspect="AspectFill"
+               Grid.RowSpan="3"
+               Opacity="1" />
+
+        --><!-- Contenido --><!--
+        <VerticalStackLayout Grid.Row="1"
+                             HorizontalOptions="Center"
+                             VerticalOptions="Center"
+                             Spacing="30">
+
+            --><!-- Logo --><!--
+            <Image x:Name="LogoImage"
+                   Source="logo_mid.png"
+                   WidthRequest="250"
+                   HeightRequest="120"
+                   HorizontalOptions="Center" />
+
+            --><!-- Usuario --><!--
+            <Border x:Name="UsuarioLayout"
+                    Stroke="#ddd"
+                    StrokeThickness="2"
+                    BackgroundColor="White"
+                    StrokeShape="RoundRectangle 12"
+                    WidthRequest="300"
+                    HeightRequest="72"
+                    Padding="0,10,0,0">
+                --><!-- espacio para el label arriba --><!--
+                <Grid>
+                    <Label Text="Usuario"
+                           FontSize="13"
+                           TextColor="Gray"
+                           BackgroundColor="White"
+                           Padding="5,0"
+                           Margin="14,0,0,0"
+                           VerticalOptions="Start"
+                           TranslationY="-20"  
+                           HeightRequest="20"
+                           ZIndex="1" />
+
+                    <Entry Placeholder="Ingresa tu usuario aquí..."
+                           Text="{Binding Usuario}"
+                           FontSize="16"
+                           PlaceholderColor="Gray"
+                           TextColor="Black"
+                           BackgroundColor="Transparent"
+                           Margin="10,10,10,0"
+                           VerticalOptions="Fill"
+                           HeightRequest="48" />
+                </Grid>
+            </Border>
+
+            --><!-- Contraseña --><!--
+            <Border x:Name="PasswordLayout"
+                    Stroke="#ddd"
+                    StrokeThickness="2"
+                    BackgroundColor="White"
+                    StrokeShape="RoundRectangle 12"
+                    WidthRequest="300"
+                    HeightRequest="72"
+                    Padding="0,10,0,0">
+                <Grid>
+                    <Label Text="Contraseña"
+                           FontSize="13"
+                           TextColor="Gray"
+                           BackgroundColor="White"
+                           Padding="5,0"
+                           Margin="14,0,0,0"
+                           VerticalOptions="Start"
+                           TranslationY="-20"
+                           HeightRequest="20"
+                           ZIndex="1" />
+
+                    <Grid ColumnDefinitions="*,Auto"
+                          Margin="10,10,10,0"
+                          VerticalOptions="Fill"
+                          HeightRequest="48">
+                        <Entry Placeholder="Ingresa tu contraseña aquí..."
+                               Text="{Binding Password}"
+                               IsPassword="{Binding IsPasswordVisible, Converter={StaticResource InverseBoolConverter}}"
+                               FontSize="16"
+                               PlaceholderColor="Gray"
+                               TextColor="Black"
+                               BackgroundColor="Transparent" />
+                        <Label Text="{Binding IsPasswordVisible, Converter={StaticResource PasswordIconConverter}}"
+                               FontFamily="FASolid"
+                               FontSize="20"
+                               VerticalOptions="Center"
+                               HorizontalOptions="End"
+                               Margin="10,0,0,0"
+                               TextColor="Gray">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding TogglePasswordCommand}" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </Grid>
+                </Grid>
+            </Border>
+
+
+
+            --><!-- Botón --><!--
+            <Button x:Name="IngresarBtn"
+                    Text="Ingresar"
+                    Command="{Binding LoginCommand}"
+                    BackgroundColor="#268AAB"
+                    TextColor="White"
+                    FontSize="16"
+                    CornerRadius="12"
+                    HeightRequest="52"
+                    WidthRequest="300"/>
+
+            --><!-- Olvidaste contraseña --><!--
+            <Label x:Name="LblOlvido"
+                   Text="¿Olvidaste tu contraseña?"
+                   TextColor="Black"
+                   FontSize="14"
+                   HorizontalOptions="Center">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ForgotPasswordCommand}" />
+                </Label.GestureRecognizers>
+            </Label>
+
+            --><!-- Por Consulta en Línea --><!--
+            <Label x:Name="LblInferior"
+                   Text="Por Consulta en Línea"
+                   TextColor="Black"
+                   FontSize="14"
+                   HorizontalOptions="Center"/>
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>-->
+<ContentPage 
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:viewmodels="clr-namespace:RMD.Movil.PageModels"
+    xmlns:converters="clr-namespace:RMD.Movil.Utilities.Converters"
+    x:Class="RMD.Movil.Pages.LoginPage"
+    x:DataType="viewmodels:LoginPageModel"
+    NavigationPage.HasNavigationBar="False"
+    BackgroundColor="Transparent"
+    BackgroundImageSource="background_gradient.png">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
+            <converters:PasswordIconConverter x:Key="PasswordIconConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <!-- Root grid con layout controlado -->
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- Logo y título -->
+        <VerticalStackLayout Grid.Row="0" Padding="0,40,0,10" Spacing="5" HorizontalOptions="Center">
+            <Image x:Name="LogoImage"
+                   Source="logo_mid.png"
+                   HeightRequest="120"
+                   Aspect="AspectFit"/>
+            <Label Text="Receta Médica Digital" 
+                   FontSize="18"
+                   TextColor="#00b7bd"
+                   HorizontalOptions="Center"/>
+        </VerticalStackLayout>
+
+        <!-- Scroll solo para contenido central -->
+        
+            <VerticalStackLayout Grid.Row="1"
+                                 Padding="30,0" Spacing="20" HorizontalOptions="Center">
+
+                <!-- Tarjeta de login -->
+                <Border x:Name="ContenedorLogin"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 50"
+                        BackgroundColor="Transparent"
+                        WidthRequest="320"
+                        Padding="0">
+
+                    <Grid BackgroundColor="Transparent">
+
+                        <!-- Fondo decorativo -->
+                        <Image Source="fondo_login.png"
+                               Aspect="AspectFill"
+                               HorizontalOptions="Fill"
+                               VerticalOptions="Fill"
+                               ZIndex="0" />
+
+                        <!-- Contenido de login -->
+                        <Grid RowDefinitions="Auto,*"
+                              Padding="25"
+                              ZIndex="1">
+
+                            <!-- Usuario / Contraseña / Botón -->
+                            <VerticalStackLayout Spacing="20">
+
+                                <!-- Usuario -->
+                                <Border x:Name="UsuarioLayout"
+                                        Stroke="Transparent"
+                                        BackgroundColor="White"
+                                        StrokeShape="RoundRectangle 30"
+                                        Padding="0"
+                                        HeightRequest="45">
+                                    <Grid ColumnDefinitions="40,*">
+                                        <Image Source="icon_user.png"
+                                               WidthRequest="20"
+                                               HeightRequest="20"
+                                               VerticalOptions="Center"
+                                               HorizontalOptions="Center"/>
+                                        <Entry Grid.Column="1"
+                                               Placeholder="Usuario o Email"
+                                               FontSize="16"
+                                               TextColor="Black"
+                                               PlaceholderColor="#47c7f1"
+                                               BackgroundColor="Transparent"
+                                               Text="{Binding Usuario}" />
+                                    </Grid>
+                                </Border>
+
+                                <!-- Contraseña -->
+                                <Border x:Name="PasswordLayout"
+                                        Stroke="Transparent"
+                                        BackgroundColor="White"
+                                        StrokeShape="RoundRectangle 30"
+                                        Padding="0"
+                                        HeightRequest="45">
+                                    <Grid ColumnDefinitions="40,*,Auto">
+                                        <Image Source="icon_lock.png"
+                                               WidthRequest="20"
+                                               HeightRequest="20"
+                                               Background="Transparent"
+                                               VerticalOptions="Center"
+                                               HorizontalOptions="Center"/>
+                                        <Entry Grid.Column="1"
+                                               Placeholder="Contraseña"
+                                               Text="{Binding Password}"
+                                               IsPassword="{Binding IsPasswordVisible, Converter={StaticResource InverseBoolConverter}}"
+                                               FontSize="16"
+                                               TextColor="Black"
+                                               PlaceholderColor="#47c7f1"
+                                               BackgroundColor="Transparent" />
+                                        <Label  Grid.Column="2"
+                                                Text="{Binding IsPasswordVisible, Converter={StaticResource PasswordIconConverter}}"
+                                                FontFamily="FASolid"
+                                                FontSize="20"
+                                                VerticalOptions="Center"
+                                                HorizontalOptions="End"
+                                                Margin="10,0,0,0"
+                                                TextColor="Gray">
+                                            <Label.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding TogglePasswordCommand}" />
+                                            </Label.GestureRecognizers>
+                                        </Label>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Botón ingresar -->
+                                <Button x:Name="IngresarBtn"
+                                        Text="Ingresar"
+                                        Command="{Binding LoginCommand}"
+                                        BackgroundColor="#00b7bd"
+                                        TextColor="White"
+                                        CornerRadius="25"
+                                        HeightRequest="45"
+                                        FontSize="16"
+                                        WidthRequest="200"
+                                        HorizontalOptions="Center"
+                                        Margin="0,5,0,0" />
+
+                            </VerticalStackLayout>
+
+                            <!-- Parte inferior -->
+                            <VerticalStackLayout Grid.Row="1"
+                                                 Spacing="15"
+                                                 VerticalOptions="Center"
+>
+                                <Button x:Name="LblOlvido"
+                                        CornerRadius="10"
+                                        Text="¿Olvidaste tu contraseña?"
+                                        BackgroundColor="#47c7f1"
+                                        TextColor="White"
+                                        FontSize="14"
+                                        FontAttributes="Bold"
+                                        Margin="0,15,0,0"
+                                        VerticalOptions="End"
+                                        HeightRequest="40"
+                                        HorizontalOptions="Center">
+                                    <Button.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding ForgotPasswordCommand}" />
+                                    </Button.GestureRecognizers>
+                                </Button>
+
+                                <Label x:Name="LblInferior"
+                                       Text="Por Consulta en Línea"
+                                       TextColor="Black"
+                                       FontSize="14"
+                                       HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+
+                        </Grid>
+                    </Grid>
+                </Border>
+
+            </VerticalStackLayout>
+    </Grid>
+</ContentPage>
+
+

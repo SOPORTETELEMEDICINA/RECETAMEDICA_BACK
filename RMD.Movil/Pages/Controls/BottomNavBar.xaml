@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView 
+    x:Class="RMD.Movil.Pages.Controls.BottomNavBar"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:RMD.Movil.PageModels.Controls"
+    x:DataType="controls:BottomNavBarModel"
+    BackgroundColor="White">
+
+    <Grid ColumnDefinitions="*,*,*,*"
+          Padding="15,0"
+          HeightRequest="70"
+          VerticalOptions="End"
+          BackgroundColor="White">
+
+        <!-- HOME -->
+        <Image Source="{Binding HomeIcon}"
+               WidthRequest="30"
+               HeightRequest="30"
+               HorizontalOptions="Center"
+               VerticalOptions="Center">
+            <Image.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding NavigateHomeCommand}" />
+            </Image.GestureRecognizers>
+        </Image>
+
+        <!-- RECETAS -->
+        <Image Source="{Binding RecetasIcon}"
+               WidthRequest="30"
+               HeightRequest="30"
+               Grid.Column="1"
+               HorizontalOptions="Center"
+               VerticalOptions="Center">
+            <Image.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding NavigateRecetasCommand}" />
+            </Image.GestureRecognizers>
+        </Image>
+
+        <!-- MEDICACIÓN -->
+        <Image Source="{Binding MedicacionIcon}"
+               WidthRequest="30"
+               HeightRequest="30"
+               Grid.Column="2"
+               HorizontalOptions="Center"
+               VerticalOptions="Center">
+            <Image.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding NavigateMedicacionCommand}" />
+            </Image.GestureRecognizers>
+        </Image>
+
+        <!-- EVENTOS -->
+        <Image Source="{Binding EventosIcon}"
+               WidthRequest="30"
+               HeightRequest="30"
+               Grid.Column="3"
+               HorizontalOptions="Center"
+               VerticalOptions="Center">
+            <Image.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding NavigateEventosCommand}" />
+            </Image.GestureRecognizers>
+        </Image>
+    </Grid>
+</ContentView>

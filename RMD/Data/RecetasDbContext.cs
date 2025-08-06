@@ -1,44 +1,46 @@
-﻿using RMD.Models.Recetas;
+﻿using Microsoft.EntityFrameworkCore;
+using RMD.Shared.Models.Receta.Detalle.Response;
+using RMD.Shared.Models.Receta.Header.Internos;
+using RMD.Shared.Models.Receta.Header.Responses;
+using RMD.Shared.Models.Sql;
 
 namespace RMD.Data
 {
     public class RecetasDbContext(DbContextOptions<RecetasDbContext> options) : DbContext(options)
     {
-       // public DbSet<PacienteSimple> Pacientes { get; set; } // Solo trae el IdPaciente
-        // DbSet para las entidades relacionadas con recetas
-        public DbSet<Receta> Receta { get; set; } // Usado por `RecetaService`
-        public DbSet<DetalleReceta> DetalleRecetas { get; set; } // Usado por `DetalleRecetaService`
-        public DbSet<Receta> Recetas { get; set; }
-        // DbSet para las consultas de SP
-        public DbSet<RecetaWithDetalleModel> RecetaWithDetalles { get; set; } // Usado por `RecetaService`
-        public DbSet<RecetaList> RecetaList { get; set; } // Usado por `RecetaService`
 
-        // DbSet para modelos relacionados con alergias, moléculas y CIM10
-        public DbSet<AllergyModel> AllergyModels { get; set; } // Usado por `RecetaService`
-        public DbSet<MoleculeModel> MoleculeModels { get; set; } // Usado por `RecetaService`
-        public DbSet<CIM10Model> CIM10Models { get; set; } // Usado por `RecetaService`
-        public DbSet<DetalleRecetaRequest> DetalleRecetaRequest { get; set; }
+        public DbSet<DetalleInHeader> DetalleRecetas { get; set; } // Usado por `DetalleRecetaService`
+    
+        public DbSet<Header> ConsultaRecetas { get; set; }
+       // public DbSet<RecetaList> RecetaList { get; set; } // Usado por `RecetaService`
+        public DbSet<RecetaSqlModel> RecetasSql { get; set; }
 
-        public DbSet<MedicamentoActivoConsulta> MedicamentoActivoConsulta { get; set; }
-        
-        // DbSet para detalles de recetas
-        public DbSet<Detalle_RecetaDetalleRequest> Detalle_RecetaDetalleRequestDetalleRecetaRequest { get; set; } // Usado por `DetalleRecetaService`
-        public DbSet<DetalleRecetaResponse> DetalleRecetaResponse { get; set; } // Usado por `DetalleRecetaService`
+        public DbSet<EF_MedicoResponse> Medicos { get; set; }
+        public DbSet<EF_PacienteResponse> Pacientes { get; set; }
+        public DbSet<DetalleCronico> DetalleCronico { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configuración para Receta
-            modelBuilder.Entity<Receta>(entity =>
+            modelBuilder.Entity<EF_PacienteResponse>()
+                .ToTable("Pacientes")
+                .HasKey(p => p.IdPaciente);
+
+            modelBuilder.Entity<EF_MedicoResponse>()
+                .ToTable("Medicos")
+                .HasKey(m => m.IdMedico);
+
+            // Cambiar Receta → Receta.Header
+            modelBuilder.Entity<Header>(entity =>
             {
-                entity.ToTable("Receta");
+                entity.ToTable("Header", "Receta");
                 entity.HasKey(e => e.IdReceta);
-                entity.Property(e => e.PacPeso).HasColumnType("decimal(5,2)").IsRequired();
-                entity.Property(e => e.PacTalla).HasColumnType("decimal(5,2)").IsRequired();
+                entity.Property(e => e.PacPeso).HasPrecision(5, 2).IsRequired();
+                entity.Property(e => e.PacTalla).HasPrecision(5, 2).IsRequired();
                 entity.Property(e => e.PacEmbarazo).IsRequired();
                 entity.Property(e => e.PacLactancia).IsRequired();
-                entity.Property(e => e.PacCreatinina).HasColumnType("decimal(5,2)");
+                entity.Property(e => e.PacCreatinina).HasPrecision(5, 2);
                 entity.Property(e => e.Alergias).HasColumnType("varchar(max)");
                 entity.Property(e => e.Molecules).HasColumnType("varchar(max)");
                 entity.Property(e => e.Patologias).HasColumnType("varchar(max)");
@@ -46,48 +48,80 @@ namespace RMD.Data
                 entity.Property(e => e.IdGEMP).IsRequired();
             });
 
-            // Configuración para DetalleReceta
-            modelBuilder.Entity<DetalleReceta>(entity =>
+            // Cambiar DetalleReceta → Receta.Detalle
+            modelBuilder.Entity<DetalleInHeader>(entity =>
             {
-                entity.ToTable("DetalleReceta");
+                entity.ToTable("Detalle", "Receta");
                 entity.HasKey(e => e.IdDetalleReceta);
-                entity.Property(e => e.Medicamento).IsRequired().HasMaxLength(255);
-                entity.Property(e => e.CantidadDiaria).IsRequired();
-                entity.Property(e => e.UnidadDispensacion).IsRequired().HasMaxLength(50);
-                entity.Property(e => e.RutaAdministracion).IsRequired().HasMaxLength(50);
+
+                entity.Property(e => e.IdDetalleReceta).ValueGeneratedNever();
+                entity.Property(e => e.MedicamentoId).IsRequired();
+                entity.Property(e => e.CantidadDiaria).HasPrecision(5, 2).IsRequired();
+                entity.Property(e => e.UnidadDispensacionId).IsRequired();
+                entity.Property(e => e.RutaAdministracionId).IsRequired();
                 entity.Property(e => e.UnidadDuracion).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.PeriodoInicio).IsRequired();
-                entity.HasOne<Receta>()
+                entity.Property(e => e.PackageQty);
+                entity.Property(e => e.CantidadSurtida);
+                entity.Ignore(e => e.FrecuencyType); // 👈 agrega esta línea
+                entity.Ignore(e => e.IsNarcotic);      // ← Ignorar mapeo
+                entity.Ignore(e => e.PsicoAnnexId);    // ← Ignorar mapeo
+                entity.HasOne<Header>()
                     .WithMany()
                     .HasForeignKey(e => e.IdReceta)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // Configuración para RecetaWithDetalleModel
-            modelBuilder.Entity<RecetaWithDetalleModel>().HasNoKey(); // Utilizado para SP
+            modelBuilder.Entity<HeaderTextPlainResponse>().HasNoKey()
+                .Property(e => e.PacPeso).HasPrecision(5, 2);
+            modelBuilder.Entity<HeaderTextPlainResponse>()
+                .Property(e => e.PacTalla).HasPrecision(5, 2);
+            modelBuilder.Entity<HeaderTextPlainResponse>()
+                .Property(e => e.PacCreatinina).HasPrecision(5, 2);
 
-            // Configuración para RecetaList
-            modelBuilder.Entity<RecetaList>().HasNoKey(); // Utilizado para SP
+            modelBuilder.Entity<MedicamentoActivoResponse>().HasNoKey();
 
-            // Configuración para AllergyModel
-            modelBuilder.Entity<AllergyModel>().HasNoKey(); // Utilizado para SP
+            modelBuilder.Entity<RecetaSqlModel>()
+                .HasOne<Header>()
+                .WithOne()
+                .HasForeignKey<RecetaSqlModel>(r => r.IdReceta);
 
-            // Configuración para MoleculeModel
-            modelBuilder.Entity<MoleculeModel>().HasNoKey(); // Utilizado para SP
+            modelBuilder.Entity<HeaderCounltResponse>().HasNoKey()
+                .Property(e => e.PacPeso).HasPrecision(5, 2);
+            modelBuilder.Entity<HeaderCounltResponse>()
+                .Property(e => e.PacTalla).HasPrecision(5, 2);
+            modelBuilder.Entity<HeaderCounltResponse>()
+                .Property(e => e.PacCreatinina).HasPrecision(5, 2);
 
-            // Configuración para CIM10Model
-            modelBuilder.Entity<CIM10Model>().HasNoKey(); // Utilizado para SP
+            modelBuilder.Entity<HeaderBySQL>().HasNoKey()
+                .Property(e => e.PacPeso).HasPrecision(5, 2);
+            modelBuilder.Entity<HeaderBySQL>()
+                .Property(e => e.PacTalla).HasPrecision(5, 2);
+            modelBuilder.Entity<HeaderBySQL>()
+                .Property(e => e.PacCreatinina).HasPrecision(5, 2);
 
-            // Configuración para DetalleRecetaRequest
-            modelBuilder.Entity<DetalleRecetaRequest>().HasNoKey(); // Utilizado para SP
+            modelBuilder.Entity<DetalleRecetaGet>().HasNoKey()
+                .Property(e => e.CantidadDiaria).HasPrecision(5, 2);
 
-            // Configuración para DetalleRecetaResponse
-            modelBuilder.Entity<DetalleRecetaResponse>().HasNoKey(); // Utilizado para SP
-            modelBuilder.Entity<Detalle_RecetaDetalleRequest>().HasNoKey(); // Utilizado para SP
-            modelBuilder.Entity<MedicamentoActivoConsulta>().HasNoKey(); // Utilizado para SP
-            
+            //// QR ahora en Receta.CodigosQR
+            //modelBuilder.Entity<RecetaQR>()
+            //   .ToTable("CodigosQR", "Receta")
+            ////   .HasKey(qr => qr.IdRecetaQR);
+            //modelBuilder.Entity<RecetaQR>()
+            //    .HasOne<Receta>()
+            //    .WithMany()
+            //    .HasForeignKey(qr => qr.IdReceta)
+            //    .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<DetalleCronico>(entity =>
+            {
+                entity.ToTable("DetalleCronico", "Receta");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.CantidadDiaria).HasPrecision(10, 2);
+            });
 
         }
+
+
     }
 }

@@ -1,6 +1,4 @@
-﻿using RMD.Models.Responses;
-
-namespace RMD.Interface.Auth
+﻿namespace RMD.Interface.Auth
 {
     public interface IEmailService
     {

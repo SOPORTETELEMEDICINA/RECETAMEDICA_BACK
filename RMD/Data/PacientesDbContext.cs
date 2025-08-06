@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using RMD.Models.Catalogo;
-using RMD.Models.Pacientes;
+using RMD.Shared.Models.Catalogo;
+using RMD.Shared.Models.Pacientes;
+using RMD.Shared.Models.Pacientes.Request;
+using RMD.Shared.Models.Pacientes.Response;
 
 namespace RMD.Data
 {
@@ -9,41 +11,18 @@ namespace RMD.Data
         public PacientesDbContext(DbContextOptions<PacientesDbContext> options) : base(options)
         {
         }
-
-        // DbSet para UsuarioPaciente
-        public DbSet<UsuarioPaciente> UsuarioPacientes { get; set; }
-
-        // DbSet para Paciente
-        public DbSet<Paciente> Pacientes { get; set; }
-        public DbSet<PacienteConsultaRequest> PacienteConsultaRequest { get; set; }
-
-        // Otros DbSet necesarios
-        public DbSet<PacienteRequest> PacienteRequest { get; set; }
-
-        // DbSet agregado para PacienteCreate
-        public DbSet<PacienteCreate> PacienteCreate { get; set; }
-
-        public DbSet<EntidadNacimiento> EntidadNacimiento { get; set; }
-
-        // DbSets para alergias, moléculas y CIM10
-        public DbSet<AllergyModel> AllergyModels { get; set; }
-        public DbSet<MoleculeModel> MoleculeModels { get; set; }
-        public DbSet<CIM10Model> CIM10Models { get; set; }
-
-        // DbSet para EventosSalud y CatEventosDeSalud
-        public DbSet<EventosSalud> EventosSalud { get; set; }
-        public DbSet<EventosSaludConsulta> EventosSaludConsulta { get; set; }
+        public DbSet<EventosSaludRequest> EventosSalud { get; set; }
         public DbSet<CatEventosDeSalud> CatEventosDeSalud { get; set; }
-
+        public DbSet<TokensQRPaciente> TokensQRPacientes { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
             // Configuración para modelos sin clave primaria
-            modelBuilder.Entity<PacienteRequest>().HasNoKey();
-            modelBuilder.Entity<EntidadNacimiento>().HasNoKey();
+            //modelBuilder.Entity<PacienteRequest>().HasNoKey();
+            modelBuilder.Entity<EntidadNacimientoResponse>().HasNoKey();
             modelBuilder.Entity<PacienteCreate>().HasNoKey();
-            modelBuilder.Entity<PacienteConsultaRequest>().HasNoKey();
+            modelBuilder.Entity<PacienteConsultaResponse>().HasNoKey();
 
             // Configuración para UsuarioPaciente
             modelBuilder.Entity<UsuarioPaciente>(entity =>
@@ -72,7 +51,7 @@ namespace RMD.Data
             });
 
             // Configuración para Paciente
-            modelBuilder.Entity<Paciente>(entity =>
+            modelBuilder.Entity<PacienteRequest>(entity =>
             {
                 entity.ToTable("Pacientes");
                 entity.HasKey(e => e.IdPaciente);
@@ -83,32 +62,6 @@ namespace RMD.Data
                 entity.Property(e => e.Alergias).HasMaxLength(999999999);
                 entity.Property(e => e.Molecules).HasMaxLength(999999999);
                 entity.Property(e => e.Patologias).HasMaxLength(999999999);
-            });
-
-            // Configuración para AllergyModel
-            modelBuilder.Entity<AllergyModel>(entity =>
-            {
-                entity.HasKey(e => e.IdAllergy);
-                entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
-                entity.Property(e => e.VidalUpdateDate).IsRequired();
-            });
-
-            // Configuración para MoleculeModel
-            modelBuilder.Entity<MoleculeModel>(entity =>
-            {
-                entity.HasKey(e => e.IdMolecule);
-                entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
-                entity.Property(e => e.SafetyAlert).HasMaxLength(50);
-                entity.Property(e => e.VidalUpdateDate).IsRequired();
-            });
-
-            // Configuración para CIM10Model
-            modelBuilder.Entity<CIM10Model>(entity =>
-            {
-                entity.HasKey(e => e.IdCIM10);
-                entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
-                entity.Property(e => e.Code).HasMaxLength(50);
-                entity.Property(e => e.UpdatedDate).IsRequired();
             });
 
             // Configuración para CatEventosDeSalud (Catálogo de Eventos de Salud)
@@ -122,11 +75,12 @@ namespace RMD.Data
             });
 
             // Configuración para EventosSaludConsulta (modelo sin clave, usado solo en GET)
-            modelBuilder.Entity<EventosSaludConsulta>().HasNoKey().ToView(null);
+            modelBuilder.Entity<EventosSaludResponse>().HasNoKey().ToView(null);
 
             // Configuración para EventosSalud
-            modelBuilder.Entity<EventosSalud>(entity =>
+            modelBuilder.Entity<EventosSaludRequest>(entity =>
             {
+                entity.ToTable("EventosSalud"); // nombre real de la tabla
                 entity.HasKey(e => e.IdEventoSalud);
 
                 entity.Property(e => e.Descripcion)
@@ -143,6 +97,37 @@ namespace RMD.Data
                       .HasForeignKey(e => e.EventoDeSalud)
                       .HasConstraintName("FK_EventosSalud_CatEventosDeSalud");
             });
+            modelBuilder.Entity<TokensQRPaciente>(entity =>
+            {
+                entity.ToTable("TokensQRPacientes", "PuntoVenta");
+
+                entity.HasKey(e => e.IdToken);
+
+                entity.Property(e => e.Token)
+                      .IsRequired()
+                      .HasMaxLength(500);
+
+                entity.Property(e => e.FechaGeneracion)
+                      .HasDefaultValueSql("GETDATE()");
+
+                entity.Property(e => e.FechaExpiracion)
+                      .IsRequired();
+
+                entity.Property(e => e.Usado)
+                      .HasDefaultValue(false);
+
+                entity.Property(e => e.UsadoEn)
+                      .IsRequired(false);
+
+                entity.Property(e => e.IpUso)
+                      .HasMaxLength(100)
+                      .IsRequired(false);
+
+                entity.Property(e => e.EndpointAccedido)
+                      .HasMaxLength(255)
+                      .IsRequired(false);
+            });
+
         }
     }
 }

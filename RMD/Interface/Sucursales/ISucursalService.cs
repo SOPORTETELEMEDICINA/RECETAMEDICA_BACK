@@ -1,5 +1,4 @@
-﻿using RMD.Models.Responses;
-using RMD.Models.Sucursales;
+﻿using RMD.Shared.Models.Sucursales;
 
 namespace RMD.Interface.Sucursales
 {

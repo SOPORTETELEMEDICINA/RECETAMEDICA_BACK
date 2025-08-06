@@ -1,6 +1,4 @@
-﻿using RMD.Models.Responses;
-
-namespace RMD.Interface.CargaCatalogos
+﻿namespace RMD.Interface.CargaCatalogos
 {
     public interface ICargaCatalogosService
     {

@@ -1,837 +1,453 @@
-﻿using RMD.Data;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using RMD.Data;
 using RMD.Extensions;
 using RMD.Extensions.CargaCatalogos;
 using RMD.Interface.CargaCatalogos;
-using RMD.Models.CargaCatalogos;
-using RMD.Models.Responses;
+using RMD.Shared.Models.CargaCatalogosAPI_DATA.Allergy;
+using RMD.Shared.Models.CargaCatalogosAPI_DATA.ATC;
+using RMD.Shared.Models.CargaCatalogosAPI_DATA.CIM10;
+using RMD.Shared.Models.CargaCatalogosAPI_DATA.Molecule;
+using RMD.Shared.Models.CargaCatalogosAPI_DATA.Package;
+using RMD.Shared.Models.CargaCatalogosAPI_DATA.Product;
+using RMD.Shared.Models.CargaCatalogosAPI_DATA.Route;
+using RMD.Shared.Models.CargaCatalogosAPI_DATA.UCD;
+using RMD.Shared.Models.CargaCatalogosAPI_DATA.UCDV;
+using RMD.Shared.Models.CargaCatalogosAPI_DATA.Unit;
+using RMD.Shared.Models.CargaCatalogosAPI_DATA.VMP;
+using System.Data;
 using System.Diagnostics;
+//using RMD.Models.CargaCatalogos;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace RMD.Service.CargaCatalogos
 {
-    public class CargaCatalogosService: ICargaCatalogosService
+    public class CargaCatalogosService : ICargaCatalogosService
     {
         private readonly HttpClient _httpClient;
-        private readonly string _baseUrl;
-        private readonly string _basicUrl;
-        private readonly string _appId;
-        private readonly string _appKey;
-        private readonly string _startPage;
-        private readonly string _pageSize;
-        private readonly VidalDbContext _context;
-
-        public CargaCatalogosService(HttpClient httpClient, IConfiguration configuration, VidalDbContext context)
+        private readonly VidalAPIDbContext _context;
+        private readonly ICatalogoNotificacionService _catNoti;
+        private readonly int _startPage, _pageSize;
+        private readonly string _appId, _appKey;
+        public CargaCatalogosService(
+            IHttpClientFactory httpClientFactory,
+            IConfiguration cfg,
+            VidalAPIDbContext context,
+            ICatalogoNotificacionService catNoti,
+            byte[] commonKey)
         {
-            _httpClient = httpClient;
-            _basicUrl = configuration["VidalApi:BasicUrl"] ?? throw new ArgumentNullException(nameof(_basicUrl));
-            _baseUrl = configuration["VidalApi:BaseUrl"] ?? throw new ArgumentNullException(nameof(_baseUrl));
-            _appId = configuration["VidalApi:AppId"] ?? throw new ArgumentNullException(nameof(_appId));
-            _appKey = configuration["VidalApi:AppKey"] ?? throw new ArgumentNullException(nameof(_appKey));
-            _pageSize = configuration["VidalApi:SizePage"] ?? throw new ArgumentNullException(nameof(_pageSize));
-            _startPage = configuration["VidalApi:StartPage"] ?? throw new ArgumentNullException(nameof(_startPage));
             _context = context;
-        }
+            _catNoti = catNoti;
 
+            var country = cfg["Country"] ?? "MX";
+            var isES = country == "ES";
+
+            var clientName = isES ? "VidalClientES" : "VidalClientMX";
+            var prefix = isES ? "VidalApiES" : "VidalApi";
+
+            _httpClient = httpClientFactory.CreateClient(clientName);
+            _httpClient.Timeout = TimeSpan.FromMinutes(5);
+
+            // Desencriptar AppId y AppKey
+            var appIdEncrypted = cfg[$"{prefix}:AppId"]!;
+            var appKeyEncrypted = cfg[$"{prefix}:AppKey"]!;
+            _appId = EncryptionHelper.Decrypt(appIdEncrypted, commonKey);
+            _appKey = EncryptionHelper.Decrypt(appKeyEncrypted, commonKey);
+            _startPage = int.Parse(cfg[$"{prefix}:StartPage"]!);
+            _pageSize = int.Parse(cfg[$"{prefix}:SizePage"]!);
+        }
         public async Task<ResponseFromService<string>> ReloadCatalogs()
         {
-
-            var stopwatch = Stopwatch.StartNew();
+            var sw = Stopwatch.StartNew();
             try
             {
                 await GetAllVMPsAsync();
-                await GetAllProductsAsync();
-                await GetAllPackagesAsync(); // Nuevo método para Packages
+                await GetAllPackagesAsync();
                 await GetAllUnitsAsync();
+                await GetAllProductsAsync();
                 await GetAllAllergiesAsync();
                 await GetAllMoleculesAsync();
                 await GetAllRoutesAsync();
                 await GetAllCIM10Async();
-                await GetAllVTMsAsync();
-                await GetAllATCClassificationsAsync();
                 await GetAllUCDVsAsync();
                 await GetAllUCDsAsync();
-                await GetAllSideEffectsAsync();
-                // Detener el cronómetro
-                stopwatch.Stop();
-                // Calcular el tiempo en minutos y segundos
-                TimeSpan ts = stopwatch.Elapsed;
-                string formattedTime = $"{ts.Hours} Horas y {ts.Minutes} minutos y {ts.Seconds} segundos";
-                // Loguear o mostrar el tiempo que tardó la ejecución
-                // Retornar éxito
-                return ResponseFromService<string>.Success($"Los datos de VMP se insertaron correctamente en{formattedTime}.", "Proceso exitoso");
+                await GetAllATCClassificationsAsync();
+
+
+                //await GetAllSideEffectsAsync();
+                //await GetAllVTMsAsync();
+                sw.Stop();
+                var msg = $"Carga terminada en {sw.Elapsed.Hours}h {sw.Elapsed.Minutes}m {sw.Elapsed.Seconds}s";
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                notif.Mensaje = msg;
+                return ResponseFromService<string>.Success(msg, notif);
             }
             catch (Exception ex)
             {
-                // Detener el cronómetro si ocurre una excepción
-                stopwatch.Stop();
-
-                // Calcular el tiempo en minutos y segundos hasta el fallo
-                TimeSpan ts = stopwatch.Elapsed;
-                string formattedTime = $"{ts.Hours} Horas y {ts.Minutes} minutos y {ts.Seconds} segundos";
-                // Retornar error
-                return ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al insertar VMPs después de {formattedTime}: {ex.Message}");
+                sw.Stop();
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                notif.Mensaje = $"Fallo tras {sw.Elapsed.Minutes}m{sw.Elapsed.Seconds}s: {ex.Message}";
+                return ResponseFromService<string>.Failure(notif);
             }
         }
-
-        private async Task<ResponseFromService<string>> GetAllVMPsAsync()
+        private async Task GetAllPackagesAsync()
         {
-            // Crear un cronómetro para medir el tiempo de ejecución
-            var vmpModelList = new List<VMPModel>();
-            int startPage = int.Parse(_startPage);
-            int pageSize = int.Parse(_pageSize);
-            var totalResults = 0;
-
             try
             {
+                var list = new List<PackageApiModel>();
+                var page = _startPage; var total = 0;
+
                 do
                 {
-                    var requestUrl = $"{_baseUrl}/vmps?start-page={startPage}&page-size={pageSize}&app_id={_appId}&app_key={_appKey}";
-                    var response = await _httpClient.GetAsync(requestUrl);
+                    var xml = await _httpClient
+                        .GetStringAsync($"packages?start-page={page++}&page-size={_pageSize}&app_id={_appId}&app_key={_appKey}");
+                    var chunk = xml.ParsePackagesXmlToModelList();
+                    list.AddRange(chunk);
+                    if (total == 0) total = xml.GetOpenSearchValue<int>("totalResults");
+                } while (list.Count < total);
 
-                    response.EnsureSuccessStatusCode();
+                var json = JsonSerializer.Serialize(list);
 
-                    var xmlContent = await response.Content.ReadAsStringAsync();
-                    var vmpEntries = xmlContent.ParseVMPXmlToModelList(); // Convertir el XML en la lista de VMPModel
-
-                    vmpModelList.AddRange(vmpEntries);
-
-                    startPage++;
-                } while (vmpModelList.Count < totalResults);
-
-                // Convertir los VMPs a DataTable para guardar en la base de datos
-                var vmpDataTable = vmpModelList.ToDataTable();
-
-                // Llamar al procedimiento almacenado para insertar los datos usando el DbContext
-                var vmpParam = new SqlParameter
+                var param = new SqlParameter("@Json", SqlDbType.NVarChar)
                 {
-                    ParameterName = "@VMPTableType",
-                    SqlDbType = SqlDbType.Structured,
-                    TypeName = "dbo.Vidal_VMPTableType", // Aquí especificas el nombre del TableType
-                    Value = vmpDataTable
+                    Value = json
                 };
 
-                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal_InsertVMPs @VMPTableType", vmpParam);
+                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal.InsertPackagesVidalApi @Json", param);
 
-                // Loguear o mostrar el tiempo que tardó la ejecución
-                return ResponseFromService<string>.Success($"Los datos de VMP se insertaron correctamente.", "Proceso exitoso");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                ResponseFromService<string>.Success("Paquetes cargados", notif);
             }
             catch (Exception ex)
             {
-                // Retornar error
-                return ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al insertar VMPs : {ex.Message}");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                notif.Mensaje = $"Error Paquetes: {ex.Message}";
+                ResponseFromService<string>.Failure(notif);
             }
         }
-
-        private async Task<ResponseFromService<string>> GetAllProductsAsync()
+        private async Task GetAllVMPsAsync()
         {
-            var productList = new List<ProductModel>();
-            int startPage = int.Parse(_startPage);
-            int pageSize = int.Parse(_pageSize);
-            var totalResults = 0;
-
             try
             {
+                var list = new List<VMPApiModel>();
+                var page = _startPage;
+                var total = 0;
                 do
                 {
-                    var requestUrl = $"{_baseUrl}/products?start-page={startPage}&page-size={pageSize}&app_id={_appId}&app_key={_appKey}";
-                    var response = await _httpClient.GetAsync(requestUrl);
+                    var xml = await _httpClient
+                        .GetStringAsync($"vmps?start-page={page++}&page-size={_pageSize}&app_id={_appId}&app_key={_appKey}");
+                    var chunk = xml.ParseVMPXmlToModelList();
+                    list.AddRange(chunk);
+                    // total stays 0 to fetch until list.Count<0 = false, break immediately
+                } while (list.Count < total);
 
-                    response.EnsureSuccessStatusCode();
+                var dt = list.ToDataTable();
+                var p = new SqlParameter("@VMPTableType", SqlDbType.Structured)
+                { TypeName = "dbo.Vidal_VMPTableType", Value = dt };
+                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal.InsertVMPVidalApi @VMPTableType", p);
 
-                    var xmlContent = await response.Content.ReadAsStringAsync();
-                    var productEntries = xmlContent.ParseProductsXmlToModelList();  // Aquí obtenemos la lista de productos
-
-                    productList.AddRange(productEntries);
-
-                    // Aquí agregamos el cálculo de totalResults para detener el bucle
-                    if (totalResults == 0)
-                    {
-                        totalResults = xmlContent.GetOpenSearchValue<int>("totalResults");
-                    }
-
-                    startPage++;
-                } while (productList.Count < totalResults);
-
-                // Convertir la lista en DataTable
-                var productDataTable = productList.ToDataTable();
-
-                // Llamar al procedimiento almacenado para insertar los datos usando el DbContext
-                var productParam = new SqlParameter
-                {
-                    ParameterName = "@ProductoTableType", // Aquí debes corregir el nombre a @ProductoTableType
-                    SqlDbType = SqlDbType.Structured,
-                    TypeName = "dbo.Vidal_ProductoTableType", // Aquí especificas el nombre del TableType
-                    Value = productDataTable
-                };
-
-                // Ejecutar el procedimiento almacenado
-                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal_InsertProductos @ProductoTableType", productParam);
-
-                // Retornar éxito
-                return ResponseFromService<string>.Success("Los datos de Productos se insertaron correctamente.", "Proceso exitoso");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                ResponseFromService<string>.Success("VMPs cargados", notif);
             }
             catch (Exception ex)
             {
-                // Retornar error
-                return ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al insertar Productos: {ex.Message}");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                notif.Mensaje = $"Error VMPs: {ex.Message}";
+                ResponseFromService<string>.Failure(notif);
             }
         }
-
-        private async Task<ResponseFromService<string>> GetAllPackagesAsync()
+        private async Task GetAllUnitsAsync()
         {
-            var packageList = new List<PackageModel>();
-            int startPage = int.Parse(_startPage);
-            int pageSize = int.Parse(_pageSize);
-            var totalResults = 0;
-
             try
             {
+                var list = new List<UnitApiModel>();
+                var page = _startPage; var total = 0;
                 do
                 {
-                    var requestUrl = $"{_baseUrl}/packages?start-page={startPage}&page-size={pageSize}&app_id={_appId}&app_key={_appKey}";
-                    var response = await _httpClient.GetAsync(requestUrl);
+                    var xml = await _httpClient
+                        .GetStringAsync($"units?start-page={page++}&page-size={_pageSize}&app_id={_appId}&app_key={_appKey}");
+                    var chunk = xml.ParseUnitsXmlToModelList();
+                    list.AddRange(chunk);
+                } while (list.Count < total);
 
-                    response.EnsureSuccessStatusCode();
+                var dt = list.ToDataTable();
+                var p = new SqlParameter("@UnitTableType", SqlDbType.Structured)
+                { TypeName = "dbo.Vidal_UnitType", Value = dt };
+                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal.InsertUnitsVidalApi @UnitTableType", p);
 
-                    var xmlContent = await response.Content.ReadAsStringAsync();
-                    var packageEntries = xmlContent.ParsePackagesXmlToModelList();  // Aquí obtenemos la lista de paquetes
-
-                    packageList.AddRange(packageEntries);
-
-                    // Aquí agregamos el cálculo de totalResults para detener el bucle
-                    if (totalResults == 0)
-                    {
-                        totalResults = xmlContent.GetOpenSearchValue<int>("totalResults");
-                    }
-
-                    startPage++;
-                } while (packageList.Count < totalResults);
-
-                // Convertir la lista en DataTable
-                var packageDataTable = packageList.ToDataTable();
-
-                // Llamar al procedimiento almacenado para insertar los datos usando el DbContext
-                var packageParam = new SqlParameter
-                {
-                    ParameterName = "@PackageTableType",
-                    SqlDbType = SqlDbType.Structured,
-                    TypeName = "dbo.Vidal_PackageTableType", // Aquí especificas el nombre del TableType
-                    Value = packageDataTable
-                };
-
-                // Ejecutar el procedimiento almacenado
-                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal_InsertPackages @PackageTableType", packageParam);
-
-                // Retornar éxito
-                return ResponseFromService<string>.Success("Los datos de Paquetes se insertaron correctamente.", "Proceso exitoso");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                ResponseFromService<string>.Success("Unidades cargadas", notif);
             }
             catch (Exception ex)
             {
-                // Retornar error
-                return ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al insertar Paquetes: {ex.Message}");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                notif.Mensaje = $"Error Unidades: {ex.Message}";
+                ResponseFromService<string>.Failure(notif);
             }
         }
-
-        private async Task<ResponseFromService<string>> GetAllUnitsAsync()
+        private async Task GetAllProductsAsync()
         {
-            var unitList = new List<UnitModel>();
-            int startPage = int.Parse(_startPage);
-            int pageSize = int.Parse(_pageSize);
-            var totalResults = 0;
-
             try
             {
+                var list = new List<ProductApiModel>();
+                var page = _startPage;
+                var total = 0;
+
                 do
                 {
-                    var requestUrl = $"{_baseUrl}/units?start-page={startPage}&page-size={pageSize}&app_id={_appId}&app_key={_appKey}";
-                    var response = await _httpClient.GetAsync(requestUrl);
+                    var xml = await _httpClient.GetStringAsync($"products?start-page={page++}&page-size={_pageSize}&app_id={_appId}&app_key={_appKey}");
+                    var chunk = xml.ParseProductsXmlToModelList();
+                    list.AddRange(chunk);
+                    if (total == 0) total = xml.GetOpenSearchValue<int>("totalResults");
+                } while (list.Count < total);
 
-                    response.EnsureSuccessStatusCode();
-
-                    var xmlContent = await response.Content.ReadAsStringAsync();
-                    var unitEntries = xmlContent.ParseUnitsXmlToModelList(); // Convertir el XML en la lista de UnitModel
-
-                    unitList.AddRange(unitEntries);
-
-                    startPage++;
-                } while (unitList.Count < totalResults);
-
-                // Convertir la lista en DataTable
-                var unitDataTable = unitList.ToDataTable();
-
-                // Llamar al procedimiento almacenado para insertar los datos usando el DbContext
-                var unitParam = new SqlParameter
+                var json = JsonSerializer.Serialize(list);
+                var param = new SqlParameter("@JsonProductos", SqlDbType.NVarChar)
                 {
-                    ParameterName = "@UnitTableType",
-                    SqlDbType = SqlDbType.Structured,
-                    TypeName = "dbo.Vidal_UnitType", // Aquí especificas el nombre del TableType
-                    Value = unitDataTable
+                    Value = json
                 };
 
-                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal_InsertUnits @UnitTableType", unitParam);
+                await _context.Database.ExecuteSqlRawAsync("EXEC [Vidal].[InsertProductosVidalApi] @JsonProductos", param);
 
-                // Retornar éxito
-                return ResponseFromService<string>.Success("Los datos de las Unidades se insertaron correctamente.", "Proceso exitoso");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                ResponseFromService<string>.Success("Productos cargados", notif);
             }
             catch (Exception ex)
             {
-                // Retornar error
-                return ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al insertar Unidades: {ex.Message}");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                notif.Mensaje = $"Error Productos: {ex.Message}";
+                ResponseFromService<string>.Failure(notif);
             }
         }
-
-        private async Task<ResponseFromService<string>> GetAllAllergiesAsync()
+        private async Task GetAllAllergiesAsync()
         {
-            int startPage = int.Parse(_startPage);
-            int pageSize = int.Parse(_pageSize);
-            var totalResults = 0;
-            var allergyList = new List<AllergyModel>();
-
             try
             {
+                var list = new List<AllergyApiModel>();
+                var page = _startPage; var total = 0;
                 do
                 {
-                    var requestUrl = $"{_baseUrl}/allergies?start-page={startPage}&page-size={pageSize}&app_id={_appId}&app_key={_appKey}";
-                    var response = await _httpClient.GetAsync(requestUrl);
+                    var xml = await _httpClient
+                        .GetStringAsync($"allergies?start-page={page++}&page-size={_pageSize}&app_id={_appId}&app_key={_appKey}");
+                    var chunk = xml.ParseAllergiesXmlToModelList();
+                    list.AddRange(chunk);
+                } while (list.Count < total);
 
-                    response.EnsureSuccessStatusCode();
+                var dt = list.ToDataTable();
+                var p = new SqlParameter("@AllergyTableType", SqlDbType.Structured)
+                { TypeName = "dbo.Vidal_AllergyTableType", Value = dt };
+                await _context.Database.ExecuteSqlRawAsync("EXEC [Vidal].[InsertAllergiesVidalApi] @AllergyTableType", p);
 
-                    var xmlContent = await response.Content.ReadAsStringAsync();
-                    var allergyEntries = xmlContent.ParseAllergiesXmlToModelList();
-
-                    allergyList.AddRange(allergyEntries);
-
-                    startPage++;
-                } while (allergyList.Count < totalResults);
-                            
-                var allergyDataTable = allergyList.ToDataTable();
-
-                var allergyParam = new SqlParameter
-                {
-                    ParameterName = "@AllergyTableType",
-                    SqlDbType = SqlDbType.Structured,
-                    TypeName = "dbo.Vidal_AllergyTableType",
-                    Value = allergyDataTable
-                };
-
-                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal_InsertAllergies @AllergyTableType", allergyParam);
-
-                return ResponseFromService<string>.Success("Datos de alergias insertados correctamente.", "Proceso exitoso");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                ResponseFromService<string>.Success("Alergias cargadas", notif);
             }
             catch (Exception ex)
             {
-                return ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al insertar alergias: {ex.Message}");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                notif.Mensaje = $"Error Alergias: {ex.Message}";
+                ResponseFromService<string>.Failure(notif);
             }
         }
-
-        private async Task<ResponseFromService<string>> GetAllMoleculesAsync()
+        private async Task GetAllMoleculesAsync()
         {
-            var moleculeList = new List<MoleculeModel>();
-            int startPage = int.Parse(_startPage);
-            int pageSize = int.Parse(_pageSize);
-            var totalResults = 0;
-
             try
             {
+                var list = new List<MoleculeApiModel>();
+                var page = _startPage; var total = 0;
                 do
                 {
-                    var requestUrl = $"{_baseUrl}/molecules?start-page={startPage}&page-size={pageSize}&app_id={_appId}&app_key={_appKey}";
-                    var response = await _httpClient.GetAsync(requestUrl);
+                    var xml = await _httpClient
+                        .GetStringAsync($"molecules?start-page={page++}&page-size={_pageSize}&app_id={_appId}&app_key={_appKey}");
+                    var chunk = xml.ParseMoleculesXmlToModelList();
+                    list.AddRange(chunk);
+                    if (total == 0) total = xml.GetOpenSearchValue<int>("totalResults");
+                } while (list.Count < total);
 
-                    response.EnsureSuccessStatusCode();
+                var dt = list.ToDataTable();
+                var p = new SqlParameter("@MoleculeTableType", SqlDbType.Structured)
+                { TypeName = "dbo.Vidal_MoleculeType", Value = dt };
+                await _context.Database.ExecuteSqlRawAsync("EXEC [Vidal].[InsertMoleculesVidalApi] @MoleculeTableType", p);
 
-                    var xmlContent = await response.Content.ReadAsStringAsync();
-                    var moleculeEntries = xmlContent.ParseMoleculesXmlToModelList();
-
-                    moleculeList.AddRange(moleculeEntries);
-
-                    // Aquí agregamos el cálculo de totalResults para detener el bucle
-                    if (totalResults == 0)
-                    {
-                        totalResults = xmlContent.GetOpenSearchValue<int>("totalResults");
-                    }
-
-                    startPage++;
-                } while (moleculeList.Count < totalResults);
-
-                // Convertir la lista en DataTable
-                var moleculeDataTable = moleculeList.ToDataTable();
-
-                var moleculeParam = new SqlParameter
-                {
-                    ParameterName = "@MoleculeTableType",
-                    SqlDbType = SqlDbType.Structured,
-                    TypeName = "dbo.Vidal_MoleculeType",
-                    Value = moleculeDataTable
-                };
-
-                // Ejecutar el procedimiento almacenado
-                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal_InsertMolecules @MoleculeTableType", moleculeParam);
-
-                return ResponseFromService<string>.Success("Los datos de las moléculas se insertaron correctamente.", "Proceso exitoso");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                ResponseFromService<string>.Success("Moléculas cargadas", notif);
             }
             catch (Exception ex)
             {
-                return ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al insertar moléculas: {ex.Message}");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                notif.Mensaje = $"Error Moléculas: {ex.Message}";
+                ResponseFromService<string>.Failure(notif);
             }
         }
-
-        private async Task<ResponseFromService<string>> GetAllRoutesAsync()
+        private async Task GetAllRoutesAsync()
         {
-            var routeList = new List<RouteModel>();
-            int startPage = int.Parse(_startPage);
-            int pageSize = int.Parse(_pageSize);
-            var totalResults = 0;
-
             try
             {
+                var list = new List<RouteApiModel>();
+                var page = _startPage; var total = 0;
                 do
                 {
-                    var requestUrl = $"{_baseUrl}/routes?start-page={startPage}&page-size={pageSize}&app_id={_appId}&app_key={_appKey}";
-                    var response = await _httpClient.GetAsync(requestUrl);
+                    var xml = await _httpClient
+                        .GetStringAsync($"routes?start-page={page++}&page-size={_pageSize}&app_id={_appId}&app_key={_appKey}");
+                    var chunk = xml.ParseRoutesXmlToModelList();
+                    list.AddRange(chunk);
+                    if (total == 0) total = xml.GetOpenSearchValue<int>("totalResults");
+                } while (list.Count < total);
 
-                    response.EnsureSuccessStatusCode();
+                var dt = list.ToDataTable();
+                var p = new SqlParameter("@RouteTableType", SqlDbType.Structured)
+                { TypeName = "dbo.Vidal_RouteType", Value = dt };
+                await _context.Database.ExecuteSqlRawAsync("EXEC [Vidal].[InsertRoutesVidalApi] @RouteTableType", p);
 
-                    var xmlContent = await response.Content.ReadAsStringAsync();
-                    var routeEntries = xmlContent.ParseRoutesXmlToModelList();
-
-                    routeList.AddRange(routeEntries);
-
-                    // Aquí agregamos el cálculo de totalResults para detener el bucle
-                    if (totalResults == 0)
-                    {
-                        totalResults = xmlContent.GetOpenSearchValue<int>("totalResults");
-                    }
-
-                    startPage++;
-                } while (routeList.Count < totalResults);
-
-                // Convertir la lista en DataTable
-                var routeDataTable = routeList.ToDataTable();
-
-                var routeParam = new SqlParameter
-                {
-                    ParameterName = "@RouteTableType",
-                    SqlDbType = SqlDbType.Structured,
-                    TypeName = "dbo.Vidal_RouteType",
-                    Value = routeDataTable
-                };
-
-                // Ejecutar el procedimiento almacenado
-                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal_InsertRoutes @RouteTableType", routeParam);
-
-                return ResponseFromService<string>.Success("Los datos de las rutas se insertaron correctamente.", "Proceso exitoso");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                ResponseFromService<string>.Success("Rutas cargadas", notif);
             }
             catch (Exception ex)
             {
-                return ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al insertar rutas: {ex.Message}");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                notif.Mensaje = $"Error Rutas: {ex.Message}";
+                ResponseFromService<string>.Failure(notif);
             }
         }
-
-        private async Task<ResponseFromService<string>> GetAllCIM10Async()
+        private async Task GetAllCIM10Async()
         {
-            var cim10List = new List<CIM10Model>();
-            int startPage = int.Parse(_startPage);
-            int pageSize = int.Parse(_pageSize);
-            var totalResults = 0;
-
             try
             {
+                var list = new List<CIM10ApiModel>();
+                var page = _startPage; var total = 0;
                 do
                 {
-                    var requestUrl = $"{_baseUrl}/cim10s?start-page={startPage}&page-size={pageSize}&app_id={_appId}&app_key={_appKey}";
-                    var response = await _httpClient.GetAsync(requestUrl);
+                    var xml = await _httpClient
+                        .GetStringAsync($"cim10s?start-page={page++}&page-size={_pageSize}&app_id={_appId}&app_key={_appKey}");
+                    var chunk = xml.ParseCIM10XmlToModelList();
+                    list.AddRange(chunk);
+                    if (total == 0) total = xml.GetOpenSearchValue<int>("totalResults");
+                } while (list.Count < total);
 
-                    response.EnsureSuccessStatusCode();
+                var json = JsonSerializer.Serialize(list);
 
-                    var xmlContent = await response.Content.ReadAsStringAsync();
-                    var cim10Entries = xmlContent.ParseCIM10XmlToModelList(); // Parsear el XML a la lista de CIM10
-
-                    cim10List.AddRange(cim10Entries);
-
-                    // Aquí agregamos el cálculo de totalResults para detener el bucle
-                    if (totalResults == 0)
-                    {
-                        totalResults = xmlContent.GetOpenSearchValue<int>("totalResults");
-                    }
-
-                    startPage++;
-                } while (cim10List.Count < totalResults);
-
-                // Convertir la lista en DataTable
-                var cim10DataTable = cim10List.ToDataTable();
-
-                var cim10Param = new SqlParameter
+                var p = new SqlParameter("@JsonRecords", SqlDbType.NVarChar)
                 {
-                    ParameterName = "@CIM10TableType",
-                    SqlDbType = SqlDbType.Structured,
-                    TypeName = "dbo.Vidal_CIM10TableType",
-                    Value = cim10DataTable
+                    Value = json
                 };
 
-                // Ejecutar el procedimiento almacenado
-                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal_InsertCIM10 @CIM10TableType", cim10Param);
+                await _context.Database.ExecuteSqlRawAsync("EXEC [Vidal].[InsertCIM10VidalApi] @JsonRecords", p);
 
-                return ResponseFromService<string>.Success("Los datos de CIM10 se insertaron correctamente.", "Proceso exitoso");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                ResponseFromService<string>.Success("CIM10 cargados", notif);
             }
             catch (Exception ex)
             {
-                return ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al insertar CIM10: {ex.Message}");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                notif.Mensaje = $"Error CIM10: {ex.Message}";
+                ResponseFromService<string>.Failure(notif);
             }
         }
-
-        private async Task<ResponseFromService<string>> GetAllVTMsAsync()
+        private async Task GetAllUCDsAsync()
         {
-            var vtmList = new List<VTMModel>();
-            int startPage = int.Parse(_startPage);
-            int pageSize = int.Parse(_pageSize);
-            var totalResults = 0;
-
             try
             {
+                var list = new List<UCDApiModel>();
+                var page = _startPage; var total = 0;
                 do
                 {
-                    var requestUrl = $"{_baseUrl}/vtms?start-page={startPage}&page-size={pageSize}&app_id={_appId}&app_key={_appKey}";
-                    var response = await _httpClient.GetAsync(requestUrl);
+                    var xml = await _httpClient
+                        .GetStringAsync($"ucds?start-page={page++}&page-size={_pageSize}&app_id={_appId}&app_key={_appKey}");
+                    var chunk = xml.ParseUCDXmlToModelList();
+                    list.AddRange(chunk);
+                    if (total == 0) total = xml.GetOpenSearchValue<int>("totalResults");
+                } while (list.Count < total);
 
-                    response.EnsureSuccessStatusCode();
+                var dt = list.ToDataTable();
+                var p = new SqlParameter("@UCDTableType", SqlDbType.Structured)
+                { TypeName = "dbo.Vidal_UCDTableType", Value = dt };
+                await _context.Database.ExecuteSqlRawAsync("EXEC [Vidal].[InsertUCDVidalApi] @UCDTableType", p);
 
-                    var xmlContent = await response.Content.ReadAsStringAsync();
-                    var vtmEntries = xmlContent.ParseVTMsXmlToModelList();
-
-                    vtmList.AddRange(vtmEntries);
-
-                    startPage++;
-                } while (vtmList.Count < totalResults);
-
-                var vtmDataTable = vtmList.ToDataTable();
-
-                var vtmParam = new SqlParameter
-                {
-                    ParameterName = "@VTMTableType",
-                    SqlDbType = SqlDbType.Structured,
-                    TypeName = "dbo.Vidal_VTMType",
-                    Value = vtmDataTable
-                };
-
-                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal_InsertVTM @VTMTableType", vtmParam);
-
-                return ResponseFromService<string>.Success("Los datos de VTM se insertaron correctamente.", "Proceso exitoso");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                ResponseFromService<string>.Success("UCDs cargados", notif);
             }
             catch (Exception ex)
             {
-                return ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al insertar VTM: {ex.Message}");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                notif.Mensaje = $"Error UCDs: {ex.Message}";
+                ResponseFromService<string>.Failure(notif);
             }
         }
-
-        private async Task<ResponseFromService<string>> GetAllATCClassificationsAsync()
+        private async Task GetAllUCDVsAsync()
         {
-            var atcClassificationList = new List<ATCClassificationModel>();
-            int startPage = int.Parse(_startPage);
-            int pageSize = int.Parse(_pageSize);
-            var totalResults = 0;
-            var currentPage = 0;
-
             try
             {
+                var list = new List<UCDVApiModel>();
+                var page = _startPage; var total = 0;
+
                 do
                 {
-                    var requestUrl = $"{_baseUrl}/atc-classifications?start-page={startPage}&page-size={pageSize}&app_id={_appId}&app_key={_appKey}";
-                    var response = await _httpClient.GetAsync(requestUrl);
+                    var xml = await _httpClient
+                        .GetStringAsync($"ucdvs?start-page={page++}&page-size={_pageSize}&app_id={_appId}&app_key={_appKey}");
+                    var chunk = xml.ParseUCDVXmlToModelList();
+                    list.AddRange(chunk);
+                    if (total == 0) total = xml.GetOpenSearchValue<int>("totalResults");
+                } while (list.Count < total);
 
-                    response.EnsureSuccessStatusCode();
+                var json = JsonSerializer.Serialize(list);
 
-                    var xmlContent = await response.Content.ReadAsStringAsync();
-                    var atcEntries = xmlContent.ParseATCClassificationXmlToModelList(); // Convertir el XML en la lista de ATCClassificationModel
-
-                    if (atcEntries == null || !atcEntries.Any())
-                    {
-                        // Si no hay entradas, termina el ciclo
-                        break;
-                    }
-
-                    atcClassificationList.AddRange(atcEntries);
-
-                    // Obtener totalResults solo una vez
-                    if (totalResults == 0)
-                    {
-                        totalResults = xmlContent.GetOpenSearchValue<int>("totalResults");
-
-                        // Si no se encuentra el total de resultados o es 0, termina el ciclo
-                        if (totalResults == 0)
-                        {
-                            break;
-                        }
-                    }
-
-                    currentPage++;
-                    startPage++;
-
-                } while (atcClassificationList.Count < totalResults && currentPage * pageSize < totalResults);
-
-                // Convertir la lista en DataTable
-                var atcDataTable = atcClassificationList.ToDataTable();
-
-                // Llamar al procedimiento almacenado para insertar los datos usando el DbContext
-                var atcParam = new SqlParameter
+                var param = new SqlParameter("@Json", SqlDbType.NVarChar)
                 {
-                    ParameterName = "@ATCTableType",
-                    SqlDbType = SqlDbType.Structured,
-                    TypeName = "dbo.Vidal_ATCClassificationType", // Aquí especificas el nombre del TableType
-                    Value = atcDataTable
+                    Value = json
                 };
 
-                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal_InsertATCClassifications @ATCTableType", atcParam);
+                await _context.Database.ExecuteSqlRawAsync("EXEC [Vidal].[InsertUCDVVidalApi] @Json", param);
 
-                // Retornar éxito
-                return ResponseFromService<string>.Success("Los datos de ATC Classification se insertaron correctamente.", "Proceso exitoso");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                ResponseFromService<string>.Success("UCDVs cargados", notif);
             }
             catch (Exception ex)
             {
-                // Retornar error
-                return ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al insertar ATC Classification: {ex.Message}");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                notif.Mensaje = $"Error UCDV: {ex.Message}";
+                ResponseFromService<string>.Failure(notif);
             }
         }
-
-        private async Task<ResponseFromService<string>> GetAllUCDVsAsync()
+        private async Task GetAllATCClassificationsAsync()
         {
-            var ucdvModelList = new List<UCDVModel>();
-            int startPage = int.Parse(_startPage);
-            int pageSize = int.Parse(_pageSize);
-            var totalResults = 0;
-
             try
             {
+                var list = new List<ATCClassificationModel>();
+                var page = _startPage;
+                var total = 0;
+
                 do
                 {
-                    var requestUrl = $"{_baseUrl}/ucdvs?start-page={startPage}&page-size={pageSize}&app_id={_appId}&app_key={_appKey}";
-                    var response = await _httpClient.GetAsync(requestUrl);
+                    var xml = await _httpClient
+                        .GetStringAsync($"atc-classifications?start-page={page++}&page-size={_pageSize}&app_id={_appId}&app_key={_appKey}");
 
-                    response.EnsureSuccessStatusCode();
+                    var chunk = xml.ParseATCClassificationXmlToModelList();
+                    list.AddRange(chunk);
 
-                    var xmlContent = await response.Content.ReadAsStringAsync();
-                    var ucdvEntries = xmlContent.ParseUCDVXmlToModelList();
+                    if (total == 0)
+                        total = xml.GetOpenSearchValue<int>("totalResults");
 
-                    ucdvModelList.AddRange(ucdvEntries);
+                } while (list.Count < total);
 
-                    // Obtener totalResults solo una vez desde el XML
-                    if (totalResults == 0)
-                    {
-                        totalResults = xmlContent.GetOpenSearchValue<int>("totalResults");
-                    }
+                var dt = list.ToDataTable();
 
-                    startPage++;
-                } while (ucdvModelList.Count < totalResults); // Verifica que el bucle termine cuando se alcanzan los resultados
-
-                // Aquí conviertes a DataTable y haces el proceso para insertar en la base de datos
-                var ucdvDataTable = ucdvModelList.ToDataTable();
-
-                var ucdvParam = new SqlParameter
+                var p = new SqlParameter("@ATCTableType", SqlDbType.Structured)
                 {
-                    ParameterName = "@UCDVTableType",
-                    SqlDbType = SqlDbType.Structured,
-                    TypeName = "dbo.Vidal_UCDVTableType", // Aquí especificas el nombre del TableType
-                    Value = ucdvDataTable
+                    TypeName = "dbo.Vidal_ATCClassificationType",
+                    Value = dt
                 };
 
-                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal_InsertUCDV @UCDVTableType", ucdvParam);
+                await _context.Database.ExecuteSqlRawAsync("EXEC [Vidal].[InsertATCClassifications] @ATCTableType", p);
 
-                return ResponseFromService<string>.Success("Los datos de UCDV se insertaron correctamente.", "Proceso exitoso");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                ResponseFromService<string>.Success("ATC Classifications cargados", notif);
             }
             catch (Exception ex)
             {
-                return ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al insertar UCDV: {ex.Message}");
+                var notif = await _catNoti.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                notif.Mensaje = $"Error ATC Classifications: {ex.Message}";
+                ResponseFromService<string>.Failure(notif);
             }
         }
 
-        private async Task<ResponseFromService<string>> GetAllUCDsAsync()
-        {
-            var ucdModelList = new List<UCDModel>();
-            int startPage = int.Parse(_startPage);
-            int pageSize = int.Parse(_pageSize);
-            var totalResults = 0;
-
-            try
-            {
-                do
-                {
-                    var requestUrl = $"{_baseUrl}/ucds?start-page={startPage}&page-size={pageSize}&app_id={_appId}&app_key={_appKey}";
-                    var response = await _httpClient.GetAsync(requestUrl);
-                    response.EnsureSuccessStatusCode();
-
-                    var xmlContent = await response.Content.ReadAsStringAsync();
-                    var ucdEntries = xmlContent.ParseUCDXmlToModelList();
-
-                    ucdModelList.AddRange(ucdEntries);
-
-                    if (totalResults == 0)
-                    {
-                        totalResults = xmlContent.GetOpenSearchValue<int>("totalResults");
-                    }
-
-                    startPage++;
-                } while (ucdModelList.Count < totalResults);
-
-                 var ucdDataTable = ucdModelList.ToDataTable();
-
-                var ucdParam = new SqlParameter
-                {
-                    ParameterName = "@UCDTableType",
-                    SqlDbType = SqlDbType.Structured,
-                    TypeName = "dbo.Vidal_UCDTableType",
-                    Value = ucdDataTable
-                };
-
-                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal_InsertUCD @UCDTableType", ucdParam);
-
-                return ResponseFromService<string>.Success("Los datos de UCD se insertaron correctamente.", "Proceso exitoso");
-            }
-            catch (Exception ex)
-            {
-                return ResponseFromService<string>.Failure(HttpStatusCode.InternalServerError, $"Error al insertar UCDs: {ex.Message}");
-            }
-        }
-
-        private async Task<ResponseFromService<string>> GetAllSideEffectsAsync()
-        {
-            var sideEffectList = new List<SideEffectModel>();
-            int startPage = int.Parse(_startPage);
-            int pageSize = int.Parse(_pageSize);
-            var totalResults = 0;
-
-            try
-            {
-                do
-                {
-                    var requestUrl = $"{_baseUrl}/side-effects?start-page={startPage}&page-size={pageSize}&app_id={_appId}&app_key={_appKey}";
-                    var response = await _httpClient.GetAsync(requestUrl);
-
-                    response.EnsureSuccessStatusCode();
-
-                    var xmlContent = await response.Content.ReadAsStringAsync();
-                    var sideEffectEntries = xmlContent.ParseSideEffectsXmlToModelList();
-
-                    sideEffectList.AddRange(sideEffectEntries);
-
-                    if (totalResults == 0)
-                    {
-                        totalResults = xmlContent.GetOpenSearchValue<int>("totalResults");
-                    }
-
-                    startPage++;
-                } while (sideEffectList.Count < totalResults);
-
-                var sideEffectDataTable = sideEffectList.ToDataTable();
-
-                var sideEffectParam = new SqlParameter
-                {
-                    ParameterName = "@SideEffectTableType",
-                    SqlDbType = SqlDbType.Structured,
-                    TypeName = "dbo.Vidal_SideEffectTableType",
-                    Value = sideEffectDataTable
-                };
-
-                await _context.Database.ExecuteSqlRawAsync("EXEC Vidal_InsertSideEffects @SideEffectTableType", sideEffectParam);
-
-                return ResponseFromService<string>.Success("Datos de SideEffects insertados correctamente.", "Proceso exitoso");
-            }
-            catch (Exception ex)
-            {
-                return ResponseFromService<string>.Failure(System.Net.HttpStatusCode.InternalServerError, $"Error al insertar SideEffects: {ex.Message}");
-            }
-        }
-
-
-        //private async Task ValidateAndFilterTitlesVMP(List<VMPModelLink> vmpModelLinkList)
-        //{
-        //    var multipleEntryTitles = new HashSet<string>();
-        //    var singleEntryTitles = new HashSet<string>();
-
-        //    foreach (var vmpModelLink in vmpModelLinkList)
-        //    {
-        //        int idDestino = vmpModelLink.Vmp.IdVMP;
-
-        //        foreach (var link in vmpModelLink.Links)
-        //        {
-        //            if (link.Title == "UNITS")
-        //            {
-        //                Console.WriteLine("Hola");
-        //            }
-        //            // Generar el request URL
-        //            var requestUrl = $"{_basicUrl}{link.Href}";
-        //            if (char.IsDigit(link.Href.Last()))
-        //            {
-        //                requestUrl += $"&start-page=1&page-size=25&app_id={_appId}&app_key={_appKey}";
-        //            }
-        //            else
-        //            {
-        //                requestUrl += $"?start-page=1&page-size=25&app_id={_appId}&app_key={_appKey}";
-        //            }
-
-        //            // Hacer la solicitud HTTP
-        //            var response = await _httpClient.GetAsync(requestUrl);
-        //            if (!response.IsSuccessStatusCode)
-        //            {
-        //                Console.WriteLine($"Error: {response.StatusCode} for {link.Href}");
-        //                continue;
-        //            }
-
-        //            var xmlContent = await response.Content.ReadAsStringAsync();
-        //            if (string.IsNullOrWhiteSpace(xmlContent))
-        //            {
-        //                Console.WriteLine($"Advertencia: El contenido del link {link.Href} está vacío.");
-        //                continue;
-        //            }
-
-        //            // Aquí enviamos el XML y el IdDestino al parser para obtener la lista de IdBaseDestinoModel
-        //            var idBaseDestinoList = xmlContent.ParseVidalIdsToModelList(idDestino);
-
-        //            // Convertir la lista de IdBaseDestinoModel a DataTable
-        //            var idBaseDestinoDataTable = idBaseDestinoList.ToDataTable();
-
-        //            // Llamar a la función para insertar los datos en la base de datos
-        //            await InsertIdBaseDestinoAsync(idBaseDestinoDataTable, link.Title, "VMP");
-        //        }
-        //    }
-        //}
-
-        //private async Task InsertIdBaseDestinoAsync(DataTable idBaseDestinoDataTable, string destination, string Relacion)
-        //{
-        //    try
-        //    {
-        //        // Crear el parámetro de SQL para el TableType
-        //        var tableParam = new SqlParameter
-        //        {
-        //            ParameterName = "@IdBaseDestinoTableType",
-        //            SqlDbType = SqlDbType.Structured,
-        //            TypeName = "dbo.Vidal_IdBaseDestinoTableType",
-        //            Value = idBaseDestinoDataTable
-        //        };
-
-        //        // Crear el parámetro de SQL para el Destino (link.Title)
-        //        var destinoParam = new SqlParameter
-        //        {
-        //            ParameterName = "@Destino",
-        //            SqlDbType = SqlDbType.VarChar,
-        //            Size = 100,
-        //            Value = destination
-        //        };
-        //        var relacionParam = new SqlParameter
-        //        {
-        //            ParameterName = "@Relacion",
-        //            SqlDbType = SqlDbType.VarChar,
-        //            Size = 100,
-        //            Value = Relacion
-        //        };
-
-        //        // Ejecutar el procedimiento almacenado
-        //        await _context.Database.ExecuteSqlRawAsync("EXEC Vidal_InsertIdBaseDestino @IdBaseDestinoTableType, @Destino, @Relacion", tableParam, destinoParam, relacionParam);
-
-        //        Console.WriteLine($"Datos insertados correctamente para {destination}");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Console.WriteLine($"Error al insertar datos para {destination}: {ex.Message}");
-        //    }
-        //}
     }
 }

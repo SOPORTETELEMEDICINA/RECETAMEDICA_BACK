@@ -1,7 +1,5 @@
-﻿using RMD.Interface.Notificaciones;
-using RMD.Interface.Usuarios;
-using RMD.Models.Responses;
-using RMD.Models.Usuarios;
+﻿using RMD.Interface.Usuarios;
+using RMD.Shared.Models.Usuarios;
 
 namespace RMD.Controllers.Usuarios
 {
@@ -207,7 +205,7 @@ namespace RMD.Controllers.Usuarios
         [HttpPost("cambiar-password")]
         public async Task<IActionResult> CambiarPassword([FromBody] CambiarPasswordRequest request)
         {
-            if (request == null || string.IsNullOrEmpty(request.NuevaPassword) || string.IsNullOrEmpty(request.ConfirmacionPassword))
+            if (!ModelState.IsValid || string.IsNullOrEmpty(request.NuevaPassword) || string.IsNullOrEmpty(request.ConfirmacionPassword))
             {
                 var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
                 return BadRequest(ResponseFromService<string>.Failure(notificacion));
@@ -245,7 +243,7 @@ namespace RMD.Controllers.Usuarios
                 return BadRequest(ResponseFromService<string>.Failure(notificacion));
             }
 
-            if (request == null)
+            if (!ModelState.IsValid)
             {
                 var notificacion = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
                 return BadRequest(ResponseFromService<string>.Failure(notificacion));

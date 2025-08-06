@@ -1,5 +1,4 @@
-﻿using RMD.Models.Catalogo;
-using RMD.Models.Consulta;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace RMD.Data
 {

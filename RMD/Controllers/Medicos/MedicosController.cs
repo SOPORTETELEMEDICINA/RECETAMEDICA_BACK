@@ -1,7 +1,5 @@
 ﻿using RMD.Interface.Medicos;
-using RMD.Interface.Notificaciones;
-using RMD.Models.Medicos;
-using RMD.Models.Responses;
+using RMD.Shared.Models.Medicos;
 
 namespace RMD.Controllers.Medicos
 {
@@ -119,7 +117,7 @@ namespace RMD.Controllers.Medicos
                     .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
                 return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            if (!ModelState.IsValid || model == null)
+            if (!ModelState.IsValid)
             {
                 var errores = string.Join(" | ", ModelState.Values
                     .SelectMany(v => v.Errors)
@@ -153,7 +151,7 @@ namespace RMD.Controllers.Medicos
                     .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
                 return BadRequest(ResponseFromService<string>.Failure(notif));
             }
-            if (!ModelState.IsValid || model == null)
+            if (!ModelState.IsValid)
             {
                 var errores = string.Join(" | ", ModelState.Values
                     .SelectMany(v => v.Errors)

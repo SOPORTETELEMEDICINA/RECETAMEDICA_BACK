@@ -1,13 +1,11 @@
-﻿//using RMD.Models.Vidal;
+﻿using RMD.Shared.Models.Vidal.Allergy;
 
-//namespace RMD.Interface.Vidal
-//{
-//    public interface IAllergyService
-//    {
-//        Task<List<Allergy>> GetAllergiesByName(string name);
-//        Task<List<Allergy>> GetAllAllergiesAsync();
-//        Task<Allergy> GetAllergyByIdAsync(int allergyId);
-//        Task<List<AllergyMolecule>> GetMoleculesByAllergyIdAsync(int allergyId);
-//    }
-
-//}
+namespace RMD.Interface.Vidal
+{
+    public interface IAllergyService
+    {
+        Task<ResponseFromService<IEnumerable<RequestSearchAllergy>>> GetAllergiesByNameAsync(string name);
+        List<RequestSearchAllergy> ParseAllergies(string allergiesString);
+        Task<List<RequestSearchAllergy>> ObtenerAlergiasPorIdsAsync(string alergiasIds);
+    }
+}

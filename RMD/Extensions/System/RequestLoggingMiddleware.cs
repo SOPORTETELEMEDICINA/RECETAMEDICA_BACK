@@ -1,20 +1,16 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using RMD.Models.Login;
-using RMD.Models.Sucursales;
-using RMD.Models.Usuarios;
+﻿using RMD.Data;
+using RMD.Shared.Models.Login;
 
 namespace RMD.Extensions.System
 {
     public class RequestLoggingMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly ILogger<RequestLoggingMiddleware> _logger;
         private readonly IServiceScopeFactory _scopeFactory;
 
-        public RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger, IServiceScopeFactory scopeFactory)
+        public RequestLoggingMiddleware(RequestDelegate next, IServiceScopeFactory scopeFactory)
         {
             _next = next;
-            _logger = logger;
             _scopeFactory = scopeFactory;
         }
 
@@ -75,10 +71,10 @@ namespace RMD.Extensions.System
                         Fecha = DateTime.Now,
                         Controller = controller,
                         Endpoint = endpoint,
-                        IdGEMP = Guid.TryParse(idGEMP, out var gemp) ? gemp : (Guid?)null,
-                        IdSucursal = Guid.TryParse(idSucursal, out var sucursal) ? sucursal : (Guid?)null,
-                        IdUsuario = Guid.TryParse(idUsuario, out var usuario) ? usuario : (Guid?)null,
-                        IdRol = Guid.TryParse(idRol, out var rol) ? rol : (Guid?)null,  // 🔹 CORRECCIÓN AQUÍ
+                        IdGEMP = Guid.TryParse(idGEMP, out var gemp) ? gemp : null,
+                        IdSucursal = Guid.TryParse(idSucursal, out var sucursal) ? sucursal : null,
+                        IdUsuario = Guid.TryParse(idUsuario, out var usuario) ? usuario : null,
+                        IdRol = Guid.TryParse(idRol, out var rol) ? rol : null,  // 🔹 CORRECCIÓN AQUÍ
                         Parametros = parametros
                     };
                     dbContext.RegistroPeticiones.Add(log);
@@ -106,7 +102,7 @@ namespace RMD.Extensions.System
         private async Task<string> ReadRequestBody(HttpContext context)
         {
             if (context.Request.ContentLength == null || context.Request.ContentLength == 0)
-                return null;
+                return null!;
 
             context.Request.EnableBuffering();
             using (var reader = new StreamReader(context.Request.Body, leaveOpen: true))

@@ -1,11 +1,11 @@
-﻿using RMD.Models.Recetas;
+﻿using RMD.Shared.Models.Receta.Header.Internos;
 using System.Text;
 
 namespace RMD.Extensions
 {
     public static class RecetaPdfExtension
     {
-        public static string GenerarHtmlReceta(Receta_PacienteRequest paciente, List<Receta_RecetaDetalleRequest> detalles, Receta_FormatoRequest formato)
+        public static string GenerarHtmlReceta(Header_PacienteRequest paciente, List<DetalleInternoRequest> detalles, Receta_FormatoHTMLRequest formato, string qr)
         {
             if (formato == null || string.IsNullOrEmpty(formato.Formato))
             {
@@ -20,18 +20,38 @@ namespace RMD.Extensions
                 especialidadHtml.Append($"<p>Cédula Especialidad: {paciente.CedulaEspecialidad}</p>");
             }
 
+            // 2. ¿Mostrar columna 'Cantidad'?
+            bool mostrarCantidad = detalles.Any(d => d.MedicamentoType == "PACKAGE");
+
+            // 3. Encabezado de la tabla de medicamentos
+            var encabezadoHtml = new StringBuilder();
+            encabezadoHtml.Append("<thead><tr>");
+            if (mostrarCantidad)
+                encabezadoHtml.Append("<th>Cantidad</th>");
+            encabezadoHtml.Append(@"<th>Medicamento</th>
+                <th>Dosis</th>
+                <th>Unidad</th>
+                <th>Vía</th>
+                <th>Frecuencia</th>
+                <th>Periodo</th>
+                <th>Recomendaciones</th>");
+            encabezadoHtml.Append("</tr></thead>");
 
             // Generar las filas de la tabla de medicamentos
             var medicamentosHtml = new StringBuilder();
             foreach (var detalle in detalles)
             {
+                var cantidadHtml = detalle.MedicamentoType == "PACKAGE"
+                   ? $"<td>{detalle.Cantidad}</td>"
+                   : "";
                 medicamentosHtml.Append($@"
                 <tr>
+                    {cantidadHtml}
                     <td>{detalle.MedicamentoNombre}</td>
                     <td>{detalle.CantidadDiaria}</td>
                     <td>{detalle.UnidadDispensacion}</td>
                     <td>{detalle.RutaAdministracion}</td>
-                    <td>{detalle.Frecuencia}</td>
+                    <td>CADA {detalle.Frecuency} {detalle.FrecuencyType}</td>
                     <td>{detalle.Duracion} {detalle.UnidadDuracion}</td>
                     <td class=""recommendations"">{detalle.Observaciones}</td>
                 </tr>");
@@ -66,47 +86,42 @@ namespace RMD.Extensions
             // Reemplazar los placeholders en la plantilla
             var htmlFinal = formato.Formato
                 .Replace("{{Watermark}}", watermarkHtml)
-                .Replace("{{LogoBase64}}", formato.Logo ?? string.Empty)
+                .Replace("{{LogoBase64}}", formato.Logo)
                 .Replace("{{Fecha}}", paciente.Fecha != DateTime.MinValue ? paciente.Fecha.ToString("dd/MM/yyyy") : DateTime.Now.ToString("dd/MM/yyyy"))
 
-                // Información del médico
+             // Médico
                 .Replace("{{NombreMedico}}", $"{paciente.NombresMedico} {paciente.PrimerApellidoMedico} {paciente.SegundoApellidoMedico}".Trim())
                 .Replace("{{CedulaGeneral}}", paciente.CedulaGeneral)
                 .Replace("{{Universidad}}", paciente.Universidad)
-                 .Replace("{{EspecialidadMedico}}", paciente.Especialidad ?? string.Empty)
-                .Replace("{{CedulaEspecialidadMedico}}", paciente.CedulaEspecialidad ?? string.Empty)
-                .Replace("{{EspecialidadHtml}}", especialidadHtml.ToString()) // ✅ Convertir a string
+                .Replace("{{EspecialidadMedico}}", paciente.Especialidad)
+                .Replace("{{CedulaEspecialidadMedico}}", paciente.CedulaEspecialidad)
+                .Replace("{{EspecialidadHtml}}", especialidadHtml.ToString())
+                .Replace("{{TelefonoMedico}}", paciente.Movil)
+                .Replace("{{EmailMedico}}", paciente.Email)
 
-                .Replace("{{TelefonoMedico}}", paciente.Movil ?? string.Empty)
-                .Replace("{{EmailMedico}}", paciente.Email ?? string.Empty)
-
-                // Información del paciente
+                // Paciente
                 .Replace("{{NombrePaciente}}", $"{paciente.NombresPaciente} {paciente.PrimerApellidoPaciente} {paciente.SegundoApellidoPaciente}".Trim())
-                .Replace("{{SexoPaciente}}", paciente.Genero ?? string.Empty)
+                .Replace("{{SexoPaciente}}", paciente.Genero)
                 .Replace("{{EdadPaciente}}", paciente.EdadPaciente.ToString() + " Años")
                 .Replace("{{PacPeso}}", paciente.PacPeso.ToString("F2"))
                 .Replace("{{PacTalla}}", paciente.PacTalla.ToString("F2"))
-
-                // Nuevo: Identificación del paciente
-                .Replace("{{TipoIdentificacion}}", paciente.TipoIdentificacion ?? "N/A")
-                .Replace("{{NumeroIdentificacion}}", paciente.NumeroIdentificacion ?? "N/A")
-
-                // Diagnóstico
+                .Replace("{{TipoIdentificacion}}", paciente.TipoIdentificacion)
+                .Replace("{{NumeroIdentificacion}}", paciente.NumeroIdentificacion)
                 .Replace("{{Diagnosticos}}", diagnosticosFormateados)
 
-                // Firma del médico
-                .Replace("{{FirmaBase64}}", paciente.Firma ?? string.Empty)
+                // Firma
+                .Replace("{{FirmaBase64}}", paciente.Firma)
 
-                // Detalles de los medicamentos
+                // Detalles receta
+                .Replace("{{EncabezadoMedications}}", encabezadoHtml.ToString())  // ⬅️ ESTA ES LA QUE TE FALTA
                 .Replace("{{Medications}}", medicamentosHtml.ToString())
 
-                // Información adicional
-                .Replace("{{DireccionMedico}}", paciente.Domicilio ?? string.Empty)
-                .Replace("{{Horario}}", paciente.Horario ?? "N/A")
+                // Extras
+                .Replace("{{DireccionMedico}}", paciente.Domicilio)
+                .Replace("{{Horario}}", paciente.Horario)
+                .Replace("{{Folio}}", paciente.Folio)
+                .Replace("{{QRData}}", qr);
 
-                // Nuevo: Folio y Código QR
-                .Replace("{{Folio}}", paciente.Folio ?? "N/A")
-                .Replace("{{QRData}}", paciente.QRData ?? string.Empty);
 
             return htmlFinal;
         }

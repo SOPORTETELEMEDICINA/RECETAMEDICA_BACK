@@ -1,7 +1,5 @@
-﻿using RMD.Interface.Notificaciones;
-using RMD.Interface.Sucursales;
-using RMD.Models.Responses;
-using RMD.Models.Sucursales;
+﻿using RMD.Interface.Sucursales;
+using RMD.Shared.Models.Sucursales;
 
 namespace RMD.Controllers.Sucursales
 {
@@ -31,7 +29,7 @@ namespace RMD.Controllers.Sucursales
                 return BadRequest(ResponseFromService<string>.Failure(notif));
             }
 
-            if (model == null || !ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
                 var notif = await _catalogoNotificacionService
                     .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
@@ -54,7 +52,7 @@ namespace RMD.Controllers.Sucursales
                 return BadRequest(ResponseFromService<string>.Failure(notif));
             }
 
-            if (id == Guid.Empty || model == null || !ModelState.IsValid)
+            if (id == Guid.Empty || !ModelState.IsValid)
             {
                 var notif = await _catalogoNotificacionService
                     .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");

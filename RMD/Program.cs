@@ -1,166 +1,258 @@
+Ôªø
+using Hangfire;
+using Hangfire.SqlServer;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using RMD.Data;
-using RMD.Extensions;
 using RMD.Interface.Auth;
 using RMD.Interface.CargaCatalogos;
 using RMD.Interface.Catalogo;
-//using RMD.Interface.Catalogos;
 using RMD.Interface.Consulta;
-using RMD.Interface.Dashborad;
+using RMD.Interface.Dashboard;
 using RMD.Interface.Medicos;
 using RMD.Interface.Pacientes;
 using RMD.Interface.PuntoVenta;
-using RMD.Interface.Recetas;
+using RMD.Interface.Receta;
+using RMD.Interface.Security;
 using RMD.Interface.Sucursales;
+using RMD.Interface.Tutores;
 using RMD.Interface.Usuarios;
-using RMD.Middleware;
-using RMD.Service;
+using RMD.Interface.Vidal;
 using RMD.Service.Auth;
 using RMD.Service.CargaCatalogos;
+using RMD.Service.Catalogo;
 using RMD.Service.Consulta;
 using RMD.Service.Dashboard;
 using RMD.Service.Medicos;
 using RMD.Service.Pacientes;
-using RMD.Service.Recetas;
+using RMD.Service.PuntoVenta;
+using RMD.Service.Receta;
+using RMD.Service.ServiciosInternos;
 using RMD.Service.Sucursales;
+using RMD.Service.Tutores;
 using RMD.Service.Usuarios;
-using RMD.Services.Catalogo;
-using System.Diagnostics;
-using System.Text;
+using RMD.Service.Vidal.Allergy;
+using RMD.Service.Vidal.CIM10;
+using RMD.Service.Vidal.Molecule;
+using RMD.Service.Vidal.Tools;
+using RMD.Shared.Models.Login;
+using RMD.Shared.Utils.Interface;
+using RMD.Shared.Utils.Services;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Obtener el entorno desde el archivo de configuraciÛn
+// Configuraci√≥n de cadenas y DbContexts
 string environment = builder.Configuration["Environment"];
 
-// Seleccionar la cadena de conexiÛn seg˙n el entorno
-string connectionString = builder.Configuration.GetConnectionString(environment);
+// Obtiene la cadena encriptada del appsettings
+var encryptedConnStr = builder.Configuration.GetConnectionString(environment);
 
-// ConfiguraciÛn de DbContexts con la cadena de conexiÛn seleccionada
-//builder.Services.AddDbContext<ApplicationDbContext>(options =>
-//    options.UseSqlServer(connectionString));
+if (string.IsNullOrWhiteSpace(encryptedConnStr))
+    throw new Exception($"No se encontr√≥ una cadena de conexi√≥n encriptada para el entorno '{environment}'.");
 
-builder.Services.AddDbContext<UsuariosDBContext>(options =>
-    options.UseSqlServer(connectionString));
+// Rutas posibles
+var basePaths = new[]
+{
+    @"C:\Secrets\RecetaMedica",
+    @"D:\Secrets\RecetaMedica"
+};
 
-builder.Services.AddDbContext<MedicosDbContext>(options =>
-    options.UseSqlServer(connectionString));
+string? keyFile = basePaths
+    .Select(path => Path.Combine(path, $"{environment.ToLower()}.key"))
+    .FirstOrDefault(File.Exists);
 
-builder.Services.AddDbContext<PacientesDbContext>(options =>
-    options.UseSqlServer(connectionString));
 
-builder.Services.AddDbContext<RecetasDbContext>(options =>
-    options.UseSqlServer(connectionString));
+if (keyFile is null)
+    throw new Exception("No se encontr√≥ el archivo de clave de encriptaci√≥n para el entorno actual.");
 
-builder.Services.AddDbContext<SucursalesDbContext>(options =>
-    options.UseSqlServer(connectionString));
+// Desencripta la cadena de conexi√≥n
+var key = File.ReadAllText(keyFile).Trim();
+var connectionString = EncryptionHelper.Decrypt(encryptedConnStr, Convert.FromBase64String(key));
+// Leer clave para cifrado de respuestas (ResponseFromService)
 
-builder.Services.AddDbContext<DashboardDbContext>(options =>
-    options.UseSqlServer(connectionString));
+/*****************************************************************/
+var commonKeyPath = basePaths
+    .Select(path => Path.Combine(path, "common.key"))
+    .FirstOrDefault(File.Exists);
 
-builder.Services.AddDbContext<VidalDbContext>(options =>
-    options.UseSqlServer(connectionString));
+if (commonKeyPath is null)
+    throw new Exception("No se encontr√≥ el archivo common.key.");
 
-builder.Services.AddDbContext<ConsultaDbContext>(options =>
-    options.UseSqlServer(connectionString));
-builder.Services.AddDbContext<PuntoVentaDbContext>(options =>
-    options.UseSqlServer(connectionString));
-builder.Services.AddDbContext<CatalogoDbContext>(options =>
-    options.UseSqlServer(connectionString));
+var commonKey = Convert.FromBase64String(File.ReadAllText(commonKeyPath).Trim());
+builder.Services.AddSingleton(commonKey);
+// JWT Authentication
+// üîê Leer archivo .jwt
+var jwtKeyFile = basePaths
+    .Select(path => Path.Combine(path, $"{environment.ToLower()}.jwt"))
+    .FirstOrDefault(File.Exists);
 
-// Registro de servicios
-//builder.Services.AddScoped<ICatalogosService, CatalogosService>();
+if (jwtKeyFile is null)
+    throw new Exception("No se encontr√≥ el archivo de clave JWT para el entorno actual.");
+
+var responseKeyFile = basePaths
+    .Select(path => Path.Combine(path, "response.key"))
+    .FirstOrDefault(File.Exists);
+
+if (responseKeyFile is null)
+    throw new Exception("No se encontr√≥ el archivo de clave para cifrado de respuestas (response.key).");
+
+var jwtKey = File.ReadAllText(jwtKeyFile).Trim();
+var responseKey = File.ReadAllText(responseKeyFile).Trim();
+var responseEncryptionKey = Convert.FromBase64String(responseKey);
+
+builder.Services.AddSingleton(new JwtKeyHolder(jwtKey, responseKey));
+
+
+//builder.Services.AddSingleton<string>(connectionString); // <-- expl√≠cito, sin warning
+//builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(connectionString));
+builder.Services.AddDbContext<CatalogoWebServiceDbContext>(o => 
+    o.UseSqlServer(connectionString));
+builder.Services.AddDbContext<ApplicationDbContext>(o => 
+    o.UseSqlServer(connectionString));
+builder.Services.AddDbContext<UsuariosDBContext>(o =>
+    o.UseSqlServer(connectionString));
+builder.Services.AddDbContext<MedicosDbContext>(o => 
+    o.UseSqlServer(connectionString));
+builder.Services.AddDbContext<PacientesDbContext>(o => 
+    o.UseSqlServer(connectionString));
+builder.Services.AddDbContext<RecetasDbContext>(o => 
+    o.UseSqlServer(connectionString));
+builder.Services.AddDbContext<SucursalesDbContext>(o => 
+    o.UseSqlServer(connectionString));
+builder.Services.AddDbContext<DashboardDbContext>(o => 
+    o.UseSqlServer(connectionString));
+builder.Services.AddDbContext<VidalAPIDbContext>(o => 
+    o.UseSqlServer(connectionString));
+builder.Services.AddDbContext<ConsultaDbContext>(o => 
+    o.UseSqlServer(connectionString));
+builder.Services.AddDbContext<PuntoVentaDbContext>(o => 
+    o.UseSqlServer(connectionString));
+builder.Services.AddDbContext<VidalDBContext>(o => 
+    o.UseSqlServer(connectionString));
+builder.Services.AddDbContext<CatalogoDbContext>(o => 
+    o.UseSqlServer(connectionString));
+builder.Services.AddMemoryCache();
+
+// Registro de servicios de dominio
+//builder.Services.AddScoped<IConfiguracionGlobalService, ConfiguracionGlobalService>();
+
+builder.Services.AddScoped<ICargaCatalogosService, CargaCatalogosService>();
+/* * Aqu√≠ se registran los servicios de dominio.
+ * Aseg√∫rate de que cada servicio implementa su respectiva interfaz.
+ */
+/* * Catalogos: **/
 builder.Services.AddScoped<ICatalogoService, CatalogoService>();
+builder.Services.AddScoped<ICatAsentamientoCiudadService, CatAsentamientoCiudadService>();
+builder.Services.AddScoped<ICatAsentamientosService, CatAsentamientosService>();
+builder.Services.AddScoped<ICatCiudadesService, CatCiudadesService>();
+builder.Services.AddScoped<ICatCpService, CatCpService>();
+builder.Services.AddScoped<ICatEntidadesFederativasService, CatEntidadesFederativasService>();
+builder.Services.AddScoped<ICatEventosDeSaludService, CatEventosDeSaludService>();
+builder.Services.AddScoped<ICatMunicipiosService, CatMunicipiosService>();
+builder.Services.AddScoped<ICatTipoAsentamientoService, CatTipoAsentamientoService>();
+
+/* * Pacientes: **/
+builder.Services.AddScoped<IPacienteService, PacienteService>();
+builder.Services.AddScoped<IHelperPacienteServiceES, HelperPacienteServiceES>();
+builder.Services.AddScoped<IEventosSaludService, EventosSaludService>();
+/* * Recetas: **/
+builder.Services.AddScoped<IDetalleRecetaService, DetalleRecetaService>();
+builder.Services.AddScoped<IRecetaService, RecetaService>();
+builder.Services.AddScoped<IHelperRecetaService, HelperRecetaService>();
+builder.Services.AddScoped<IHelperRecetaServiceES, HelperRecetaServiceES>();
+builder.Services.AddScoped<IHelperRecetaServiceMX, HelperRecetaServiceMX>();
+builder.Services.AddScoped<IAlertaTomaService, AlertaTomaService>();
+builder.Services.AddScoped<IRecetaCatalogosService, RecetaCatalogosService>();
+
+/*  Tutores */
+builder.Services.AddScoped<ITutorService, TutorService>();
+
 builder.Services.AddScoped<ICatGrupoEmpresarialService, CatGrupoEmpresarialService>();
 builder.Services.AddScoped<ITipoUsuarioService, TipoUsuarioService>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMedicoService, MedicoService>();
-builder.Services.AddScoped<IPacienteService, PacienteService>();
 builder.Services.AddScoped<ISucursalService, SucursalService>();
-builder.Services.AddScoped<IDetalleRecetaService, DetalleRecetaService>();
-builder.Services.AddScoped<IRecetaService, RecetaService>();
 
-// Registro de IHttpContextAccessor
-builder.Services.AddHttpContextAccessor();
-
-builder.Services.AddHttpClient<ICargaCatalogosService, CargaCatalogosService>();
-builder.Services.AddScoped<ICargaCatalogosService, CargaCatalogosService>();
-
-//// Registro de servicios para Vidal API
-//builder.Services.AddHttpClient<IAllergyService, AllergyService>();
-//builder.Services.AddScoped<IAllergyService, AllergyService>();
-
-//builder.Services.AddHttpClient<IATCService, ATCService>();
-//builder.Services.AddScoped<IATCService, ATCService>();
-
-builder.Services.AddHttpClient<IConsultaService, ConsultaService>();
-builder.Services.AddScoped<IConsultaService, ConsultaService>();
-builder.Services.AddScoped<IPuntoVentaService, PuntoVentaService>();
-//builder.Services.AddHttpClient<IForeignProductService, ForeignProductService>();
-//builder.Services.AddScoped<IForeignProductService, ForeignProductService>();
-
-//builder.Services.AddHttpClient<IIndicationService, IndicationService>();
-//builder.Services.AddScoped<IIndicationService, IndicationService>();
-
-//builder.Services.AddHttpClient<IIndicationGroupService, IndicationGroupService>();
-//builder.Services.AddScoped<IIndicationGroupService, IndicationGroupService>();
-
-//builder.Services.AddHttpClient<IMoleculeService, MoleculeService>();
-//builder.Services.AddScoped<IMoleculeService, MoleculeService>();
-
-//builder.Services.AddHttpClient<IPackageService, PackageService>();
-//builder.Services.AddScoped<IPackageService, PackageService>();
-
-//builder.Services.AddHttpClient<ICIM10Service, CIM10Service>();
-//builder.Services.AddScoped<ICIM10Service, CIM10Service>();
-
-//builder.Services.AddHttpClient<IProductService, ProductService>();
-//builder.Services.AddScoped<IProductService, ProductService>();
-
-//builder.Services.AddHttpClient<IRouteService, RouteService>();
-//builder.Services.AddScoped<IRouteService, RouteService>();
-
-//builder.Services.AddHttpClient<ISideEffectService, SideEffectService>();
-//builder.Services.AddScoped<ISideEffectService, SideEffectService>();
-
-//builder.Services.AddHttpClient<IUCDService, UCDService>();
-//builder.Services.AddScoped<IUCDService, UCDService>();
-
-//builder.Services.AddHttpClient<IUcdvService, UcdvService>();
-//builder.Services.AddScoped<IUcdvService, UcdvService>();
-
-//builder.Services.AddHttpClient<IUnitService, UnitService>();
-//builder.Services.AddScoped<IUnitService, UnitService>();
-
-//builder.Services.AddHttpClient<IVMPService, VMPService>();
-//builder.Services.AddScoped<IVMPService, VMPService>();
-
-//builder.Services.AddHttpClient<IVTMService, VTMService>();
-//builder.Services.AddScoped<IVTMService, VTMService>();
-
-builder.Services.AddTransient<IEmailService, EmailService>();
 
 
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IToolsService, ToolsService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient<ICargaCatalogosWebService, CargaCatalogosWebService>();
+// Aqu√≠ agrega los HttpClients personalizados
+builder.Services.AddHttpClient("VidalClientMX", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["VidalApi:BaseUrl"]);
+});
 
-builder.Services.AddScoped<CifradoHelper>();
+builder.Services.AddHttpClient("VidalClientES", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["VidalApiES:BaseUrl"]);
+});
+builder.Services.AddScoped<ICargaCatalogosWebService, CargaCatalogosWebService>();
+builder.Services.AddHttpClient<IConsultaService, ConsultaService>();
+builder.Services.AddScoped<IConsultaService, ConsultaService>();
+builder.Services.AddScoped<IPuntoVentaService, PuntoVentaService>();
+builder.Services.AddScoped<ICatalogoNotificacionService, CatalogoNotificacionServices>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IDapperService>(_ =>
+    new DapperService(connectionString));
+/**************************************************************************/
+/***************************    VIDAL   ***********************************/
+/**************************************************************************/
+builder.Services.AddScoped<ICIM10Service, CIM10Service>();
+builder.Services.AddScoped<IAllergyService, AllergyService>();
+builder.Services.AddScoped<IMoleculeService, MoleculeService>();
+// Filtros y cifrado de respuestas
+builder.Services.AddScoped<IEncryptionService>(_ =>
+    new AesEncryptionService(responseEncryptionKey));
 
-builder.Services.AddHostedService<TokenCleanupService>();
-
+builder.Services.AddScoped<EncryptResponseFilter>();
 builder.Services.AddScoped<ValidateTokenFilter>();
-// ConfiguraciÛn de controladores
-builder.Services.AddControllers();
+builder.Services.AddScoped<CifradoHelper>();
+builder.Services.AddScoped<FolioHelper>();
+builder.Services.AddScoped<CronRecetaService>(); // ‚Üê Necesaria para la inyecci√≥n
 
-// ConfiguraciÛn de Swagger
+
+
+// Hangfire
+builder.Services.AddScoped<TokenCleanupJob>();
+builder.Services.AddHangfire(cfg =>
+{
+    cfg.SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
+       .UseSimpleAssemblyNameTypeSerializer()
+       .UseRecommendedSerializerSettings()
+       .UseSqlServerStorage(connectionString, new SqlServerStorageOptions
+       {
+           CommandBatchMaxTimeout = TimeSpan.FromMinutes(60),
+           SlidingInvisibilityTimeout = TimeSpan.FromMinutes(60),
+           QueuePollInterval = TimeSpan.FromSeconds(60),
+           UseRecommendedIsolationLevel = true,
+           DisableGlobalLocks = true
+       });
+});
+builder.Services.AddHangfireServer();
+
+// MVC & Swagger
+builder.Services.AddControllers(opts =>
+{
+    opts.Filters.Add<EncryptResponseFilter>();
+})
+// Configura el serializer de MVC para camelCase
+.AddJsonOptions(opts =>
+{
+    opts.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    opts.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
+    opts.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    var apiTitle = $"RMD_{environment} API";  // Cambia el tÌtulo din·micamente seg˙n el entorno
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = apiTitle, Version = "v1" });
-
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = $"RMD_{environment} API", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -168,37 +260,32 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Ingrese 'Bearer' [espacio] y luego su token en el campo de texto a continuaciÛn.\n\nEjemplo: \"Bearer abc123\""
+        Description = "Ingrese 'Bearer {token_encriptado}'"
     });
-
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
+        [new OpenApiSecurityScheme
         {
-            new OpenApiSecurityScheme
+            Reference = new OpenApiReference
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
+                Type = ReferenceType.SecurityScheme,
+                Id = "Bearer"
+            }
         }
+        ] = Array.Empty<string>()
     });
 });
 
-// ConfiguraciÛn de CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("CorsPolicy", builder =>
-    {
-        builder.AllowAnyOrigin()
-               .AllowAnyMethod()
-               .AllowAnyHeader();
-    });
-});
+// CORS
+builder.Services.AddCors(o => o.AddPolicy("CorsPolicy", pb =>
+    pb.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
-// ConfiguraciÛn de autenticaciÛn JWT
+
+// üîê Leer configuraci√≥n com√∫n desde appsettings.json
+var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+var jwtAudience = builder.Configuration["Jwt:Audience"];
+
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -206,19 +293,13 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    var jwtKey = builder.Configuration["Jwt:Key"];
-    if (string.IsNullOrEmpty(jwtKey) || jwtKey.Length < 32)
-    {
-        throw new InvalidOperationException("JWT key is not configured correctly. It must be at least 32 characters long.");
-    }
+    var jwtKeyHolder = builder.Services
+        .Where(sd => sd.ServiceType == typeof(JwtKeyHolder))
+        .Select(sd => (JwtKeyHolder?)sd.ImplementationInstance)
+        .FirstOrDefault();
 
-    var issuer = builder.Configuration["Jwt:Issuer"];
-    var audience = builder.Configuration["Jwt:Audience"];
-
-    if (string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience))
-    {
-        throw new InvalidOperationException("JWT Issuer or Audience is not set in the configuration.");
-    }
+    if (jwtKeyHolder == null)
+        throw new Exception("JwtKeyHolder no est√° registrado correctamente.");
 
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -226,62 +307,74 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = issuer,
-        ValidAudience = audience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
-    };
-    options.Events = new JwtBearerEvents
-    {
-        OnTokenValidated = context =>
-        {
-            // AÒade lÛgica adicional si es necesario
-            return Task.CompletedTask;
-        },
-        OnAuthenticationFailed = context =>
-        {
-            // Log o manejo del error de autenticaciÛn
-            return Task.CompletedTask;
-        }
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(jwtKeyHolder.Key),
+        ClockSkew = TimeSpan.FromSeconds(30)
     };
 });
 
+var app = builder.Build();
 
- var app = builder.Build();
-// Usar el middleware de manejo de errores
-
-// ConfiguraciÛn del pipeline de solicitudes HTTP
+// Pipeline HTTP
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", $"RMD_{environment} API v1");
-        c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None); // Contraer todos los endpoints por defecto
-    });
 }
-else
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", $"RMD_{environment} API v1");
-        c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None); // Contraer todos los endpoints por defecto
-    });
-}
-
-// Uso de middlewares
-app.UseMiddleware<ErrorHandlerMiddleware>();
-app.UseMiddleware<RenewTokenMiddleware>();
-app.UseMiddleware<ErrorHandlingMiddleware>();
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", $"RMD_{environment} API v1");
+    c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
+});
 
 app.UseHttpsRedirection();
-
 app.UseCors("CorsPolicy");
 
+// 1) Desencripta JWT cifrado en header
+app.UseMiddleware<DecryptJwtMiddleware>();
+
+// 2) (Opcional) Renueva token
+app.UseMiddleware<RenewTokenMiddleware>();
+
+// 3) Manejo de errores y logging
+app.UseMiddleware<ErrorHandlerMiddleware>();
+app.UseMiddleware<ErrorHandlingMiddleware>();
+//app.UseMiddleware<RequestLoggingMiddleware>();
+
+// 4) Autenticaci√≥n / Autorizaci√≥n con el JWT ya desencriptado
 app.UseAuthentication();
 app.UseAuthorization();
-
+app.UseMiddleware<RequestLoggingMiddleware>();
 app.MapControllers();
 
+// Hangfire Dashboard + Jobs
+app.UseHangfireDashboard();
+RecurringJob.AddOrUpdate<TokenCleanupJob>(
+    "TokenCleanupJob", job => job.CleanupAsync(), "0 */2 * * *");
+//RecurringJob.AddOrUpdate<ICargaCatalogosWebService>(
+//    "CargaCatalogosWebServiceJob",
+//    svc => svc.CargarCatalogosWebService(),
+//    Cron.Daily);
+RecurringJob.AddOrUpdate<ICargaCatalogosWebService>(
+    "CargaCatalogosWebServiceJob",
+    svc => svc.CargarCatalogosWebService(),
+    "0 0 2,12,22 * *" // a las 00:00 los d√≠as 2, 12 y 22
+);
+// D√≠as que terminan en 1: 1, 11, 21, 31
+RecurringJob.AddOrUpdate<ICargaCatalogosService>(
+    "CargaCatalogosApiVidalJob",
+    svc => svc.ReloadCatalogs(),
+    "0 0 1,11,21,31 * *" // a las 00:00 los d√≠as 1, 11, 21 y 31
+);
+RecurringJob.AddOrUpdate<CronRecetaService>(
+    "CronRecetaServiceJob",
+    svc => svc.ObtenerDetalleCronicoESAsync(),
+    "0 2 * * *"
+);
+RecurringJob.AddOrUpdate<IToolsService>(
+    "GuardarAlertasDesdeVidalJob",
+    svc => svc.GuardarTodasLasAlertasDesdeVidalAsync(),
+    "0 0 * * *" // todos los d√≠as a la medianoche
+);
 app.Run();

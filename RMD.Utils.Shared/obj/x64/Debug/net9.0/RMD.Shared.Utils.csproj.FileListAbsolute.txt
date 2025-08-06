@@ -1,0 +1,16 @@
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\bin\x64\Debug\net9.0\RMD.Shared.Utils.deps.json
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\bin\x64\Debug\net9.0\RMD.Shared.Utils.dll
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\bin\x64\Debug\net9.0\RMD.Shared.Utils.pdb
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\bin\x64\Debug\net9.0\RMD.Shared.Models.dll
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\bin\x64\Debug\net9.0\RMD.Shared.Models.pdb
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\obj\x64\Debug\net9.0\RMD.Shared.Utils.csproj.AssemblyReference.cache
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\obj\x64\Debug\net9.0\RMD.Shared.Utils.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\obj\x64\Debug\net9.0\RMD.Shared.Utils.AssemblyInfoInputs.cache
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\obj\x64\Debug\net9.0\RMD.Shared.Utils.AssemblyInfo.cs
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\obj\x64\Debug\net9.0\RMD.Shared.Utils.csproj.CoreCompileInputs.cache
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\obj\x64\Debug\net9.0\RMD.Shared.Utils.sourcelink.json
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\obj\x64\Debug\net9.0\RMD.Shar.34AD1EFE.Up2Date
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\obj\x64\Debug\net9.0\RMD.Shared.Utils.dll
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\obj\x64\Debug\net9.0\refint\RMD.Shared.Utils.dll
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\obj\x64\Debug\net9.0\RMD.Shared.Utils.pdb
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.Utils.Shared\obj\x64\Debug\net9.0\ref\RMD.Shared.Utils.dll

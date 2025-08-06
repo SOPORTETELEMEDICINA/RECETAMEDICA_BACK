@@ -1,64 +1,37 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.SqlClient;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using RMD.Data;
+﻿using Dapper;
 using RMD.Extensions;
-using RMD.Interface.Notificaciones;
+using RMD.Interface.Security;
 using RMD.Interface.Usuarios;
-using RMD.Models.Responses;
-using RMD.Models.Usuarios;
+using RMD.Shared.Models.Usuarios;
 
 namespace RMD.Service.Usuarios
 {
     public class TipoUsuarioService : ITipoUsuarioService
     {
-        private readonly UsuariosDBContext _context;
         private readonly ICatalogoNotificacionService _catalogoNotificacionService;
-        private readonly string _connectionString;
+        private readonly IDapperService _dapperService;
 
         public TipoUsuarioService(
-            UsuariosDBContext context,
             ICatalogoNotificacionService catalogoNotificacionService,
-            string connectionString)
+            IDapperService dapperService)
         {
-            _context = context;
             _catalogoNotificacionService = catalogoNotificacionService;
-            _connectionString = connectionString;
+            _dapperService = dapperService;
         }
 
         public async Task<ResponseFromService<IEnumerable<TipoUsuario>>> GetAllTipoUsuarioAsync()
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                using var multi = await _dapperService.QueryMultipleAsync("sp_Cat_GetAllTipoUsuario");
 
-                using var command = new SqlCommand("sp_Cat_GetAllTipoUsuario", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-
-                using var reader = await command.ExecuteReaderAsync();
-
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                int codigoNotificacion = await multi.ReadFirstOrDefaultAsync<int>();
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
-                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
-                {
+
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
                     return ResponseFromService<IEnumerable<TipoUsuario>>.Failure(notificacion);
-                }
 
-                var tipos = new List<TipoUsuario>();
-                if (await reader.NextResultAsync())
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        tipos.Add(TipoUsuario.FromDataReader(reader));
-                    }
-                }
-
+                var tipos = (await multi.ReadAsync<TipoUsuario>()).ToList();
                 return ResponseFromService<IEnumerable<TipoUsuario>>.Success(tipos, notificacion);
             }
             catch (Exception ex)
@@ -67,38 +40,22 @@ namespace RMD.Service.Usuarios
                 return ResponseFromService<IEnumerable<TipoUsuario>>.Exeption(ex, error);
             }
         }
-
-
         public async Task<ResponseFromService<TipoUsuario>> GetTipoUsuarioByIdAsync(Guid id)
         {
             try
             {
-                var parameter = new SqlParameter("@IdTipoUsuario", id);
+                var parameters = new DynamicParameters();
+                parameters.Add("@IdTipoUsuario", id);
 
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                using var multi = await _dapperService.QueryMultipleAsync("sp_Cat_GetTipoUsuarioById", parameters);
 
-                using var command = new SqlCommand("sp_Cat_GetTipoUsuarioById", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                command.Parameters.Add(parameter);
-
-                using var reader = await command.ExecuteReaderAsync();
-
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                int codigoNotificacion = await multi.ReadFirstOrDefaultAsync<int>();
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
-                if (notificacion.ToastType.ToUpperInvariant() == "ERROR")
-                {
+
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
                     return ResponseFromService<TipoUsuario>.Failure(notificacion);
-                }
 
-                TipoUsuario tipo = null;
-                if (await reader.NextResultAsync() && await reader.ReadAsync())
-                {
-                    tipo = TipoUsuario.FromDataReader(reader);
-                }
-
+                var tipo = await multi.ReadFirstOrDefaultAsync<TipoUsuario>();
                 return ResponseFromService<TipoUsuario>.Success(tipo, notificacion);
             }
             catch (Exception ex)
@@ -107,28 +64,17 @@ namespace RMD.Service.Usuarios
                 return ResponseFromService<TipoUsuario>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<string>> CreateTipoUsuarioAsync(TipoUsuario tipoUsuario)
         {
             try
             {
-                var parameter = new SqlParameter("@TipoUsuario", SqlDbType.Structured)
-                {
-                    TypeName = "dbo.TipoUsuarioType",
-                    Value = new List<TipoUsuario> { tipoUsuario }.ToDataTable()
-                };
+                var table = new List<TipoUsuario> { tipoUsuario }.ToDataTable();
+                var parameters = new DynamicParameters();
+                parameters.Add("@TipoUsuario", table.AsTableValuedParameter("dbo.TipoUsuarioType"));
 
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                using var multi = await _dapperService.QueryMultipleAsync("sp_Cat_CreateTipoUsuario", parameters);
 
-                using var command = new SqlCommand("sp_Cat_CreateTipoUsuario", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                command.Parameters.Add(parameter);
-
-                using var reader = await command.ExecuteReaderAsync();
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                int codigoNotificacion = await multi.ReadFirstOrDefaultAsync<int>();
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
                 return notificacion.ToastType.ToUpperInvariant() == "ERROR"
@@ -141,29 +87,17 @@ namespace RMD.Service.Usuarios
                 return ResponseFromService<string>.Exeption(ex, error);
             }
         }
-
         public async Task<ResponseFromService<string>> UpdateTipoUsuarioAsync(TipoUsuario tipoUsuario)
         {
             try
             {
-                var parameter = new SqlParameter("@TipoUsuario", SqlDbType.Structured)
-                {
-                    TypeName = "dbo.TipoUsuarioType",
-                    Value = new List<TipoUsuario> { tipoUsuario }.ToDataTable()
-                };
+                var table = new List<TipoUsuario> { tipoUsuario }.ToDataTable();
+                var parameters = new DynamicParameters();
+                parameters.Add("@TipoUsuario", table.AsTableValuedParameter("dbo.TipoUsuarioType"));
 
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                using var multi = await _dapperService.QueryMultipleAsync("sp_Cat_UpdateTipoUsuario", parameters);
 
-                using var command = new SqlCommand("sp_Cat_UpdateTipoUsuario", connection)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                command.Parameters.Add(parameter);
-
-                using var reader = await command.ExecuteReaderAsync();
-                // Recibe el código de notificación retornado por el SP
-                int codigoNotificacion = await ValidationHelper.ReadErrorCodeAsync(reader);
+                int codigoNotificacion = await multi.ReadFirstOrDefaultAsync<int>();
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
                 return notificacion.ToastType.ToUpperInvariant() == "ERROR"
@@ -176,6 +110,5 @@ namespace RMD.Service.Usuarios
                 return ResponseFromService<string>.Exeption(ex, error);
             }
         }
-
     }
 }

@@ -1,6 +1,4 @@
-﻿using System.Threading.Tasks;
-using RMD.Models.Responses;
-using RMD.Models.Usuarios;
+﻿using RMD.Shared.Models.Usuarios;
 
 namespace RMD.Interface.Usuarios
 {

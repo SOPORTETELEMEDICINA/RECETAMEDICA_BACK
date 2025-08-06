@@ -1,0 +1,322 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>RMD.Movil</name>
+    </assembly>
+    <members>
+        <member name="T:RMD.Movil.PageModels.Controls.BottomNavBarModel">
+            <inheritdoc/>
+            <inheritdoc/>
+            <inheritdoc/>
+            <inheritdoc/>
+        </member>
+        <member name="F:RMD.Movil.PageModels.Controls.BottomNavBarModel.navigateHomeCommand">
+            <summary>The backing field for <see cref="P:RMD.Movil.PageModels.Controls.BottomNavBarModel.NavigateHomeCommand"/>.</summary>
+        </member>
+        <member name="P:RMD.Movil.PageModels.Controls.BottomNavBarModel.NavigateHomeCommand">
+            <summary>Gets an <see cref="T:CommunityToolkit.Mvvm.Input.IAsyncRelayCommand"/> instance wrapping <see cref="M:RMD.Movil.PageModels.Controls.BottomNavBarModel.NavigateHome"/>.</summary>
+        </member>
+        <member name="F:RMD.Movil.PageModels.Controls.BottomNavBarModel.navigateRecetasCommand">
+            <summary>The backing field for <see cref="P:RMD.Movil.PageModels.Controls.BottomNavBarModel.NavigateRecetasCommand"/>.</summary>
+        </member>
+        <member name="P:RMD.Movil.PageModels.Controls.BottomNavBarModel.NavigateRecetasCommand">
+            <summary>Gets an <see cref="T:CommunityToolkit.Mvvm.Input.IAsyncRelayCommand"/> instance wrapping <see cref="M:RMD.Movil.PageModels.Controls.BottomNavBarModel.NavigateRecetas"/>.</summary>
+        </member>
+        <member name="F:RMD.Movil.PageModels.Controls.BottomNavBarModel.navigateMedicacionCommand">
+            <summary>The backing field for <see cref="P:RMD.Movil.PageModels.Controls.BottomNavBarModel.NavigateMedicacionCommand"/>.</summary>
+        </member>
+        <member name="P:RMD.Movil.PageModels.Controls.BottomNavBarModel.NavigateMedicacionCommand">
+            <summary>Gets an <see cref="T:CommunityToolkit.Mvvm.Input.IAsyncRelayCommand"/> instance wrapping <see cref="M:RMD.Movil.PageModels.Controls.BottomNavBarModel.NavigateMedicacion"/>.</summary>
+        </member>
+        <member name="F:RMD.Movil.PageModels.Controls.BottomNavBarModel.navigateEventosCommand">
+            <summary>The backing field for <see cref="P:RMD.Movil.PageModels.Controls.BottomNavBarModel.NavigateEventosCommand"/>.</summary>
+        </member>
+        <member name="P:RMD.Movil.PageModels.Controls.BottomNavBarModel.NavigateEventosCommand">
+            <summary>Gets an <see cref="T:CommunityToolkit.Mvvm.Input.IAsyncRelayCommand"/> instance wrapping <see cref="M:RMD.Movil.PageModels.Controls.BottomNavBarModel.NavigateEventos"/>.</summary>
+        </member>
+        <member name="T:RMD.Movil.PageModels.Controls.HeaderPageModel">
+            <inheritdoc/>
+        </member>
+        <member name="P:RMD.Movil.PageModels.Controls.HeaderPageModel.NombreUsuario">
+            <inheritdoc cref="F:RMD.Movil.PageModels.Controls.HeaderPageModel.nombreUsuario"/>
+        </member>
+        <member name="P:RMD.Movil.PageModels.Controls.HeaderPageModel.ImagenUsuarioBase64">
+            <inheritdoc cref="F:RMD.Movil.PageModels.Controls.HeaderPageModel.imagenUsuarioBase64"/>
+        </member>
+        <member name="T:RMD.Movil.PageModels.Controls.UserInfoComponentModel">
+            <inheritdoc/>
+        </member>
+        <member name="P:RMD.Movil.PageModels.Controls.UserInfoComponentModel.NombreUsuario">
+            <inheritdoc cref="F:RMD.Movil.PageModels.Controls.UserInfoComponentModel.nombreUsuario"/>
+        </member>
+        <member name="P:RMD.Movil.PageModels.Controls.UserInfoComponentModel.ImagenUsuarioBase64">
+            <inheritdoc cref="F:RMD.Movil.PageModels.Controls.UserInfoComponentModel.imagenUsuarioBase64"/>
+        </member>
+        <member name="T:RMD.Movil.PageModels.EventosPageModel">
+            <inheritdoc/>
+            <inheritdoc/>
+            <inheritdoc/>
+        </member>
+        <member name="P:RMD.Movil.PageModels.EventosPageModel.Eventos">
+            <inheritdoc cref="F:RMD.Movil.PageModels.EventosPageModel.eventos"/>
+        </member>
+        <member name="F:RMD.Movil.PageModels.EventosPageModel.registrarNuevoCommand">
+            <summary>The backing field for <see cref="P:RMD.Movil.PageModels.EventosPageModel.RegistrarNuevoCommand"/>.</summary>
+        </member>
+        <member name="P:RMD.Movil.PageModels.EventosPageModel.RegistrarNuevoCommand">
+            <summary>Gets an <see cref="T:CommunityToolkit.Mvvm.Input.IAsyncRelayCommand"/> instance wrapping <see cref="M:RMD.Movil.PageModels.EventosPageModel.RegistrarNuevo"/>.</summary>
+        </member>
+        <member name="F:RMD.Movil.PageModels.EventosPageModel.cargarEventosCommand">
+            <summary>The backing field for <see cref="P:RMD.Movil.PageModels.EventosPageModel.CargarEventosCommand"/>.</summary>
+        </member>
+        <member name="P:RMD.Movil.PageModels.EventosPageModel.CargarEventosCommand">
+            <summary>Gets an <see cref="T:CommunityToolkit.Mvvm.Input.IAsyncRelayCommand"/> instance wrapping <see cref="M:RMD.Movil.PageModels.EventosPageModel.CargarEventos"/>.</summary>
+        </member>
+        <member name="T:RMD.Movil.PageModels.HomePageModel">
+            <inheritdoc/>
+            <inheritdoc/>
+            <inheritdoc/>
+            <inheritdoc/>
+            <inheritdoc/>
+        </member>
+        <member name="F:RMD.Movil.PageModels.HomePageModel.cerrarSesionCommand">
+            <summary>The backing field for <see cref="P:RMD.Movil.PageModels.HomePageModel.CerrarSesionCommand"/>.</summary>
+        </member>
+        <member name="P:RMD.Movil.PageModels.HomePageModel.CerrarSesionCommand">
+            <summary>Gets an <see cref="T:CommunityToolkit.Mvvm.Input.IAsyncRelayCommand"/> instance wrapping <see cref="M:RMD.Movil.PageModels.HomePageModel.CerrarSesion"/>.</summary>
+        </member>
+        <member name="F:RMD.Movil.PageModels.HomePageModel.verRecetasCommand">
+            <summary>The backing field for <see cref="P:RMD.Movil.PageModels.HomePageModel.VerRecetasCommand"/>.</summary>
+        </member>
+        <member name="P:RMD.Movil.PageModels.HomePageModel.VerRecetasCommand">
+            <summary>Gets an <see cref="T:CommunityToolkit.Mvvm.Input.IAsyncRelayCommand"/> instance wrapping <see cref="M:RMD.Movil.PageModels.HomePageModel.VerRecetas"/>.</summary>
+        </member>
+        <member name="F:RMD.Movil.PageModels.HomePageModel.eventoSaludCommand">
+            <summary>The backing field for <see cref="P:RMD.Movil.PageModels.HomePageModel.EventoSaludCommand"/>.</summary>
+        </member>
+        <member name="P:RMD.Movil.PageModels.HomePageModel.EventoSaludCommand">
+            <summary>Gets an <see cref="T:CommunityToolkit.Mvvm.Input.IAsyncRelayCommand"/> instance wrapping <see cref="M:RMD.Movil.PageModels.HomePageModel.EventoSalud"/>.</summary>
+        </member>
+        <member name="F:RMD.Movil.PageModels.HomePageModel.medicacionCommand">
+            <summary>The backing field for <see cref="P:RMD.Movil.PageModels.HomePageModel.MedicacionCommand"/>.</summary>
+        </member>
+        <member name="P:RMD.Movil.PageModels.HomePageModel.MedicacionCommand">
+            <summary>Gets an <see cref="T:CommunityToolkit.Mvvm.Input.IAsyncRelayCommand"/> instance wrapping <see cref="M:RMD.Movil.PageModels.HomePageModel.Medicacion"/>.</summary>
+        </member>
+        <member name="F:RMD.Movil.PageModels.HomePageModel.perfilSaludCommand">
+            <summary>The backing field for <see cref="P:RMD.Movil.PageModels.HomePageModel.PerfilSaludCommand"/>.</summary>
+        </member>
+        <member name="P:RMD.Movil.PageModels.HomePageModel.PerfilSaludCommand">
+            <summary>Gets an <see cref="T:CommunityToolkit.Mvvm.Input.IAsyncRelayCommand"/> instance wrapping <see cref="M:RMD.Movil.PageModels.HomePageModel.PerfilSalud"/>.</summary>
+        </member>
+        <member name="T:RMD.Movil.PageModels.RegistrarEventoSaludPageModel">
+            <inheritdoc/>
+            <inheritdoc/>
+            <inheritdoc/>
+        </member>
+        <member name="P:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.TiposEventos">
+            <inheritdoc cref="F:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.tiposEventos"/>
+        </member>
+        <member name="P:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.TipoSeleccionado">
+            <inheritdoc cref="F:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.tipoSeleccionado"/>
+        </member>
+        <member name="P:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.FechaEvento">
+            <inheritdoc cref="F:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.fechaEvento"/>
+        </member>
+        <member name="P:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.Descripcion">
+            <inheritdoc cref="F:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.descripcion"/>
+        </member>
+        <member name="F:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.guardarCommand">
+            <summary>The backing field for <see cref="P:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.GuardarCommand"/>.</summary>
+        </member>
+        <member name="P:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.GuardarCommand">
+            <summary>Gets an <see cref="T:CommunityToolkit.Mvvm.Input.IAsyncRelayCommand"/> instance wrapping <see cref="M:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.Guardar"/>.</summary>
+        </member>
+        <member name="F:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.cancelarCommand">
+            <summary>The backing field for <see cref="P:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.CancelarCommand"/>.</summary>
+        </member>
+        <member name="P:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.CancelarCommand">
+            <summary>Gets an <see cref="T:CommunityToolkit.Mvvm.Input.IAsyncRelayCommand"/> instance wrapping <see cref="M:RMD.Movil.PageModels.RegistrarEventoSaludPageModel.Cancelar"/>.</summary>
+        </member>
+        <member name="T:RMD.Movil.Resource">
+            <summary>
+            Android Resource Designer class.
+            Exposes the Android Resource designer assembly into the project Namespace.
+            </summary>
+        </member>
+        <member name="M:Microsoft.Maui.Controls.ColorAnimationExtensions_Button.TextColorTo(Microsoft.Maui.Controls.Button,Microsoft.Maui.Graphics.Color,System.UInt32,System.UInt32,Microsoft.Maui.Easing,System.Threading.CancellationToken)">
+            <summary>
+            Animates the TextColor of an <see cref = "T:Microsoft.Maui.ITextStyle"/> to the given color
+            </summary>
+            <param name = "element"></param>
+            <param name = "color">The target color to animate the <see cref = "P:Microsoft.Maui.ITextStyle.TextColor"/> to</param>
+            <param name = "rate">The time, in milliseconds, between the frames of the animation</param>
+            <param name = "length">The duration, in milliseconds, of the animation</param>
+            <param name = "easing">The easing function to be used in the animation</param>
+            <param name = "token"><see cref = "T:System.Threading.CancellationToken"/></param>
+            <returns>Value indicating if the animation completed successfully or not</returns>
+        </member>
+        <member name="M:Microsoft.Maui.Controls.ColorAnimationExtensions_DatePicker.TextColorTo(Microsoft.Maui.Controls.DatePicker,Microsoft.Maui.Graphics.Color,System.UInt32,System.UInt32,Microsoft.Maui.Easing,System.Threading.CancellationToken)">
+            <summary>
+            Animates the TextColor of an <see cref = "T:Microsoft.Maui.ITextStyle"/> to the given color
+            </summary>
+            <param name = "element"></param>
+            <param name = "color">The target color to animate the <see cref = "P:Microsoft.Maui.ITextStyle.TextColor"/> to</param>
+            <param name = "rate">The time, in milliseconds, between the frames of the animation</param>
+            <param name = "length">The duration, in milliseconds, of the animation</param>
+            <param name = "easing">The easing function to be used in the animation</param>
+            <param name = "token"><see cref = "T:System.Threading.CancellationToken"/></param>
+            <returns>Value indicating if the animation completed successfully or not</returns>
+        </member>
+        <member name="M:Microsoft.Maui.Controls.ColorAnimationExtensions_Editor.TextColorTo(Microsoft.Maui.Controls.Editor,Microsoft.Maui.Graphics.Color,System.UInt32,System.UInt32,Microsoft.Maui.Easing,System.Threading.CancellationToken)">
+            <summary>
+            Animates the TextColor of an <see cref = "T:Microsoft.Maui.ITextStyle"/> to the given color
+            </summary>
+            <param name = "element"></param>
+            <param name = "color">The target color to animate the <see cref = "P:Microsoft.Maui.ITextStyle.TextColor"/> to</param>
+            <param name = "rate">The time, in milliseconds, between the frames of the animation</param>
+            <param name = "length">The duration, in milliseconds, of the animation</param>
+            <param name = "easing">The easing function to be used in the animation</param>
+            <param name = "token"><see cref = "T:System.Threading.CancellationToken"/></param>
+            <returns>Value indicating if the animation completed successfully or not</returns>
+        </member>
+        <member name="M:Microsoft.Maui.Controls.ColorAnimationExtensions_Entry.TextColorTo(Microsoft.Maui.Controls.Entry,Microsoft.Maui.Graphics.Color,System.UInt32,System.UInt32,Microsoft.Maui.Easing,System.Threading.CancellationToken)">
+            <summary>
+            Animates the TextColor of an <see cref = "T:Microsoft.Maui.ITextStyle"/> to the given color
+            </summary>
+            <param name = "element"></param>
+            <param name = "color">The target color to animate the <see cref = "P:Microsoft.Maui.ITextStyle.TextColor"/> to</param>
+            <param name = "rate">The time, in milliseconds, between the frames of the animation</param>
+            <param name = "length">The duration, in milliseconds, of the animation</param>
+            <param name = "easing">The easing function to be used in the animation</param>
+            <param name = "token"><see cref = "T:System.Threading.CancellationToken"/></param>
+            <returns>Value indicating if the animation completed successfully or not</returns>
+        </member>
+        <member name="M:Microsoft.Maui.Controls.ColorAnimationExtensions_InputView.TextColorTo(Microsoft.Maui.Controls.InputView,Microsoft.Maui.Graphics.Color,System.UInt32,System.UInt32,Microsoft.Maui.Easing,System.Threading.CancellationToken)">
+            <summary>
+            Animates the TextColor of an <see cref = "T:Microsoft.Maui.ITextStyle"/> to the given color
+            </summary>
+            <param name = "element"></param>
+            <param name = "color">The target color to animate the <see cref = "P:Microsoft.Maui.ITextStyle.TextColor"/> to</param>
+            <param name = "rate">The time, in milliseconds, between the frames of the animation</param>
+            <param name = "length">The duration, in milliseconds, of the animation</param>
+            <param name = "easing">The easing function to be used in the animation</param>
+            <param name = "token"><see cref = "T:System.Threading.CancellationToken"/></param>
+            <returns>Value indicating if the animation completed successfully or not</returns>
+        </member>
+        <member name="M:Microsoft.Maui.Controls.ColorAnimationExtensions_Label.TextColorTo(Microsoft.Maui.Controls.Label,Microsoft.Maui.Graphics.Color,System.UInt32,System.UInt32,Microsoft.Maui.Easing,System.Threading.CancellationToken)">
+            <summary>
+            Animates the TextColor of an <see cref = "T:Microsoft.Maui.ITextStyle"/> to the given color
+            </summary>
+            <param name = "element"></param>
+            <param name = "color">The target color to animate the <see cref = "P:Microsoft.Maui.ITextStyle.TextColor"/> to</param>
+            <param name = "rate">The time, in milliseconds, between the frames of the animation</param>
+            <param name = "length">The duration, in milliseconds, of the animation</param>
+            <param name = "easing">The easing function to be used in the animation</param>
+            <param name = "token"><see cref = "T:System.Threading.CancellationToken"/></param>
+            <returns>Value indicating if the animation completed successfully or not</returns>
+        </member>
+        <member name="M:Microsoft.Maui.Controls.ColorAnimationExtensions_Picker.TextColorTo(Microsoft.Maui.Controls.Picker,Microsoft.Maui.Graphics.Color,System.UInt32,System.UInt32,Microsoft.Maui.Easing,System.Threading.CancellationToken)">
+            <summary>
+            Animates the TextColor of an <see cref = "T:Microsoft.Maui.ITextStyle"/> to the given color
+            </summary>
+            <param name = "element"></param>
+            <param name = "color">The target color to animate the <see cref = "P:Microsoft.Maui.ITextStyle.TextColor"/> to</param>
+            <param name = "rate">The time, in milliseconds, between the frames of the animation</param>
+            <param name = "length">The duration, in milliseconds, of the animation</param>
+            <param name = "easing">The easing function to be used in the animation</param>
+            <param name = "token"><see cref = "T:System.Threading.CancellationToken"/></param>
+            <returns>Value indicating if the animation completed successfully or not</returns>
+        </member>
+        <member name="M:Microsoft.Maui.Controls.ColorAnimationExtensions_RadioButton.TextColorTo(Microsoft.Maui.Controls.RadioButton,Microsoft.Maui.Graphics.Color,System.UInt32,System.UInt32,Microsoft.Maui.Easing,System.Threading.CancellationToken)">
+            <summary>
+            Animates the TextColor of an <see cref = "T:Microsoft.Maui.ITextStyle"/> to the given color
+            </summary>
+            <param name = "element"></param>
+            <param name = "color">The target color to animate the <see cref = "P:Microsoft.Maui.ITextStyle.TextColor"/> to</param>
+            <param name = "rate">The time, in milliseconds, between the frames of the animation</param>
+            <param name = "length">The duration, in milliseconds, of the animation</param>
+            <param name = "easing">The easing function to be used in the animation</param>
+            <param name = "token"><see cref = "T:System.Threading.CancellationToken"/></param>
+            <returns>Value indicating if the animation completed successfully or not</returns>
+        </member>
+        <member name="M:Microsoft.Maui.Controls.ColorAnimationExtensions_SearchBar.TextColorTo(Microsoft.Maui.Controls.SearchBar,Microsoft.Maui.Graphics.Color,System.UInt32,System.UInt32,Microsoft.Maui.Easing,System.Threading.CancellationToken)">
+            <summary>
+            Animates the TextColor of an <see cref = "T:Microsoft.Maui.ITextStyle"/> to the given color
+            </summary>
+            <param name = "element"></param>
+            <param name = "color">The target color to animate the <see cref = "P:Microsoft.Maui.ITextStyle.TextColor"/> to</param>
+            <param name = "rate">The time, in milliseconds, between the frames of the animation</param>
+            <param name = "length">The duration, in milliseconds, of the animation</param>
+            <param name = "easing">The easing function to be used in the animation</param>
+            <param name = "token"><see cref = "T:System.Threading.CancellationToken"/></param>
+            <returns>Value indicating if the animation completed successfully or not</returns>
+        </member>
+        <member name="M:Microsoft.Maui.Controls.ColorAnimationExtensions_TimePicker.TextColorTo(Microsoft.Maui.Controls.TimePicker,Microsoft.Maui.Graphics.Color,System.UInt32,System.UInt32,Microsoft.Maui.Easing,System.Threading.CancellationToken)">
+            <summary>
+            Animates the TextColor of an <see cref = "T:Microsoft.Maui.ITextStyle"/> to the given color
+            </summary>
+            <param name = "element"></param>
+            <param name = "color">The target color to animate the <see cref = "P:Microsoft.Maui.ITextStyle.TextColor"/> to</param>
+            <param name = "rate">The time, in milliseconds, between the frames of the animation</param>
+            <param name = "length">The duration, in milliseconds, of the animation</param>
+            <param name = "easing">The easing function to be used in the animation</param>
+            <param name = "token"><see cref = "T:System.Threading.CancellationToken"/></param>
+            <returns>Value indicating if the animation completed successfully or not</returns>
+        </member>
+        <member name="T:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangingArgs">
+            <summary>
+            A helper type providing cached, reusable <see cref="T:System.ComponentModel.PropertyChangingEventArgs"/> instances
+            for all properties generated with <see cref="T:CommunityToolkit.Mvvm.ComponentModel.ObservablePropertyAttribute"/>.
+            </summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangingArgs.NombreUsuario">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangingEventArgs"/> instance for all "NombreUsuario" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangingArgs.ImagenUsuarioBase64">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangingEventArgs"/> instance for all "ImagenUsuarioBase64" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangingArgs.Eventos">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangingEventArgs"/> instance for all "Eventos" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangingArgs.TiposEventos">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangingEventArgs"/> instance for all "TiposEventos" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangingArgs.TipoSeleccionado">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangingEventArgs"/> instance for all "TipoSeleccionado" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangingArgs.FechaEvento">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangingEventArgs"/> instance for all "FechaEvento" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangingArgs.Descripcion">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangingEventArgs"/> instance for all "Descripcion" generated properties.</summary>
+        </member>
+        <member name="T:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangedArgs">
+            <summary>
+            A helper type providing cached, reusable <see cref="T:System.ComponentModel.PropertyChangedEventArgs"/> instances
+            for all properties generated with <see cref="T:CommunityToolkit.Mvvm.ComponentModel.ObservablePropertyAttribute"/>.
+            </summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangedArgs.NombreUsuario">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangedEventArgs"/> instance for all "NombreUsuario" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangedArgs.ImagenUsuarioBase64">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangedEventArgs"/> instance for all "ImagenUsuarioBase64" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangedArgs.Eventos">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangedEventArgs"/> instance for all "Eventos" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangedArgs.TiposEventos">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangedEventArgs"/> instance for all "TiposEventos" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangedArgs.TipoSeleccionado">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangedEventArgs"/> instance for all "TipoSeleccionado" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangedArgs.FechaEvento">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangedEventArgs"/> instance for all "FechaEvento" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangedArgs.Descripcion">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangedEventArgs"/> instance for all "Descripcion" generated properties.</summary>
+        </member>
+    </members>
+</doc>

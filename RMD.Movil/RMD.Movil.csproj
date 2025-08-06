@@ -1,0 +1,137 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net9.0-android;net9.0-ios</TargetFrameworks>
+		<OutputType>Exe</OutputType>
+		<RootNamespace>RMD.Movil</RootNamespace>
+		<UseMaui>true</UseMaui>
+		<SingleProject>true</SingleProject>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<NoWarn>XC0103</NoWarn>
+		<UseWinUI>true</UseWinUI>
+		<MauiEnableXamlCBindingWithSourceCompilation>true</MauiEnableXamlCBindingWithSourceCompilation>
+
+		<ApplicationTitle>RMD.Movil</ApplicationTitle>
+		<ApplicationId>com.companyname.rmd.movil2</ApplicationId>
+		<ApplicationDisplayVersion>1.1</ApplicationDisplayVersion>
+		<ApplicationVersion>1</ApplicationVersion>
+		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
+		<WindowsPackageType>None</WindowsPackageType>
+		<!-- Solo para Android e iOS -->
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">29.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
+		
+		<Platforms>AnyCPU;ARM64;x64</Platforms>
+
+		<DefaultLanguage>es</DefaultLanguage>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#17171a" />
+		<MauiSplashScreen Include="Resources\Images\splash.png" Color="#17171a" BaseSize="128,128" />
+		<!--<MauiSplashScreen Include="Resources\Splash\splash.svg" />-->
+		<MauiImage Include="Resources\Images\*" />
+		<MauiFont Include="Resources\Fonts\*" />
+		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <MauiImage Remove="Resources\Images\splash.png" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Remove="Resources\Images\EventosSalud\icono_evento.png" />
+	  <None Remove="Resources\Images\NavBar\button_eventos_salud.png" />
+	  <None Remove="Resources\Images\NavBar\button_eventos_salud_active.png" />
+	  <None Remove="Resources\Images\NavBar\button_home.png" />
+	  <None Remove="Resources\Images\NavBar\button_home_active.png" />
+	  <None Remove="Resources\Images\NavBar\button_medicamentos.png" />
+	  <None Remove="Resources\Images\NavBar\button_medicamentos_active.png" />
+	  <None Remove="Resources\Images\NavBar\button_receta.png" />
+	  <None Remove="Resources\Images\NavBar\button_receta_active.png" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Http" Version="9.0.8" />
+		<PackageReference Include="Microsoft.Maui.Controls" Version="9.0.90" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.7" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+		<PackageReference Include="CommunityToolkit.Maui" Version="12.1.0" />
+		<PackageReference Include="Syncfusion.Maui.Toolkit" Version="1.0.6" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<MauiXaml Update="Pages\Controls\BottomNavBar.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="Pages\Controls\HeaderPage.xaml">
+		  <Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="Pages\Controls\UserInfoComponent.xaml">
+		  <Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="Pages\EventosPage.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="Pages\HomePage.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="Pages\LoginPage.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="Pages\RegistrarEventoSaludPage.xaml">
+		  <Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="Pages\RecetasPage.xaml">
+		  <Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="Pages\RegionPage.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="Pages\SplashPage.xaml">
+		  <Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Folder Include="Data\" />
+		<Folder Include="Models\" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <MauiImage Include="Resources\Images\EventosSalud\icono_evento.png" />
+	  <MauiImage Include="Resources\Images\Home\btn_cerrar_sesion.png" />
+	  <MauiImage Include="Resources\Images\Home\btn_evento_salud.png" />
+	  <MauiImage Include="Resources\Images\Home\btn_medicacion.png" />
+	  <MauiImage Include="Resources\Images\Home\btn_perfil_salud.png" />
+	  <MauiImage Include="Resources\Images\Home\btn_ver_recetas.png" />
+	  <MauiImage Include="Resources\Images\Home\doctor_avatar.png" />
+	  <MauiImage Include="Resources\Images\Home\logo_mid.png" />
+	  <MauiImage Include="Resources\Images\NavBar\button_eventos_salud.png" />
+	  <MauiImage Include="Resources\Images\NavBar\button_eventos_salud_active.png" />
+	  <MauiImage Include="Resources\Images\NavBar\button_home.png" />
+	  <MauiImage Include="Resources\Images\NavBar\button_home_active.png" />
+	  <MauiImage Include="Resources\Images\NavBar\button_medicamentos.png" />
+	  <MauiImage Include="Resources\Images\NavBar\button_medicamentos_active.png" />
+	  <MauiImage Include="Resources\Images\NavBar\button_receta.png" />
+	  <MauiImage Include="Resources\Images\NavBar\button_receta_active.png" />
+	  <MauiImage Include="Resources\Images\Shared\fondo_plantilla.png" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\RMD.Models.Shared\RMD.Shared.Models.csproj" />
+		<ProjectReference Include="..\RMD.Movil.Core\RMD.Movil.Core.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Compile Update="Pages\Controls\UserInfoComponent.xaml.cs">
+	    <DependentUpon>UserInfoComponent.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="Pages\RegistrarEventoSaludPage.xaml.cs">
+	    <DependentUpon>RegistrarEventoSaludPage.xaml</DependentUpon>
+	  </Compile>
+	</ItemGroup>
+
+</Project>

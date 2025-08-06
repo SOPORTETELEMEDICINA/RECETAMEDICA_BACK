@@ -1,6 +1,5 @@
-﻿using RMD.Data;
-using RMD.Interface.Notificaciones;
-using RMD.Models.Responses;
+﻿using Microsoft.EntityFrameworkCore;
+using RMD.Data;
 
 namespace RMD.Service.ServiciosInternos
 {

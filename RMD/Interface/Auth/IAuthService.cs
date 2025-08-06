@@ -1,9 +1,4 @@
-﻿using RMD.Models.Login;
-using RMD.Models.Responses;
-using RMD.Models.Usuarios;
-using RMD.Service.Auth;
-using System;
-using System.Threading.Tasks;
+﻿using RMD.Shared.Models.Login;
 
 namespace RMD.Interface.Auth
 {

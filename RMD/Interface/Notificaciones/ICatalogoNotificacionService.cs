@@ -1,6 +1,4 @@
-﻿using RMD.Models.Responses;
-
-namespace RMD.Interface.Notificaciones
+﻿namespace RMD.Interface.Notificaciones
 {
     public interface ICatalogoNotificacionService
     {
