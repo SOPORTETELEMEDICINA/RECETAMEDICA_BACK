@@ -206,12 +206,103 @@
 //        MoveTaskToBack(true);
 //    }
 //}
+//using Android.App;
+//using Android.Content.PM;
+//using Android.OS;
+//using AndroidX.Core.View;
+
+//namespace RMD.MoVil
+//{
+//    [Activity(
+//        Theme = "@style/Maui.MainTheme",
+//        MainLauncher = true,
+//        LaunchMode = LaunchMode.SingleTop,
+//        ConfigurationChanges = ConfigChanges.ScreenSize |
+//                           ConfigChanges.Orientation |
+//                           ConfigChanges.UiMode |
+//                           ConfigChanges.ScreenLayout |
+//                           ConfigChanges.SmallestScreenSize |
+//                           ConfigChanges.Density,
+//    ScreenOrientation = ScreenOrientation.Portrait
+//    )]
+//    public class MainActivity : MauiAppCompatActivity
+//    {
+//        protected override void OnCreate(Bundle? savedInstanceState)
+//        {
+//            base.OnCreate(savedInstanceState);
+
+//            WindowCompat.SetDecorFitsSystemWindows(this.Window, false);
+//            WindowInsetsControllerCompat windowInsetsController =
+//                new WindowInsetsControllerCompat(this.Window, this.Window.DecorView);
+//            // Hide system bars
+//            windowInsetsController.Hide(WindowInsetsCompat.Type.SystemBars());
+//            windowInsetsController.SystemBarsBehavior = WindowInsetsControllerCompat.BehaviorShowTransientBarsBySwipe;
+//        }
+//    }
+//}
+//public class MainActivity : MauiAppCompatActivity
+//{
+//    protected override void OnCreate(Bundle savedInstanceState)
+//    {
+//        base.OnCreate(savedInstanceState);
+
+//        // Esto quita el color de la status bar y fuerza fullscreen
+//        Window.SetFlags(WindowManagerFlags.Fullscreen, WindowManagerFlags.Fullscreen);
+//        Window.SetStatusBarColor(Android.Graphics.Color.Transparent);
+
+//        Window.DecorView.SystemUiVisibility = (StatusBarVisibility)(
+//            SystemUiFlags.LayoutStable |
+//            SystemUiFlags.LayoutFullscreen |
+//            SystemUiFlags.Fullscreen |
+//            SystemUiFlags.HideNavigation |
+//            SystemUiFlags.ImmersiveSticky);
+//    }
+//}
+
+
+//using Android.App;
+//using Android.Content.PM;
+//using Android.OS;
+//using Android.Views;
+//using AndroidX.Core.View;
+
+//namespace RMD.MoVil
+//{
+//    [Activity(
+//        Theme = "@style/Maui.MainTheme",
+//        MainLauncher = true,
+//        LaunchMode = LaunchMode.SingleTop,
+//        ConfigurationChanges = ConfigChanges.ScreenSize |
+//                               ConfigChanges.Orientation |
+//                               ConfigChanges.UiMode |
+//                               ConfigChanges.ScreenLayout |
+//                               ConfigChanges.SmallestScreenSize |
+//                               ConfigChanges.Density,
+//        ScreenOrientation = ScreenOrientation.Portrait
+//    )]
+//    public class MainActivity : MauiAppCompatActivity
+//    {
+//        protected override void OnCreate(Bundle? savedInstanceState)
+//        {
+//            base.OnCreate(savedInstanceState);
+
+//            // Pantalla inmersiva (sin barras)
+//            WindowCompat.SetDecorFitsSystemWindows(this.Window, false);
+//            var windowInsetsController = new WindowInsetsControllerCompat(this.Window, this.Window.DecorView);
+//            windowInsetsController.Hide(WindowInsetsCompat.Type.SystemBars());
+//            windowInsetsController.SystemBarsBehavior =
+//                WindowInsetsControllerCompat.BehaviorShowTransientBarsBySwipe;
+//        }
+//    }
+//}
+
+
 using Android.App;
 using Android.Content.PM;
 using Android.OS;
 using Android.Views;
 
-namespace RMD.MoVil
+namespace RMD.MoVil.Platforms.Android
 {
     [Activity(
         Theme = "@style/Maui.MainTheme",
@@ -222,23 +313,45 @@ namespace RMD.MoVil
                                ConfigChanges.UiMode |
                                ConfigChanges.ScreenLayout |
                                ConfigChanges.SmallestScreenSize |
-                               ConfigChanges.Density)]
+                               ConfigChanges.Density,
+        ScreenOrientation = ScreenOrientation.Portrait)]
     public class MainActivity : MauiAppCompatActivity
     {
-        protected override void OnCreate(Bundle savedInstanceState)
+        protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
 
-            // Esto quita el color de la status bar y fuerza fullscreen
-            Window.SetFlags(WindowManagerFlags.Fullscreen, WindowManagerFlags.Fullscreen);
-            Window.SetStatusBarColor(Android.Graphics.Color.Transparent);
-
-            Window.DecorView.SystemUiVisibility = (StatusBarVisibility)(
-                SystemUiFlags.LayoutStable |
-                SystemUiFlags.LayoutFullscreen |
-                SystemUiFlags.Fullscreen |
-                SystemUiFlags.HideNavigation |
-                SystemUiFlags.ImmersiveSticky);
+            HideSystemUI();
         }
+        private void HideSystemUI()
+        {
+            // Modo fullscreen real moderno
+#pragma warning disable CA1416
+#pragma warning disable CA1422
+            Window?.SetDecorFitsSystemWindows(false); // <- Clave para quitar barras
+#pragma warning restore CA1422
+#pragma warning restore CA1416
+
+            var controller = Window?.InsetsController;
+            if (controller != null)
+            {
+#pragma warning disable CA1416
+                controller.Hide(WindowInsets.Type.NavigationBars() | WindowInsets.Type.StatusBars());
+#pragma warning restore CA1416
+#pragma warning disable CA1416
+                controller.SystemBarsBehavior = (int)WindowInsetsControllerBehavior.ShowTransientBarsBySwipe;
+#pragma warning restore CA1416
+            }
+        }
+
+        // Esto se llama cuando regresas del background
+        public override void OnWindowFocusChanged(bool hasFocus)
+        {
+            base.OnWindowFocusChanged(hasFocus);
+
+            if (hasFocus)
+                HideSystemUI();
+        }
+
     }
 }
