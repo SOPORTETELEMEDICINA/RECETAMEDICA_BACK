@@ -8,16 +8,7 @@ namespace RMD.Data
     public class UsuariosDBContext(DbContextOptions<UsuariosDBContext> options) : DbContext(options)
     {
         public DbSet<CatGrupoEmpresarial> CatGrupoEmpresariales { get; set; }
-        //public DbSet<TipoUsuario> TipoUsuarios { get; set; }
-        //public DbSet<Usuario> Usuarios { get; set; }
-        //public DbSet<RequestUsuario> RequestUsuario { get; set; }
-        
-        //public DbSet<UsuarioSucursal> UsuarioSucursales { get; set; }
-        //public DbSet<UsuarioDetalle> UsuarioDetalle { get; set; }
-        //public DbSet<UsuarioImagenRequest> UsuarioImagenes { get; set; }
-        //public DbSet<SucursalResponse> SucursalResponses { get; set; }
-        //public DbSet<CrearPacienteRequest> CrearPacienteRequests { get; set; }
-
+    
         public DbSet<AuthToken> AuthTokens { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

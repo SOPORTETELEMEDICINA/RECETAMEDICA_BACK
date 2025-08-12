@@ -103,16 +103,6 @@ namespace RMD.Data
             modelBuilder.Entity<DetalleRecetaGet>().HasNoKey()
                 .Property(e => e.CantidadDiaria).HasPrecision(5, 2);
 
-            //// QR ahora en Receta.CodigosQR
-            //modelBuilder.Entity<RecetaQR>()
-            //   .ToTable("CodigosQR", "Receta")
-            ////   .HasKey(qr => qr.IdRecetaQR);
-            //modelBuilder.Entity<RecetaQR>()
-            //    .HasOne<Receta>()
-            //    .WithMany()
-            //    .HasForeignKey(qr => qr.IdReceta)
-            //    .OnDelete(DeleteBehavior.Cascade);
-
             modelBuilder.Entity<DetalleCronico>(entity =>
             {
                 entity.ToTable("DetalleCronico", "Receta");
