@@ -165,6 +165,7 @@ builder.Services.AddScoped<IHelperRecetaService, HelperRecetaService>();
 builder.Services.AddScoped<IHelperRecetaServiceES, HelperRecetaServiceES>();
 builder.Services.AddScoped<IHelperRecetaServiceMX, HelperRecetaServiceMX>();
 builder.Services.AddScoped<IAlertaTomaService, AlertaTomaService>();
+builder.Services.AddScoped<IAlertasProgramadasService, AlertasProgramadasService>();
 builder.Services.AddScoped<IRecetaCatalogosService, RecetaCatalogosService>();
 
 /*  Tutores */

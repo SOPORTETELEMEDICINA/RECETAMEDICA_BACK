@@ -34,7 +34,7 @@ namespace RMD.Shared.Models.Receta.Header.Responses
         public int GenerarPDF { get; set; }
         public int GenerarEventoMedicamentoso { get; set; }
         public bool Timbrada { get; set; } = false; // Indica si la receta está timbrada
-       private static bool ColumnExists(SqlDataReader reader, string columnName)
+        private static bool ColumnExists(SqlDataReader reader, string columnName)
         {
             var schemaTable = reader.GetSchemaTable();
             if (schemaTable != null)

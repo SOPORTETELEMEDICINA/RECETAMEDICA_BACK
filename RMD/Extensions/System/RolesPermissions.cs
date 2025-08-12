@@ -207,7 +207,7 @@
             {
                 { "GetFilteredRecetas", ["Super Admin", "Medico", "Particular", "Supervisor Sucursales", "Responsable Farmacia"] },
                 { "GetFilteredRecetasByIdMedico", ["Medico", "Particular"] },
-                { "GetRecetaByIdReceta", ["Super Admin", "Medico", "Particular", "Supervisor Sucursales", "Responsable Farmacia"] },
+                { "GetRecetaByIdReceta", ["Super Admin", "Medico", "Particular", "Supervisor Sucursales", "Responsable Farmacia","Paciente"] },
                 { "GetRecetasByIdPaciente", ["Super Admin", "Medico", "Particular", "Supervisor Sucursales", "Responsable Farmacia", "Paciente"] },
                 { "GetQRByIdReceta", ["Paciente"] },
                 { "RegistrarReceta", ["Super Admin", "Medico", "Particular"] },
@@ -504,6 +504,7 @@
                 { "ObtenerFrecuencyTypePorId", ["Super Admin", "Supervisor Sucursales", "Responsable Farmacia", "Medico", "Particular", "Paciente"] }
             };
         }
+
         public static class TutoresController
         {
             // Roles con acceso al controlador completo
@@ -525,6 +526,27 @@
                 { "ActualizarTutor", ["Super Admin", "Supervisor Sucursales", "Particular", "Medico"] },
                 { "EliminarTutor", ["Super Admin"] },
                 { "GetTutorPorPaciente", ["Super Admin", "Particular", "Medico", "Supervisor Sucursales", "Paciente"] }
+            };
+        }
+
+        public static class AlertasProgramadasController
+        {
+            // Roles con acceso al controlador completo
+            public static readonly string[] RolesPermitidosAlertasProgramadasController =
+            [
+                "Super Admin",
+                "Supervisor ucursales",
+                "Particular",
+                "Medico",
+                "Paciente",
+                "Responsable Farmacia",
+                "Empleado Farmacia"
+            ];
+
+            // Permisos por endpoint
+            public static readonly Dictionary<string, string[]> EndpointRolesAlertasProgramadasController = new()
+            {
+                { "GetAlertasProgramadas", ["Super Admin", "Paciente"] }
             };
         }
     }

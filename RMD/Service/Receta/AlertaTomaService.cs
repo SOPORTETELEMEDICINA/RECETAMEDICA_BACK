@@ -47,7 +47,7 @@ namespace RMD.Service.Receta
             catch (Exception)
             {
                 var notificacion = await _catalogoNotificacionService
-                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXCEPCION");
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
                 return ResponseFromService<bool>.Failure(notificacion);
             }
         }
