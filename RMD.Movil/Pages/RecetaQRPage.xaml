@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="RMD.Movil.Pages.RecetaQRPage"
+    NavigationPage.HasNavigationBar="False"
+    Shell.PresentationMode="ModalAnimated"
+    BackgroundColor="Transparent"
+    BackgroundImageSource="fondo_pantalla.png">
+
+    <Grid RowDefinitions="Auto,*,Auto" Padding="24,36,24,24">
+
+        <Label Grid.Row="0"
+               Text="QR de Receta"
+               FontFamily="Roboto"
+               FontSize="18"
+               FontAttributes="Bold"
+               TextColor="#69728b"
+               HorizontalOptions="Center" />
+        <Border Grid.Row="1"
+                Margin="0,20,0,20"
+                StrokeThickness="0" 
+                StrokeShape="RoundRectangle 18"
+                BackgroundColor="Transparent">
+            <!-- fondo transparente -->
+            <Border.Shadow>
+                <Shadow Brush="#33000000" Radius="12" Offset="0,4" Opacity="0.25"/>
+            </Border.Shadow>
+
+            <Grid Padding="20">
+                <Image Aspect="AspectFit"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center"
+                       WidthRequest="300"
+                       HeightRequest="300"
+                       Source="{Binding QrImageSource}" />
+
+                <!-- Overlay de carga -->
+                <Grid BackgroundColor="#66000000" IsVisible="{Binding IsBusy}">
+                    <ActivityIndicator IsRunning="True" HorizontalOptions="Center" VerticalOptions="Center"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <Button Grid.Row="2"
+                Text="Cerrar"
+                FontFamily="Roboto"
+                FontSize="14"
+                HeightRequest="44"
+                CornerRadius="10"
+                BackgroundColor="#e96749"
+                TextColor="White"
+                Command="{Binding CloseCommand}" />
+    </Grid>
+</ContentPage>

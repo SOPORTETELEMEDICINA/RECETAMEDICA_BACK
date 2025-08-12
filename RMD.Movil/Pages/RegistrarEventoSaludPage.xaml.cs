@@ -6,20 +6,21 @@ namespace RMD.Movil.Pages;
 public partial class RegistrarEventoSaludPage : ContentPage
 {
     private readonly RegistrarEventoSaludPageModel _viewModel;
+
     public RegistrarEventoSaludPage()
     {
         InitializeComponent();
-        var cateventosService = App.Services.GetService<ICatEventosSaludControllerService>();
-        if (cateventosService == null)
-            throw new Exception("No se pudo resolver IEventosSaludControllerService");
 
-        var eventosService = App.Services.GetService<IEventosSaludControllerService>();
-        if (eventosService == null)
-            throw new Exception("No se pudo resolver IEventosSaludControllerService");
+        var cateventosService = App.Services.GetService<ICatEventosSaludControllerService>()
+                                ?? throw new Exception("No se pudo resolver ICatEventosSaludControllerService");
 
-        _viewModel = new RegistrarEventoSaludPageModel(cateventosService, eventosService);
+        var eventosService = App.Services.GetService<IEventosSaludControllerService>()
+                             ?? throw new Exception("No se pudo resolver IEventosSaludControllerService");
+
+        var detalleService = App.Services.GetService<IDetalleRecetasControllerService>()
+                             ?? throw new Exception("No se pudo resolver IDetalleRecetasControllerService");
+
+        _viewModel = new RegistrarEventoSaludPageModel(cateventosService, eventosService, detalleService);
         BindingContext = _viewModel;
     }
-
 }
-

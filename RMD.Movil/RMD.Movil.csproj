@@ -54,20 +54,25 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="CommunityToolkit.Maui.Core" Version="12.2.0" />
 		<PackageReference Include="Microsoft.Extensions.Http" Version="9.0.8" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="9.0.90" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.7" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.8" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 		<PackageReference Include="CommunityToolkit.Maui" Version="12.1.0" />
+		<PackageReference Include="Microsoft.Maui.Graphics" Version="9.0.90" />
 		<PackageReference Include="Syncfusion.Maui.Toolkit" Version="1.0.6" />
 	</ItemGroup>
 
 	<ItemGroup>
+		<MauiXaml Update="Pages\AvisosMedicacionPage.xaml">
+		  <Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="Pages\CalendarioPopup.xaml">
+		  <Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
 		<MauiXaml Update="Pages\Controls\BottomNavBar.xaml">
 			<Generator>MSBuild:Compile</Generator>
-		</MauiXaml>
-		<MauiXaml Update="Pages\Controls\HeaderPage.xaml">
-		  <Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\Controls\UserInfoComponent.xaml">
 		  <Generator>MSBuild:Compile</Generator>
@@ -75,11 +80,26 @@
 		<MauiXaml Update="Pages\EventosPage.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
+		<MauiXaml Update="Pages\ForgotPasswordPage.xaml">
+		  <Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
 		<MauiXaml Update="Pages\HomePage.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\LoginPage.xaml">
 			<Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="Pages\EditProfilePage.xaml">
+		  <Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="Pages\DetalleRecetaPage.xaml">
+		  <Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="Pages\ActivarAlertaTomaPage.xaml">
+		  <Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
+		<MauiXaml Update="Pages\RecetaQRPage.xaml">
+		  <Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\RegistrarEventoSaludPage.xaml">
 		  <Generator>MSBuild:Compile</Generator>
@@ -97,7 +117,6 @@
 
 	<ItemGroup>
 		<Folder Include="Data\" />
-		<Folder Include="Models\" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -128,6 +147,18 @@
 	<ItemGroup>
 	  <Compile Update="Pages\Controls\UserInfoComponent.xaml.cs">
 	    <DependentUpon>UserInfoComponent.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="Pages\EditProfilePage.xaml.cs">
+	    <DependentUpon>EditProfilePage.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="Pages\DetalleRecetaPage.xaml.cs">
+	    <DependentUpon>DetalleRecetaPage.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="Pages\ActivarAlertaTomaPage.xaml.cs">
+	    <DependentUpon>ActivarAlertaTomaPage.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="Pages\RecetaQRPage.xaml.cs">
+	    <DependentUpon>RecetaQRPage.xaml</DependentUpon>
 	  </Compile>
 	  <Compile Update="Pages\RegistrarEventoSaludPage.xaml.cs">
 	    <DependentUpon>RegistrarEventoSaludPage.xaml</DependentUpon>

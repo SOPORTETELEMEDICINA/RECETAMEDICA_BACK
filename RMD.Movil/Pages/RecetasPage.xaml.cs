@@ -1,55 +1,42 @@
-using System.Collections.ObjectModel;
+using RMD.Movil.Core.Service.Interfaces;
+using RMD.Movil.Services.Pdf;
 
-namespace RMD.Movil.Views
+namespace RMD.Movil.Pages;
+
+public partial class RecetasPage : ContentPage
 {
-    public partial class RecetasPage : ContentPage
+    private readonly RecetasPageModel _viewModel;
+
+    public RecetasPage()
     {
-        public ObservableCollection<RecetaModel> Recetas { get; set; }
+        InitializeComponent();
 
-        public RecetasPage()
-        {
-            InitializeComponent();
+        var recetasService = App.Services.GetService<IRecetaControllerService>();
+        if (recetasService == null)
+            throw new Exception("No se pudo resolver IRecetaControllerService");
 
-            Recetas = new ObservableCollection<RecetaModel>
-            {
-                new RecetaModel
-                {
-                    Folio = "CEL-250304-002-001",
-                    Doctor = "DRA. BRENDA ESTRADA\nMEDICINA DEL DOLOR",
-                    Fecha = "2025–03–04",
-                    Estado = "Surtida",
-                    Color = "#21D1BE"
-                },
-                new RecetaModel
-                {
-                    Folio = "CEL-250506-001-001",
-                    Doctor = "DR. MORENO ESCOBAR ERNESTO\nMED. GENERAL",
-                    Fecha = "01/07/2025",
-                    Estado = "Surtida Parcial",
-                    Color = "#D2BBF2"
-                }
-            };
+        var pdfService = App.Services.GetService<IPdfService>();
+        if (pdfService == null)
+            throw new Exception("No se pudo resolver IRecetaControllerService");
 
-            RecetasCollection.ItemsSource = Recetas;
-        }
-
-        private void btnActivas_Clicked(object sender, EventArgs e)
-        {
-            // Aquí filtras por activas
-        }
-
-        private void btnVencidas_Clicked(object sender, EventArgs e)
-        {
-            // Aquí filtras por vencidas
-        }
+        _viewModel = new RecetasPageModel(recetasService, pdfService);
+        BindingContext = _viewModel;
     }
 
-    public class RecetaModel
+    protected override void OnAppearing()
     {
-        public string Folio { get; set; }
-        public string Doctor { get; set; }
-        public string Fecha { get; set; }
-        public string Estado { get; set; }
-        public string Color { get; set; }
+        base.OnAppearing();
+
+        MainThread.BeginInvokeOnMainThread(async void () =>
+        {
+            try
+            {
+                await _viewModel.InitAsync();
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Error", $"Error al cargar recetas: {ex.Message}", "OK");
+            }
+        });
     }
 }

@@ -5,10 +5,16 @@
     x:Class="RMD.Movil.AppShell"
     Shell.NavBarIsVisible="False"
     Shell.FlyoutBehavior="Disabled">
-
-    <ShellContent Route="RegionPage" ContentTemplate="{DataTemplate pages:RegionPage}" />
+    <ShellContent Route="SplashPage" ContentTemplate="{DataTemplate pages:SplashPage}" />
+    <!--<ShellContent Route="RegionPage" ContentTemplate="{DataTemplate pages:RegionPage}" />
     <ShellContent Route="LoginPage" ContentTemplate="{DataTemplate pages:LoginPage}" />
     <ShellContent Route="HomePage" ContentTemplate="{DataTemplate pages:HomePage}" />
-    <ShellContent Route="EventosPage" ContentTemplate="{DataTemplate pages:EventosPage}" />
-    <ShellContent Route="RegistrarEventoSaludPage" ContentTemplate="{DataTemplate pages:RegistrarEventoSaludPage}" />
+    <ShellContent Route="RecetasPage" ContentTemplate="{DataTemplate pages:RecetasPage}" />
+    <ShellContent Route="EventosPage" ContentTemplate="{DataTemplate pages:EventosPage}" />-->
+    <!--<ShellContent Route="RegistrarEventoSaludPage" ContentTemplate="{DataTemplate pages:RegistrarEventoSaludPage}" />-->
+    <!--<TabBar>
+        <ShellContent
+            Route="SplashPage"
+            ContentTemplate="{DataTemplate pages:SplashPage}" />
+    </TabBar>-->
 </Shell>

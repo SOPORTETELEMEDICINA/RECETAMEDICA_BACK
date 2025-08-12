@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="RMD.Movil.Pages.EditProfilePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:RMD.Movil.PageModels"
+    x:DataType="vm:EditProfilePageModel"
+    NavigationPage.HasNavigationBar="False"
+    BackgroundColor="#FFFFFF">
+
+    <!-- AppBar (Auto) + Contenido (*) -->
+    <Grid Padding="0" RowDefinitions="Auto,*">
+
+        <!-- AppBar -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Padding="8,8,8,0">
+            <Button
+                Text="&#xE5CB;"
+                FontFamily="MaterialIcons"
+                BackgroundColor="Transparent"
+                TextColor="#111827"
+                FontSize="28"
+                WidthRequest="48" HeightRequest="48"
+                Command="{Binding BackCommand}" />
+            <Label Grid.Column="1"
+                   VerticalTextAlignment="Center"
+                   FontSize="22"
+                   FontAttributes="Bold"
+                   Text="Editar Perfil"
+                   TextColor="#111827" />
+        </Grid>
+
+        <!-- Contenido -->
+        <ScrollView Grid.Row="1">
+            <Grid Margin="0,10,0,0" RowDefinitions="Auto">
+                <Grid ColumnDefinitions="*,Auto,*" Padding="0,0">
+
+                    <!-- Card centrada con ancho máx 530 -->
+                    <ContentView Grid.Column="1" HorizontalOptions="Center" MaximumWidthRequest="530">
+
+                        <VerticalStackLayout Spacing="15">
+
+                            <!-- Avatar circular -->
+                            <Grid HorizontalOptions="Center" Padding="0,12,0,0">
+                                <Border Stroke="#6F61EE" StrokeThickness="2"
+                                        BackgroundColor="#EEF2FF"
+                                        WidthRequest="110" HeightRequest="110"
+                                        StrokeShape="Ellipse" Padding="3">
+                                    <Border BackgroundColor="#FFFFFF"
+                                            StrokeThickness="0"
+                                            StrokeShape="Ellipse">
+                                        <Image Source="{Binding ProfileImage}"
+                                               Aspect="AspectFill"
+                                               WidthRequest="104" HeightRequest="104"/>
+                                    </Border>
+                                </Border>
+                            </Grid>
+
+                            <!-- Cambiar fotografía -->
+                            <Grid HorizontalOptions="Center">
+                                <Button
+                                    Text="Cambiar fotografía"
+                                    Command="{Binding PickPhotoCommand}"
+                                    HeightRequest="44"
+                                    Padding="24,0"
+                                    BackgroundColor="#FFFFFF"
+                                    TextColor="#111827"
+                                    CornerRadius="12"
+                                    BorderColor="#E5E7EB"
+                                    BorderWidth="2" />
+                            </Grid>
+
+                            <!-- Nombre completo (solo lectura) -->
+                            <VerticalStackLayout Padding="0" Spacing="5">
+                                <Label Text="Nombre completo" FontSize="14" TextColor="#6B7280"/>
+                                <Border Stroke="#E5E7EB" StrokeThickness="2"
+                                        StrokeShape="RoundRectangle 12"
+                                        BackgroundColor="#FFFFFF">
+                                    <Grid Padding="10,2">
+                                        <Label Text="{Binding DisplayName}"
+                                               FontSize="16"
+                                               TextColor="#111827" />
+                                    </Grid>
+                                </Border>
+                            </VerticalStackLayout>
+
+                            <!-- Email (solo lectura) -->
+                            <VerticalStackLayout Padding="0" Spacing="5">
+                                <Label Text="Correo electrónico asociado a esta cuenta"
+                                       FontSize="14" TextColor="#6B7280"/>
+                                <Border Stroke="#E5E7EB" StrokeThickness="2"
+                                        StrokeShape="RoundRectangle 12"
+                                        BackgroundColor="#FFFFFF">
+                                    <Grid Padding="10,2">
+                                        <Label Text="{Binding Email}"
+                                               FontSize="16"
+                                               TextColor="#111827"/>
+                                    </Grid>
+                                </Border>
+                            </VerticalStackLayout>
+
+                            <!-- Contraseña nueva -->
+                            <VerticalStackLayout Padding="0" Spacing="5">
+                                <Label Text="Contraseña nueva" FontSize="14" TextColor="#6B7280"/>
+                                <Border Stroke="#E5E7EB" StrokeThickness="2"
+                                        StrokeShape="RoundRectangle 12" BackgroundColor="#FFFFFF">
+                                    <Grid Padding="10,0">
+                                        <Entry Text="{Binding NewPassword}"
+                                               IsPassword="True"
+                                               Placeholder="••••••••"
+                                               TextColor="#111827"
+                                               PlaceholderColor="#9CA3AF"/>
+                                    </Grid>
+                                </Border>
+                            </VerticalStackLayout>
+
+                            <!-- Confirmar contraseña -->
+                            <VerticalStackLayout Padding="0" Spacing="5">
+                                <Label Text="Confirmar contraseña" FontSize="14" TextColor="#6B7280"/>
+                                <Border Stroke="#E5E7EB" StrokeThickness="2"
+                                        StrokeShape="RoundRectangle 12" BackgroundColor="#FFFFFF">
+                                    <Grid Padding="5,0">
+                                        <Entry Text="{Binding ConfirmPassword}"
+                                               IsPassword="True"
+                                               Placeholder="••••••••"
+                                               TextColor="#111827"
+                                               PlaceholderColor="#9CA3AF"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Error de validación -->
+                                <Label Text="{Binding PasswordError}"
+                                       IsVisible="{Binding HasPasswordError}"
+                                       TextColor="#EF4444" FontSize="12"/>
+                            </VerticalStackLayout>
+
+                            <!-- Guardar -->
+                            <Grid Padding="16,8,16,24" HorizontalOptions="Center">
+                                <Button
+                                    Text="Guardar cambios"
+                                    Command="{Binding SaveCommand}"
+                                    IsEnabled="{Binding IsNotBusy}"
+                                    HeightRequest="52"
+                                    Padding="44,0"
+                                    BackgroundColor="#6F61EE"
+                                    TextColor="White"
+                                    CornerRadius="12" />
+                            </Grid>
+
+                            <!-- Loader -->
+                            <ActivityIndicator
+                                IsVisible="{Binding IsBusy}"
+                                IsRunning="{Binding IsBusy}"
+                                Color="#6F61EE"
+                                HorizontalOptions="Center"/>
+                        </VerticalStackLayout>
+
+                    </ContentView>
+                </Grid>
+            </Grid>
+        </ScrollView>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:RMD.Movil.Pages.Controls"
+    xmlns:pageModels="clr-namespace:RMD.Movil.PageModels"
+    xmlns:alerta="clr-namespace:RMD.Shared.Models.Receta.AlertaToma.Response;assembly=RMD.Shared.Models"
+    xmlns:pages="clr-namespace:RMD.Movil.Pages"
+    x:Class="RMD.Movil.Pages.AvisosMedicacionPage"
+    x:DataType="pageModels:AvisosMedicacionPageModel"
+    NavigationPage.HasNavigationBar="False"
+    BackgroundImageSource="fondo_pantalla.png">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
+
+        <!-- HEADER -->
+        <controls:UserInfoComponent Grid.Row="0" Margin="20,30,20,0" />
+
+        <!-- CALENDARIO SEMANAL (MVVM) -->
+        <Border
+            Grid.Row="1"
+            StrokeShape="RoundRectangle 20"
+            Margin="20,10,20,10"
+            StrokeThickness="0">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#ecf2f7" Offset="0.0" />
+                    <GradientStop Color="#acc8e2" Offset="1.0" />
+                </LinearGradientBrush>
+            </Border.Background>
+
+            <Grid RowDefinitions="Auto,Auto" Padding="10">
+                <!-- Mes/Año -->
+                <Label
+                    Grid.Row="0"
+                    Text="{Binding MesSemana}"
+                    FontFamily="Roboto"
+                    FontSize="16"
+                    FontAttributes="Bold"
+                    TextColor="#3A3A3A"
+                    HorizontalOptions="Center"
+                    Margin="0,0,0,5" />
+
+                <!-- Semana: 7 días -->
+                <CollectionView
+                    Grid.Row="1"
+                    ItemsSource="{Binding Semana}"
+                    SelectionMode="Single"
+                    SelectedItem="{Binding DiaSeleccionado, Mode=TwoWay}"
+                    HorizontalScrollBarVisibility="Never"
+                    VerticalScrollBarVisibility="Never"
+                    HeightRequest="70">
+                    <CollectionView.ItemsLayout>
+                        <GridItemsLayout Orientation="Vertical" Span="7" />
+                    </CollectionView.ItemsLayout>
+
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="pageModels:DiaSemanaItem">
+                            <VerticalStackLayout Spacing="3" HorizontalOptions="Center" VerticalOptions="Center">
+                                <Label
+                                    Text="{Binding DayName}"
+                                    FontFamily="Roboto"
+                                    FontSize="12"
+                                    TextColor="Black"
+                                    HorizontalOptions="Center" />
+
+                                <Border
+                                    StrokeShape="RoundRectangle 20"
+                                    StrokeThickness="0"
+                                    Padding="8"
+                                    BackgroundColor="Transparent">
+                                    <Border.Triggers>
+                                        <!-- Día seleccionado -->
+                                        <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="BackgroundColor" Value="#6f61ee" />
+                                        </DataTrigger>
+                                        <!-- Hoy (si no está seleccionado) -->
+                                        <MultiTrigger TargetType="Border">
+                                            <MultiTrigger.Conditions>
+                                                <BindingCondition Binding="{Binding IsToday}" Value="True" />
+                                                <BindingCondition Binding="{Binding IsSelected}" Value="False" />
+                                            </MultiTrigger.Conditions>
+                                            <Setter Property="BackgroundColor" Value="#E8E6FF" />
+                                        </MultiTrigger>
+                                    </Border.Triggers>
+
+                                    <Label
+                                        Text="{Binding DayNumber}"
+                                        FontFamily="Roboto"
+                                        FontSize="14"
+                                        HorizontalOptions="Center">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="TextColor" Value="White" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsSelected}" Value="False">
+                                                <Setter Property="TextColor" Value="Black" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
+                                </Border>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+        </Border>
+
+        <!-- BOTÓN PARA ABRIR CALENDARIO (Command) -->
+        <Button
+            Grid.Row="1"
+            Text="Seleccionar otra fecha"
+            BackgroundColor="#6f61ee"
+            TextColor="White"
+            FontFamily="Roboto"
+            CornerRadius="15"
+            HeightRequest="40"
+            Margin="20,110,20,0"
+            VerticalOptions="Start"
+            Command="{Binding AbrirCalendarioCommand}" />
+
+        <!-- LISTA DE MEDICAMENTOS -->
+        <CollectionView
+            Grid.Row="2"
+            ItemsSource="{Binding Medicamentos}"
+            Margin="20,0"
+            SelectionMode="None">
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout Orientation="Vertical" Span="2" />
+            </CollectionView.ItemsLayout>
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="alerta:AlertaProgramadaResponse">
+                    <Grid Margin="0,15" HeightRequest="130">
+
+                        <!-- Card principal -->
+                        <Border
+                            StrokeShape="RoundRectangle 20"
+                            StrokeThickness="0"
+                            Margin="10,25,10,0"
+                            Padding="15">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Color="#f8f9fa" Offset="0.0" />
+                                    <GradientStop Color="#e5e7eb" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+
+                            <VerticalStackLayout Spacing="2"
+                                                 HorizontalOptions="Center"
+                                                 Margin="0,20,0,0">
+                                <!-- Ajusta estos bindings a las props reales de tu modelo -->
+                                <Label Text="{Binding Nombre}"
+                                       FontSize="14"
+                                       FontFamily="Roboto"
+                                       FontAttributes="Bold"
+                                       TextColor="#3A3A3A"
+                                       HorizontalOptions="Center" />
+                                <Label Text="{Binding Hora}"
+                                       FontSize="12"
+                                       FontFamily="Roboto"
+                                       TextColor="#3A3A3A"
+                                       HorizontalOptions="Center" />
+                                <Label Text="{Binding Periodo}"
+                                       FontSize="12"
+                                       FontFamily="Roboto"
+                                       TextColor="#3A3A3A"
+                                       HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <!-- Icono flotante -->
+                        <Border
+                            WidthRequest="50"
+                            HeightRequest="50"
+                            StrokeShape="RoundRectangle 25"
+                            StrokeThickness="0"
+                            BackgroundColor="White"
+                            Padding="8"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Start">
+                            <Image Aspect="AspectFit" HeightRequest="30" WidthRequest="30">
+                                <Image.Triggers>
+                                    <DataTrigger TargetType="Image" Binding="{Binding TipoMedicamento}" Value="Liquido">
+                                        <Setter Property="Source" Value="icon_medicamento_liquido.png" />
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Image" Binding="{Binding TipoMedicamento}" Value="Solido">
+                                        <Setter Property="Source" Value="icon_medicamento_solido.png" />
+                                    </DataTrigger>
+                                </Image.Triggers>
+                            </Image>
+                        </Border>
+
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- BOTÓN AGREGAR -->
+        <Button
+            Grid.Row="3"
+            Text="AGREGAR MEDICAMENTO MANUAL"
+            BackgroundColor="#ed8a60"
+            TextColor="White"
+            FontAttributes="Bold"
+            FontFamily="Roboto"
+            CornerRadius="20"
+            HeightRequest="50"
+            Margin="20,10"
+            HorizontalOptions="FillAndExpand" />
+
+        <!-- FOOTER (namespace correcto) -->
+        <controls:BottomNavBar Grid.Row="4" />
+
+        <!-- POPUP (visibilidad por VM; el control emite el evento de fecha) -->
+        <pages:CalendarioPopup
+            x:Name="PopupCalendario"
+            Grid.RowSpan="5"
+            IsVisible="{Binding IsPopupVisible}"
+            FechaSeleccionada="CalendarioPopup_FechaSeleccionada" />
+
+    </Grid>
+</ContentPage>

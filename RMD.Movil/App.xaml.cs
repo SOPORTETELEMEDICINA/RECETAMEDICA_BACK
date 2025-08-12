@@ -15,68 +15,6 @@ public partial class App
         Services = serviceProvider;
     }
 
-    //protected override Window CreateWindow(IActivationState? activationState)
-    //{
-
-    //    var shell = new AppShell();
-    //    var window = new Window(shell);
-
-    //    shell.Loaded += async (_, _) =>
-    //    {
-    //        string? region = Preferences.Default.Get<string?>("RegionSeleccionada", null);
-
-    //        if (string.IsNullOrEmpty(region))
-    //        {
-    //            Preferences.Default.Remove("UsuarioGuardado");
-    //            await shell.GoToAsync("//RegionPage");
-    //            return;
-    //        }
-
-    //        string? loginJson = Preferences.Default.Get<string?>("UsuarioGuardado", null);
-    //        var usuario = !string.IsNullOrEmpty(loginJson)
-    //            ? JsonSerializer.Deserialize<LoginResult>(loginJson)
-    //            : null;
-
-    //        if (usuario == null || string.IsNullOrWhiteSpace(usuario.TokenPlain))
-    //        {
-    //            await shell.GoToAsync("//LoginPage");
-    //            return;
-    //        }
-
-    //        try
-    //        {
-
-
-    //            // Token expirado → Intentar renovar
-    //            var authService = Services.GetRequiredService<IAuthControllerService>();
-    //            var renovado = await authService.RenewTokenAsync();
-
-    //            if (renovado.Toast?.ToLower() == "success" && renovado.Data != null)
-    //            {
-    //                usuario.TokenEncrypted = renovado.Data.TokenEncrypted;
-    //                usuario.TokenPlain = renovado.Data.TokenPlain;
-    //                Preferences.Default.Set("UsuarioGuardado", JsonSerializer.Serialize(usuario));
-    //                await shell.GoToAsync("//HomePage");
-    //                return;
-    //            }
-    //            else
-    //            {
-    //                // Renovación fallida
-    //                Preferences.Default.Remove("UsuarioGuardado");
-    //                await shell.GoToAsync("//LoginPage");
-    //                return;
-    //            }
-    //        }
-    //        catch
-    //        {
-    //            // Error al interpretar el token
-    //            Preferences.Default.Remove("UsuarioGuardado");
-    //            await shell.GoToAsync("//LoginPage");
-    //        }
-    //    };
-
-    //    return window;
-    //}
     protected override Window CreateWindow(IActivationState? activationState)
     {
         var splashPage = new SplashPage();
@@ -84,7 +22,7 @@ public partial class App
 
         Task.Run(async () =>
         {
-            Page paginaInicial = new SplashPage(); // Fallback (no debería llegar nunca)
+            string rutaDestino = nameof(LoginPage);// Fallback por defecto
 
             // Paso 1: Inicio visual
             await splashPage.ActualizarProgreso(0.2);
@@ -98,7 +36,7 @@ public partial class App
             if (string.IsNullOrEmpty(region))
             {
                 Preferences.Default.Remove("UsuarioGuardado");
-                paginaInicial = new RegionPage();
+                rutaDestino = nameof(RegionPage);
             }
             else
             {
@@ -113,7 +51,7 @@ public partial class App
 
                 if (usuario == null || string.IsNullOrWhiteSpace(usuario.TokenPlain))
                 {
-                    paginaInicial = new LoginPage();
+                    rutaDestino = nameof(LoginPage);
                 }
                 else
                 {
@@ -129,18 +67,18 @@ public partial class App
                             usuario.TokenEncrypted = renovado.Data.TokenEncrypted;
                             usuario.TokenPlain = renovado.Data.TokenPlain;
                             Preferences.Default.Set("UsuarioGuardado", JsonSerializer.Serialize(usuario));
-                            paginaInicial = new HomePage();
+                            rutaDestino = nameof(HomePage);
                         }
                         else
                         {
                             Preferences.Default.Remove("UsuarioGuardado");
-                            paginaInicial = new LoginPage();
+                            rutaDestino = nameof(LoginPage);
                         }
                     }
                     catch
                     {
                         Preferences.Default.Remove("UsuarioGuardado");
-                        paginaInicial = new LoginPage();
+                        rutaDestino = nameof(LoginPage);
                     }
                 }
             }
@@ -149,15 +87,20 @@ public partial class App
             await splashPage.ActualizarProgreso(1.0);
             await Task.Delay(300);
 
-            // Reemplazar con AppShell y página inicial deseada
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 var shell = new AppShell();
-                shell.CurrentItem = new ShellContent { Content = paginaInicial };
                 window.Page = shell;
+
+                shell.Dispatcher.Dispatch(async () =>
+                {
+                    await Shell.Current.GoToAsync(rutaDestino);
+                    //await shell.GoToAsync(rutaDestino);
+                });
             });
         });
 
         return window;
     }
+
 }

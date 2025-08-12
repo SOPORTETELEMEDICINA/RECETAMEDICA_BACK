@@ -1,69 +1,297 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="RMD.Movil.Views.RecetasPage"
-             BackgroundColor="#F7F9FC"
-             Title="Mis Recetas">
+             xmlns:controls="clr-namespace:RMD.Movil.Pages.Controls"
+             xmlns:converters="clr-namespace:RMD.Movil.Utilities.Converters"
+             x:Class="RMD.Movil.Pages.RecetasPage"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="Transparent"
+             BackgroundImageSource="fondo_pantalla.png">
 
-    <ScrollView>
-        <VerticalStackLayout Padding="20" Spacing="15">
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <converters:StatusToColorConverter x:Key="StatusToColorConverter" />
+            <converters:StatusToTextConverter x:Key="StatusToTextConverter" />
+            <converters:BoolNegationConverter x:Key="BoolNegationConverter" />
+            <converters:DateFormatConverter x:Key="DateFormatConverter" />
+            <converters:IntToBoolConverter x:Key="IntToBoolConverter" />
+            <converters:ShowQrConverter x:Key="ShowQrConverter" />
+            <converters:ShowPdfConverter x:Key="ShowPdfConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
 
-            <!-- Header con nombre -->
-            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto" Padding="0,10">
-                <Label Text="Eva Zaragoza" FontSize="18" FontAttributes="Bold" TextColor="Black"/>
-                <Frame HeightRequest="45" WidthRequest="45" CornerRadius="22.5" HasShadow="False" Padding="0" BackgroundColor="Transparent">
-                    <Image Source="avatar_sample.png" Aspect="AspectFill"/>
-                </Frame>
-            </Grid>
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
 
-            <Label Text="Buen día!!!" FontSize="14" TextColor="Gray"/>
+        <!-- Header -->
+        <controls:UserInfoComponent Grid.Row="0" Margin="5,20,30,0"/>
 
-            <!-- Botones principales -->
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                <Frame BackgroundColor="#00B0C0" CornerRadius="10" Padding="15" HeightRequest="80">
-                    <VerticalStackLayout>
-                        <Label Text="Registrar Receta" FontAttributes="Bold" FontSize="14" TextColor="White"/>
-                        <Label Text="EXTERNA" FontSize="12" TextColor="White"/>
-                    </VerticalStackLayout>
-                </Frame>
+        <!-- Botones superiores -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="15" Padding="20,20,20,0">
+            <Border StrokeThickness="0" Background="#00a4b7" StrokeShape="RoundRectangle 15" Padding="15">
+                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
+                    <Image Source="icon_receta_externa.png" HeightRequest="36" Margin="0,0,0,5" />
+                    <Label Text="Registrar Receta Externa"
+                           FontSize="14" TextColor="White"
+                           HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+            </Border>
 
-                <Frame BackgroundColor="#F06251" CornerRadius="10" Padding="15" HeightRequest="80">
-                    <VerticalStackLayout>
-                        <Label Text="Toma de Medicamentos" FontAttributes="Bold" FontSize="14" TextColor="White"/>
-                        <Label Text="REGISTRO NUEVO" FontSize="12" TextColor="White"/>
-                    </VerticalStackLayout>
-                </Frame>
-            </Grid>
+            <Border Grid.Column="1" StrokeThickness="0" Background="#e96749" StrokeShape="RoundRectangle 15" Padding="15">
+                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
+                    <Image Source="icon_medicamento_nuevo.png" HeightRequest="36" Margin="0,0,0,5" />
+                    <Label Text="Toma de Medicamentos" 
+                           FontSize="14" TextColor="White" HorizontalOptions="Center"/>
+                    <Label Text="REGISTRO NUEVO"
+                           FontSize="12" TextColor="White" HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
 
-            <!-- Sección de pestañas -->
-            <Label Text="Mis Recetas" FontAttributes="Bold" FontSize="16" Margin="0,10,0,0"/>
+        <!-- Seccion Mis Recetas (unica) -->
+        <Border Grid.Row="2"
+                Margin="20,10,20,0"
+                Padding="0"
+                BackgroundColor="White"
+                Stroke="#E0E3EB"
+                StrokeThickness="1"
+                StrokeShape="RoundRectangle 18">
+            <Border.Shadow>
+                <Shadow Brush="#33000000" Radius="12" Offset="0,4" Opacity="0.25"/>
+            </Border.Shadow>
 
-            <Grid ColumnDefinitions="*,*" Padding="0,0,0,10">
-                <Button x:Name="btnActivas" Text="Activas" BackgroundColor="Transparent" TextColor="#7B4DF9" FontAttributes="Bold" Clicked="btnActivas_Clicked"/>
-                <Button x:Name="btnVencidas" Text="Vencidas" BackgroundColor="Transparent" TextColor="Gray" Grid.Column="1" Clicked="btnVencidas_Clicked"/>
-            </Grid>
+            <Grid RowDefinitions="Auto,Auto,*" RowSpacing="10">
 
-            <!-- Tarjetas de receta -->
-            <CollectionView x:Name="RecetasCollection" SelectionMode="None">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate>
-                        <Frame CornerRadius="10" Padding="15" Margin="0,0,0,10" BackgroundColor="White" HasShadow="True">
-                            <VerticalStackLayout>
-                                <Label Text="{Binding Folio}" FontSize="14" FontAttributes="Bold"/>
-                                <Label Text="{Binding Doctor}" FontSize="13" TextColor="Gray"/>
-                                <Grid ColumnDefinitions="Auto,*" Margin="0,10,0,0">
-                                    <Label Text="Fecha:" FontSize="12" TextColor="Black"/>
-                                    <Label Text="{Binding Fecha}" FontSize="12" TextColor="Black" Margin="10,0,0,0"/>
+                <!-- Header gris -->
+                <Border Grid.Row="0"
+                        BackgroundColor="#e4e6ea"
+                        StrokeThickness="0"
+                        Padding="12,8">
+                    <Label Text="Mis Recetas"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="#69728b"
+                           HorizontalOptions="Center"/>
+                </Border>
+
+                <!-- Tabs -->
+                <Border Grid.Row="1" StrokeThickness="0" Background="White" Padding="2">
+                    <Grid ColumnDefinitions="Auto,Auto" HorizontalOptions="Center" ColumnSpacing="30">
+                        <!-- Tab Activas -->
+                        <Grid>
+                            <Label Text="Activas"
+                                   FontSize="14"
+                                   FontAttributes="Bold"
+                                   HorizontalOptions="Center"
+                                   TextColor="{Binding ActivasTextColor}">
+                                <Label.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SwitchTabCommand}" CommandParameter="Activas"/>
+                                </Label.GestureRecognizers>
+                            </Label>
+                            <BoxView HeightRequest="2"
+                                     BackgroundColor="#9d69ca"
+                                     HorizontalOptions="Center"
+                                     VerticalOptions="End"
+                                     WidthRequest="50"
+                                     IsVisible="{Binding IsActivasTab}"/>
+                        </Grid>
+
+                        <!-- Tab Vencidas -->
+                        <Grid Grid.Column="1">
+                            <Label Text="Vencidas"
+                                   FontSize="14"
+                                   FontAttributes="Bold"
+                                   HorizontalOptions="Center"
+                                   TextColor="{Binding VencidasTextColor}">
+                                <Label.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SwitchTabCommand}" CommandParameter="Vencidas"/>
+                                </Label.GestureRecognizers>
+                            </Label>
+                            <BoxView HeightRequest="2"
+                                     BackgroundColor="#9d69ca"
+                                     HorizontalOptions="Center"
+                                     VerticalOptions="End"
+                                     WidthRequest="50"
+                                     IsVisible="{Binding IsActivasTab, Converter={StaticResource BoolNegationConverter}}"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- Lista -->
+                <CollectionView Grid.Row="2"
+                                Margin="5,0,5,5"
+                                ItemsSource="{Binding RecetasFiltradas}"
+                                SelectionMode="None"
+                                ItemsLayout="VerticalList"
+                                ItemSizingStrategy="MeasureAllItems">
+                    <CollectionView.EmptyView>
+                        <Grid Padding="20">
+                            <Label Text="Sin recetas para mostrar"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center"
+                                   TextColor="#69728b"/>
+                        </Grid>
+                    </CollectionView.EmptyView>
+
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <!-- Card por receta -->
+                            <Border Margin="0,0"
+                                    Padding="15"
+                                    BackgroundColor="White"
+                                    Stroke="#E4E6EA"
+                                    StrokeThickness="1"
+                                    StrokeShape="RoundRectangle 14">
+                                <Border.Shadow>
+                                    <Shadow Brush="#1A000000" Radius="8" Offset="0,2" Opacity="0.20"/>
+                                </Border.Shadow>
+
+                                <!-- Contenedor 2 columnas, 2 filas -->
+                                <!-- Contenedor 2 columnas, 3 filas -->
+                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8">
+
+                                    <!-- Fila 0, Col 0: Texto principal (clickeable) -->
+                                    <VerticalStackLayout Grid.Row="0" Grid.Column="0"
+                                                         Spacing="5"
+                                                         HorizontalOptions="Fill">
+                                        <Label Text="{Binding Folio}"
+                                               FontAttributes="Bold"
+                                               TextColor="#3A3A3A"
+                                               FontSize="15"
+                                               LineBreakMode="NoWrap"/>
+
+                                        <Label Text="{Binding NombreMedico}"
+                                               FontSize="13"
+                                               TextColor="#69728b"/>
+
+                                        <Label Text="{Binding Especialidad}"
+                                               FontSize="12"
+                                               TextColor="#69728b"
+                                               Margin="0,-2,0,0"/>
+
+                                        <!-- Hacer clic toda el área de texto -->
+                                        <VerticalStackLayout.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.MostrarDetalleCommand}"
+                                                CommandParameter="{Binding IdReceta}" />
+                                        </VerticalStackLayout.GestureRecognizers>
+                                    </VerticalStackLayout>
+
+
+                                    <!-- Fila 0, Col 1: Botones -->
+                                    <VerticalStackLayout Grid.Row="0" Grid.Column="1"
+                                                         Spacing="6"
+                                                         VerticalOptions="Start"
+                                                         Margin="0">
+                                        <!-- Descargar PDF -->
+                                        <Border Padding="7,7"
+                                                Background="#00a4b7"
+                                                StrokeThickness="0"
+                                                StrokeShape="RoundRectangle 10">
+                                            <Border.IsVisible>
+                                                <MultiBinding Converter="{StaticResource ShowPdfConverter}">
+                                                    <Binding Path="GenerarPDF"/>
+                                                    <Binding Path="Estatus"/>
+                                                </MultiBinding>
+                                            </Border.IsVisible>
+
+                                            <Label Text="Descargar PDF"
+                                                   FontSize="11"
+                                                   TextColor="White"
+                                                   HorizontalOptions="Center" />
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DescargarPdfCommand}"
+                                                                      CommandParameter="{Binding IdReceta}" />
+                                            </Border.GestureRecognizers>
+                                        </Border>
+
+
+                                        <!-- Mostrar QR -->
+                                        <Border Padding="7,7"
+                                                Background="#e96749"
+                                                StrokeThickness="0"
+                                                StrokeShape="RoundRectangle 10">
+                                            <Border.IsVisible>
+                                                <MultiBinding Converter="{StaticResource ShowQrConverter}">
+                                                    <Binding Path="GenerarQR"/>
+                                                    <Binding Path="Estatus"/>
+                                                </MultiBinding>
+                                            </Border.IsVisible>
+                                            <Label Text="Mostrar QR"
+                                                   FontSize="11"
+                                                   TextColor="White"
+                                                   HorizontalOptions="Center" />
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer 
+                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.MostrarQrCommand}"
+                                                    CommandParameter="{Binding IdReceta}" />
+
+                                            </Border.GestureRecognizers>
+                                        </Border>
+                                    </VerticalStackLayout>
+
+                                    <!-- Fila 1: Separador a todo el ancho -->
+                                    <BoxView Grid.Row="1" Grid.ColumnSpan="2"
+                                             HeightRequest="1"
+                                             BackgroundColor="#E0E0E0"
+                                             Margin="0,6,0,8"
+                                             HorizontalOptions="Fill" />
+
+                                    <!-- Fila 2, Col 0: Fecha -->
+                                    <Grid Grid.Row="2" Grid.Column="0"
+                                          ColumnDefinitions="Auto,Auto"
+                                          Margin="0"
+                                          HorizontalOptions="Fill"
+                                          VerticalOptions="Center">
+                                        <HorizontalStackLayout Grid.Column="0"
+                                                               Spacing="5"
+                                                               VerticalOptions="Center"
+                                                               HorizontalOptions="Start">
+                                            <Label Text="Fecha:"
+                                                   FontSize="12"
+                                                   TextColor="#69728b"
+                                                   HorizontalOptions="Start"/>
+                                            <Label Text="{Binding FechaCreacion, Converter={StaticResource DateFormatConverter}, ConverterParameter=yyyy-MM-dd}"
+                                                   FontAttributes="Bold"
+                                                   FontSize="12"
+                                                   TextColor="#9d69ca"
+                                                   HorizontalOptions="Start"/>
+                                        </HorizontalStackLayout>
+                                    </Grid>
+
+                                    <!-- Fila 2, Col 1: Óvalo de estatus -->
+                                    <Border Grid.Row="2" Grid.Column="1"
+                                            Padding="8,6"
+                                            StrokeThickness="0"
+                                            Background="{Binding Estatus, Converter={StaticResource StatusToColorConverter}}"
+                                            StrokeShape="RoundRectangle 10"
+                                            HorizontalOptions="End"
+                                            VerticalOptions="Center">
+                                        <Label Text="{Binding Estatus, Converter={StaticResource StatusToTextConverter}}"
+                                               FontSize="12"
+                                               TextColor="White"/>
+                                    </Border>
+
                                 </Grid>
-                                <Frame BackgroundColor="{Binding Color}" CornerRadius="10" Padding="5" HorizontalOptions="Start">
-                                    <Label Text="{Binding Estado}" FontSize="12" TextColor="White"/>
-                                </Frame>
-                            </VerticalStackLayout>
-                        </Frame>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
 
-        </VerticalStackLayout>
-    </ScrollView>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+        </Border>
+
+        <!-- Footer -->
+        <controls:BottomNavBar Grid.Row="3" />
+
+        <!-- Overlay de loading (al final para que quede encima) -->
+        <Grid Grid.RowSpan="4"
+              BackgroundColor="#80000000"
+              IsVisible="{Binding IsBusy}">
+            <ActivityIndicator
+                HorizontalOptions="Center"
+                VerticalOptions="Center"
+                IsRunning="{Binding IsBusy}"
+                IsVisible="{Binding IsBusy}" />
+        </Grid>
+    </Grid>
 </ContentPage>

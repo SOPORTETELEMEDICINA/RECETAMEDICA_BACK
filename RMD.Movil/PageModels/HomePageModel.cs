@@ -14,7 +14,7 @@ namespace RMD.Movil.PageModels
             {
                 Preferences.Default.Remove("UsuarioGuardado");
                 Preferences.Default.Remove("Paciente");
-                await Shell.Current.GoToAsync("///LoginPage");
+                await Shell.Current.GoToAsync(nameof(LoginPage));
             }
             else
             {
@@ -24,19 +24,27 @@ namespace RMD.Movil.PageModels
 
 
         [RelayCommand]
-        private async Task VerRecetas() => await Shell.Current.GoToAsync("RecetasPage");
-
-        [RelayCommand]
-        private async Task EventoSalud()
+        private async Task VerRecetas()
         {
-            GC.Collect(); // fuerza recolección de memoria
-            await Task.Delay(50); // da tiempo al render
-            await Shell.Current.GoToAsync("EventosPage");
+            try
+            {
+                await Shell.Current.GoToAsync(nameof(RecetasPage));
+            }
+            catch (Exception ex)
+            {
+                var msg = ex.InnerException?.Message ?? ex.Message;
+                await Shell.Current.DisplayAlert("Navegación", msg, "OK");
+            }
         }
 
         [RelayCommand]
-        private async Task Medicacion() => await Shell.Current.GoToAsync("AvisosMedicacionPage");
+        private Task EventoSalud() => Shell.Current.GoToAsync(nameof(EventosPage));
+
         [RelayCommand]
-        private async Task PerfilSalud() => await Shell.Current.GoToAsync("PerfilPage");
+        private Task Medicacion() => Shell.Current.GoToAsync(nameof(AvisosMedicacionPage));
+
+        [RelayCommand]
+        private Task PerfilSalud() => Shell.Current.GoToAsync(nameof(EditProfilePage));
+
     }
 }
