@@ -56,25 +56,38 @@ namespace RMD.Movil.Core.Service.Implementations
             }
         }
 
-        public async Task<ResponseFromService<string>> GetRecetaByIdRecetaAsync(RecetaRequest request)
+        public async Task<string> GetRecetaByIdRecetaAsync(RecetaRequest request)
         {
             try
             {
-                var response = await httpClient.PostAsJsonAsync("api/Recetas/GetRecetaByIdReceta", request);
-                var json = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<ResponseFromService<string>>(json, JsonOptions)!;
+                using var response = await httpClient.PostAsJsonAsync("api/Recetas/GetRecetaByIdReceta", request);
+                var html = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var status = (int)response.StatusCode;
+                    var reason = response.ReasonPhrase ?? "Sin razón";
+                    throw new HttpRequestException($"Error HTTP {status} al obtener la receta: {reason}");
+                }
+
+                if (string.IsNullOrWhiteSpace(html))
+                    throw new InvalidOperationException("El servidor devolvió HTML vacío.");
+
+                return html;
+            }
+            catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
+            {
+                throw new HttpRequestException("Tiempo de espera agotado al obtener la receta.", ex);
+            }
+            catch (HttpRequestException)
+            {
+                throw; // Deja pasar errores HTTP con su mensaje original
             }
             catch (Exception ex)
             {
-                return new()
-                {
-                    Code = -999,
-                    Message = "Error al obtener receta",
-                    Toast = "error",
-                    Descripcion = [ex.Message],
-                    Data = string.Empty
-                };
+                throw new HttpRequestException("Fallo al obtener la receta (error inesperado).", ex);
             }
         }
+
     }
 }

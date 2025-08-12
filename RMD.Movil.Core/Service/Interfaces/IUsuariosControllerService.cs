@@ -8,8 +8,6 @@ namespace RMD.Movil.Core.Service.Interfaces
         Task<ResponseFromService<string>> ActualizarAsync(Usuario request);
         Task<ResponseFromService<string>> CambiarPasswordAsync(CambiarPasswordRequest request);
         Task<ResponseFromService<string>> ImagenFirmaAsync(UsuarioImagenRequest request);
-        Task<ResponseFromService<string?>> FirmaAsync();
-        Task<ResponseFromService<string>> EliminarFirmaAsync();
         Task<ResponseFromService<string?>> ImagenAsync();
         Task<ResponseFromService<string>> EliminarImagenAsync();
     }

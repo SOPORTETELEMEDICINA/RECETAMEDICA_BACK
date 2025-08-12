@@ -31,19 +31,6 @@ namespace RMD.Movil.Core.Service.Implementations
             return JsonSerializer.Deserialize<ResponseFromService<string>>(json, options)!;
         }
 
-        public async Task<ResponseFromService<string?>> FirmaAsync()
-        {
-            var res = await http.GetAsync("api/Usuarios/firma");
-            var json = await res.Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<ResponseFromService<string?>>(json, options)!;
-        }
-
-        public async Task<ResponseFromService<string>> EliminarFirmaAsync()
-        {
-            var res = await http.DeleteAsync("api/Usuarios/firma");
-            var json = await res.Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<ResponseFromService<string>>(json, options)!;
-        }
 
         public async Task<ResponseFromService<string?>> ImagenAsync()
         {

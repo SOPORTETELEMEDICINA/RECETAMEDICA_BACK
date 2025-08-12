@@ -8,6 +8,6 @@ namespace RMD.Movil.Core.Service.Interfaces
     {
         Task<ResponseFromService<List<HeaderTextPlainResponse>>> GetRecetasByIdPacienteAsync(HeaderFilterByPacienteRequest filterRequest);
         Task<ResponseFromService<string>> GetQRByIdRecetaAsync(Guid idReceta);
-        Task<ResponseFromService<string>> GetRecetaByIdRecetaAsync(RecetaRequest request);
+        Task<string> GetRecetaByIdRecetaAsync(RecetaRequest request);
     }
 }
