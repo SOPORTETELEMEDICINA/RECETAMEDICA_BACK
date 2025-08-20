@@ -88,6 +88,9 @@ public static class MauiProgram
         BuildControllerService<IPacienteControllerService, PacienteControllerService>();
         BuildControllerService<ICatEventosSaludControllerService, CatEventosSaludControllerService>();
         BuildControllerService<IAlertasProgramadasControllerService, AlertasProgramadasControllerService>();
+        BuildControllerService<IRecetaCatalogosControllerService, RecetaCatalogosControllerService>();
+        BuildControllerService<IConsultaControllerService, ConsultaControllerService>();
+
 
         // Registro del servicio de PDF por plataforma
 #if ANDROID

@@ -14,30 +14,34 @@ public partial class ActivarAlertaTomaPage : ContentPage
     {
         InitializeComponent();
 
-        var svc = App.Services.GetService<IAlertaTomaControllerService>()
-                  ?? throw new Exception("No se pudo resolver IAlertaTomaControllerService");
+        var alertaSvc = App.Services.GetService<IAlertaTomaControllerService>()
+                        ?? throw new Exception("No se pudo resolver IAlertaTomaControllerService");
 
-        _vm = new ActivarAlertaTomaPageModel(svc);
+        _vm = new ActivarAlertaTomaPageModel(alertaSvc);
         BindingContext = _vm;
     }
 
     public string? IdReceta
     {
-        set { _vm.IdReceta = Guid.TryParse(value, out var g) ? g : Guid.Empty; }
+        get => _vm.IdReceta == Guid.Empty ? null : _vm.IdReceta.ToString();
+        set { if (Guid.TryParse(value, out var g)) _vm.IdReceta = g; }
     }
 
     public string? IdDetalleReceta
     {
-        set { _vm.IdDetalleReceta = Guid.TryParse(value, out var g) ? g : Guid.Empty; }
+        get => _vm.IdDetalleReceta == Guid.Empty ? null : _vm.IdDetalleReceta.ToString();
+        set { if (Guid.TryParse(value, out var g)) _vm.IdDetalleReceta = g; }
     }
 
-    public int MedicamentoId
+    public string? MedicamentoId
     {
-        set { _vm.MedicamentoId = value; }
+        get => _vm.MedicamentoId.ToString();
+        set { if (int.TryParse(value, out var id)) _vm.MedicamentoId = id; }
     }
 
     public string? MedicamentoType
     {
-        set { _vm.MedicamentoType = value ?? string.Empty; }
+        get => _vm.MedicamentoType;
+        set => _vm.MedicamentoType = value ?? string.Empty;
     }
 }

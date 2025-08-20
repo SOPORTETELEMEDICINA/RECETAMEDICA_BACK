@@ -1,5 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
-using RMD.Shared.Models.GlobalResponse; // <- ResponseFromService<T>
+using RMD.Shared.Models.GlobalResponse;        // ResponseFromService<T>
 
 namespace RMD.Movil.PageModels.Controls;
 
@@ -39,6 +39,23 @@ public partial class BasePageModel : ObservableObject
             await page.DisplayAlert(titulo, string.IsNullOrWhiteSpace(mensaje) ? "Sin detalle." : mensaje, "OK");
     }
 
+    // NUEVO: confirmación (Sí/No) para poder desactivar alerta desde los PageModels
+    protected static async Task<bool> MostrarConfirmAsync(
+        string titulo,
+        string mensaje,
+        string textoAceptar = "Sí",
+        string textoCancelar = "No")
+    {
+        var page = Shell.Current?.CurrentPage;
+        if (page == null) return false;
+
+        return await page.DisplayAlert(
+            titulo,
+            string.IsNullOrWhiteSpace(mensaje) ? "Sin detalle." : mensaje,
+            textoAceptar,
+            textoCancelar);
+    }
+
     // Muestra un alert usando el título según el Toast y el cuerpo con Message/Descripcion
     protected static async Task MostrarAlertPorRespuestaAsync<T>(ResponseFromService<T> resp)
     {
@@ -47,4 +64,3 @@ public partial class BasePageModel : ObservableObject
         await MostrarAlertAsync(titulo, cuerpo);
     }
 }
-

@@ -104,7 +104,10 @@ namespace RMD.Movil.Core.Service.Implementations
             {
                 var response = await httpClient.PostAsJsonAsync("api/AlertaManual/BuscarPorNombre", request);
                 var json = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<ResponseFromService<List<Medicamentos>>>(json, JsonOptions)!;
+                var result = JsonSerializer.Deserialize<ResponseFromService<List<Medicamentos>>>(json, JsonOptions)
+                             ?? new ResponseFromService<List<Medicamentos>> { Data = [] };
+
+                return result;
             }
             catch (Exception ex)
             {

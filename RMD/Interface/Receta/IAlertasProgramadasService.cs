@@ -6,5 +6,6 @@ namespace RMD.Interface.Receta
     public interface IAlertasProgramadasService
     {
         Task<ResponseFromService<List<AlertaProgramadaResponse>>> GetAlertasProgramadasAsync(GetAlertasProgramadasRequest request);
+        Task<ResponseFromService<IEnumerable<AlertaProgramadaResponse>>> GetAlertasProgramadasEnFechaAsync(GetAlertasProgramadasEnFechaRequest request);
     }
 }

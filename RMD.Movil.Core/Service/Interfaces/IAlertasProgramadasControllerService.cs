@@ -7,5 +7,9 @@ namespace RMD.Movil.Core.Service.Interfaces
     public interface IAlertasProgramadasControllerService
     {
         Task<ResponseFromService<List<AlertaProgramadaResponse>>> GetAlertasProgramadasByIdPacienteAsync(GetAlertasProgramadasRequest filterRequest);
+
+        Task<ResponseFromService<IEnumerable<AlertaProgramadaResponse>>> GetAlertasProgramadasEnFechaAsync(
+            GetAlertasProgramadasEnFechaRequest filterRequest);
+
     }
 }

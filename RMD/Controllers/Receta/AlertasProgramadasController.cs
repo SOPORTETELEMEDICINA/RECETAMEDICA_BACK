@@ -44,6 +44,29 @@ namespace RMD.Controllers.Receta
                 : BadRequest(response);
         }
 
+        [HttpPost("GetAlertasProgramadasEnFecha")]
+        public async Task<IActionResult> GetAlertasProgramadasEnFecha([FromBody] GetAlertasProgramadasEnFechaRequest request)
+        {
+            if (!HasPermission("GetAlertasProgramadasEnFecha"))
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "NOPERMISOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            if (!ModelState.IsValid)
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
+                return BadRequest(ResponseFromService<string>.Failure(notif));
+            }
+
+            var response = await _alertasProgramadasService.GetAlertasProgramadasEnFechaAsync(request);
+
+            return (response.Toast == "success" || response.Toast == "info")
+                ? Ok(response)
+                : BadRequest(response);
+        }
         private bool HasPermission(string endpointName)
         {
             var rol = User.FindFirstValue(ClaimTypes.Role);

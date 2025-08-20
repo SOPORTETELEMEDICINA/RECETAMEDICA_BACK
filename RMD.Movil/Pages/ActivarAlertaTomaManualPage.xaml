@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="RMD.Movil.Pages.ActivarAlertaTomaManualPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    NavigationPage.HasNavigationBar="False"
+    BackgroundImageSource="fondo_pantalla.png">
+
+    <ContentPage.Resources>
+        <Style x:Key="FieldLabel" TargetType="Label">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextColor" Value="#69728b"/>
+        </Style>
+        <Style x:Key="TitleLabel" TargetType="Label">
+            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="FontAttributes" Value="Bold"/>
+            <Setter Property="TextColor" Value="#1F2937"/>
+        </Style>
+        <Style x:Key="CardBorder" TargetType="Border">
+            <Setter Property="BackgroundColor" Value="White"/>
+            <Setter Property="Stroke" Value="#E0E3EB"/>
+            <Setter Property="StrokeThickness" Value="1"/>
+            <Setter Property="StrokeShape" Value="RoundRectangle 18"/>
+            <Setter Property="Padding" Value="18"/>
+        </Style>
+        <Style x:Key="InputBorder" TargetType="Border" BasedOn="{StaticResource CardBorder}">
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="StrokeShape" Value="RoundRectangle 10"/>
+        </Style>
+        <Style x:Key="OkButton" TargetType="Button">
+            <Setter Property="BackgroundColor" Value="#00A4B7"/>
+            <Setter Property="TextColor" Value="White"/>
+            <Setter Property="CornerRadius" Value="24"/>
+            <Setter Property="HeightRequest" Value="44"/>
+            <Setter Property="FontAttributes" Value="Bold"/>
+        </Style>
+        <Style x:Key="CancelButton" TargetType="Button">
+            <Setter Property="BackgroundColor" Value="#B91C1C"/>
+            <Setter Property="TextColor" Value="White"/>
+            <Setter Property="CornerRadius" Value="24"/>
+            <Setter Property="HeightRequest" Value="44"/>
+            <Setter Property="FontAttributes" Value="Bold"/>
+        </Style>
+    </ContentPage.Resources>
+
+    <!-- NOMBRE AL GRID RAÍZ -->
+    <Grid x:Name="Root" Padding="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- AppBar -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Padding="8,50,8,0">
+            <Button
+                Text="&#xE5CB;"
+                FontFamily="MaterialIcons"
+                BackgroundColor="Transparent"
+                TextColor="#111827"
+                FontSize="28"
+                WidthRequest="48" HeightRequest="48"
+                Command="{Binding BackCommand}" />
+            <Label Grid.Column="1"
+                   VerticalTextAlignment="Center"
+                   FontSize="22"
+                   FontAttributes="Bold"
+                   Text="Nuevo Medicamento"
+                   TextColor="#111827" />
+        </Grid>
+
+        <!-- CONTENEDOR CON NOMBRE PARA MEDIR ANCHO DISPONIBLE -->
+        <Grid Grid.Row="1" x:Name="ContentHost">
+            <Border Style="{StaticResource CardBorder}"
+                    HorizontalOptions="Center"
+                    WidthRequest="{Binding Source={x:Reference ContentHost}, Path=Width}">
+                <Border.Shadow>
+                    <Shadow Brush="#33000000" Radius="12" Offset="0,4" Opacity="0.25"/>
+                </Border.Shadow>
+
+                <!-- SOLO SCROLL VERTICAL, SIN HORIZONTAL -->
+                <ScrollView Orientation="Vertical"
+                            HorizontalScrollBarVisibility="Never">
+                    <VerticalStackLayout Spacing="16">
+
+                        <!-- Buscador -->
+                        <VerticalStackLayout Spacing="6">
+                            <Label Text="MEDICAMENTO:" Style="{StaticResource FieldLabel}"/>
+
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Entry
+                                    Placeholder="Escribe para buscar el package…"
+                                    Text="{Binding TextoBusqueda, Mode=TwoWay}"
+                                    ClearButtonVisibility="WhileEditing" />
+                                <ActivityIndicator Grid.Column="1"
+                                                   HeightRequest="24"
+                                                   WidthRequest="24"
+                                                   IsRunning="{Binding IsSearching}"
+                                                   IsVisible="{Binding IsSearching}" />
+                            </Grid>
+
+                            <Border Style="{StaticResource InputBorder}"
+                                    IsVisible="{Binding MostrarResultados}">
+                                <CollectionView
+                                    ItemsSource="{Binding Resultados}"
+                                    SelectionMode="None"
+                                    HeightRequest="220"
+                                    HorizontalScrollBarVisibility="Never">
+                                    <CollectionView.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Padding="8" ColumnDefinitions="*,Auto">
+                                                <VerticalStackLayout>
+                                                    <Label Text="{Binding Nombre}" TextColor="#111827" FontSize="14"/>
+                                                    <Label Text="{Binding Summary}" TextColor="#6B7280" FontSize="11"/>
+                                                </VerticalStackLayout>
+                                                <Image Grid.Column="1" Source="chevron_right.png" HeightRequest="18"/>
+                                                <Grid.GestureRecognizers>
+                                                    <TapGestureRecognizer
+                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SeleccionarMedicamentoCommand}"
+                                                        CommandParameter="{Binding .}"/>
+                                                </Grid.GestureRecognizers>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </CollectionView.ItemTemplate>
+                                </CollectionView>
+                            </Border>
+
+                            <Label Text="{Binding MedicamentoSeleccionadoNombre}"
+                                   FontAttributes="Bold" TextColor="#111827" FontSize="14"
+                                   IsVisible="{Binding HayMedicamentoSeleccionado}"/>
+                        </VerticalStackLayout>
+
+                        <!-- Formulario -->
+                        <VerticalStackLayout Spacing="16"
+                                             IsVisible="{Binding HayMedicamentoSeleccionado}">
+
+                            <!-- NUEVO: activar alerta -->
+                            <HorizontalStackLayout Spacing="8">
+                                <CheckBox IsChecked="{Binding ActivarAlerta}" />
+                                <Label Text="Activar Alerta de Toma de Medicamento" VerticalTextAlignment="Center" />
+                            </HorizontalStackLayout>
+
+                            <!-- Todo en filas con 2 columnas -->
+                            <Grid ColumnDefinitions="*,*"
+                                  RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+                                  ColumnSpacing="12" RowSpacing="10">
+
+                                <!-- Fila 1 REAL: Cantidad / Unidad (oculta si no hay UNITS) -->
+                                <Grid Grid.Row="0" Grid.ColumnSpan="2"
+                                      ColumnDefinitions="*,*"
+                                      ColumnSpacing="12"
+                                      IsVisible="{Binding MostrarFilaCantidadUnidad}">
+
+                                    <VerticalStackLayout Grid.Column="0">
+                                        <Label Text="CANTIDAD:*" Style="{StaticResource FieldLabel}"/>
+                                        <Entry Keyboard="Numeric" Text="{Binding Cantidad, Mode=TwoWay}" />
+                                    </VerticalStackLayout>
+
+                                    <VerticalStackLayout Grid.Column="1">
+                                        <Label Text="UNIDAD:" Style="{StaticResource FieldLabel}"/>
+                                        <Picker ItemsSource="{Binding Unidades}"
+                                                SelectedItem="{Binding UnidadSeleccionada}" />
+                                    </VerticalStackLayout>
+                                </Grid>
+
+                                <!-- Fila 2: Cada / Frecuencia -->
+                                <VerticalStackLayout Grid.Row="1" Grid.Column="0">
+                                    <Label Text="CADA:" Style="{StaticResource FieldLabel}"/>
+                                    <Entry Keyboard="Numeric" Text="{Binding CadaValor, Mode=TwoWay}" />
+                                </VerticalStackLayout>
+
+                                <VerticalStackLayout Grid.Row="1" Grid.Column="1">
+                                    <Label Text="FRECUENCIA:" Style="{StaticResource FieldLabel}"/>
+                                    <Picker ItemsSource="{Binding PeriodosFrecuencia}"
+                                            SelectedItem="{Binding PeriodoFrecuenciaSeleccionado}"
+                                            ItemDisplayBinding="{Binding FrecuencyType}"
+                                            Title="Selecciona periodo" />
+                                </VerticalStackLayout>
+
+                            </Grid>
+
+                            <!-- Duración / Periodo / Vía / Motivo -->
+                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="10">
+                                <VerticalStackLayout>
+                                    <Label Text="DURACIÓN:*" Style="{StaticResource FieldLabel}"/>
+                                    <Entry Keyboard="Numeric" Text="{Binding DuracionValor, Mode=TwoWay}" />
+                                </VerticalStackLayout>
+
+                                <VerticalStackLayout Grid.Column="1">
+                                    <Label Text="PERIODO:" Style="{StaticResource FieldLabel}"/>
+                                    <Picker ItemsSource="{Binding PeriodosDuracion}"
+                                            SelectedItem="{Binding PeriodoDuracionSeleccionado}"
+                                            ItemDisplayBinding="{Binding Text}" />
+                                </VerticalStackLayout>
+
+                                <!-- VÍA (oculta si ROUTES vacío) -->
+                                <VerticalStackLayout Grid.Row="1"
+                                                     IsVisible="{Binding MostrarVia}">
+                                    <Label Text="VÍA:" Style="{StaticResource FieldLabel}"/>
+                                    <Picker ItemsSource="{Binding Vias}"
+                                            SelectedItem="{Binding ViaSeleccionada}" />
+                                </VerticalStackLayout>
+
+                                <!-- MOTIVO (oculta si INDICATIONS vacío) -->
+                                <VerticalStackLayout Grid.Row="1" Grid.Column="1"
+                                                     IsVisible="{Binding MostrarMotivoUso}">
+                                    <Label Text="MOTIVO DE USO:" Style="{StaticResource FieldLabel}"/>
+                                    <Picker ItemsSource="{Binding MotivosUso}"
+                                            SelectedItem="{Binding MotivoUsoSeleccionado}" />
+                                </VerticalStackLayout>
+                            </Grid>
+
+                            <!-- Botones -->
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,6,0,0">
+                                <Button Text="GUARDAR"
+                                        Style="{StaticResource OkButton}"
+                                        Command="{Binding GuardarCommand}"
+                                        IsEnabled="{Binding PuedeGuardar}" />
+                                <Button Grid.Column="1" Text="CANCELAR"
+                                        Style="{StaticResource CancelButton}"
+                                        Command="{Binding CloseCommand}" />
+                            </Grid>
+                        </VerticalStackLayout>
+
+                    </VerticalStackLayout>
+                </ScrollView>
+            </Border>
+        </Grid>
+
+        <!-- Overlay de loading -->
+        <Grid Grid.RowSpan="2" BackgroundColor="#80000000" IsVisible="{Binding IsBusy}">
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                               HorizontalOptions="Center" VerticalOptions="Center"/>
+        </Grid>
+    </Grid>
+</ContentPage>

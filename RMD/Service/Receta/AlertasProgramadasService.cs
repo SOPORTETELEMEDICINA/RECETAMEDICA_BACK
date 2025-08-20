@@ -50,5 +50,41 @@ namespace RMD.Service.Receta
                 return ResponseFromService<List<AlertaProgramadaResponse>>.Failure(notif);
             }
         }
+        public async Task<ResponseFromService<IEnumerable<AlertaProgramadaResponse>>> GetAlertasProgramadasEnFechaAsync(GetAlertasProgramadasEnFechaRequest request)
+        {
+            try
+            {
+                var result = await _dapperService.QueryAsync<AlertaProgramadaResponse>(
+                    "[Receta].[GetAlertasPacienteEnFecha]",
+                    new
+                    {
+                        request.IdPaciente,
+                        Fecha = request.Fecha.Date
+                    },
+                    commandType: CommandType.StoredProcedure
+                );
+
+                var list = result.ToList();
+
+                if (!list.Any())
+                {
+                    var notifEmpty = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("ALERTASPROGRAMADAS", "ALERTAS_PROGRAMADAS_NO_ENCONTRADAS");
+                    return ResponseFromService<IEnumerable<AlertaProgramadaResponse>>.Failure(notifEmpty);
+                }
+
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("ALERTASPROGRAMADAS", "ALERTAS_PROGRAMADAS_ENCONTRADAS");
+
+                return ResponseFromService<IEnumerable<AlertaProgramadaResponse>>.Success(list, notif);
+            }
+            catch
+            {
+                var notif = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<IEnumerable<AlertaProgramadaResponse>>.Failure(notif);
+            }
+        }
+
     }
 }

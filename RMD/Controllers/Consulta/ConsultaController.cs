@@ -126,10 +126,7 @@ namespace RMD.Controllers.Consulta
             return (response.Toast == "success" || response.Toast == "info")
                 ? Ok(response)
                 : BadRequest(response);
-           
         }
-
-
        
         [HttpPost("PacienteByName")]
         public async Task<IActionResult> SearchPacienteByName(string pacientName)

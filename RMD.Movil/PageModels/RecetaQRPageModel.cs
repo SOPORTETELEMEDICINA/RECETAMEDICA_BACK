@@ -1,7 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RMD.Movil.Core.Service.Interfaces;
-using RMD.Movil.PageModels.Controls; // BasePageModel
+using RMD.Movil.PageModels.Controls;
 
 namespace RMD.Movil.PageModels
 {

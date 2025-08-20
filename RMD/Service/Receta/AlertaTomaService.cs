@@ -41,7 +41,7 @@ namespace RMD.Service.Receta
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
                 return notificacion.ToastType.ToUpperInvariant() == "SUCCESS" || notificacion.ToastType.ToUpperInvariant() == "INFO"
-                    ? ResponseFromService<bool>.Success(estatus,notificacion )
+                    ? ResponseFromService<bool>.Success(estatus, notificacion)
                     : ResponseFromService<bool>.Failure(notificacion);
             }
             catch (Exception)
@@ -82,36 +82,51 @@ namespace RMD.Service.Receta
                 return ResponseFromService<bool>.Failure(notificacion);
             }
         }
+
         public async Task<ResponseFromService<List<Medicamentos>>> BuscarPackagePorNombreAsync(string nombrePackage, Guid idUsuario)
         {
             try
             {
-                IEnumerable<Medicamentos> resultados = await _dapperService.QueryAsync<Medicamentos>(
+                using var multi = await _dapperService.QueryMultipleAsync(
                     "[Receta].[Get_PackagesByName]",
-                    new { Nombre = nombrePackage },
+                    new { Nombre = nombrePackage }, // agrega IdUsuario si tu SP lo requiere: new { Nombre = nombrePackage, IdUsuario = idUsuario }
                     commandType: CommandType.StoredProcedure
                 );
 
-                IEnumerable<Medicamentos> medicamentosEnumerable = resultados.ToList();
-                if (!medicamentosEnumerable.Any())
-                {
-                    var notif = await _catalogoNotificacionService
-                        .GetNotificationByTipoAndFuncionAsync("ALERTATOMASP", "PACKAGE_NO_ENCONTRADO");
+                // 1) PRIMER RESULTSET: el código de notificación (int)
+                var codigoNotificacion = multi.ReadFirstOrDefault<int>();
+
+                // Busca la notificación por código en tu catálogo
+                var notif = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                var toast = (notif.ToastType ?? string.Empty).ToUpperInvariant();
+
+                // Si es ERROR o WARNING -> corta y regresa
+                if (toast == "ERROR" || toast == "WARNING")
                     return ResponseFromService<List<Medicamentos>>.Failure(notif);
-                }
 
-                var notificacion = await _catalogoNotificacionService
-                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "CONSULTA_EXISTOSA");
+                // Si es INFO -> regresa éxito con lista vacía (o lo que definas para INFO)
+                if (toast == "INFO")
+                    return ResponseFromService<List<Medicamentos>>.Success(new List<Medicamentos>(), notif);
 
-                return ResponseFromService<List<Medicamentos>>.Success(medicamentosEnumerable.ToList(), notificacion);
+                // 2) SEGUNDO RESULTSET: la lista de paquetes
+                var paquetes = multi.Read<Medicamentos>().ToList();
+
+                // Si tu SP maneja el "no encontrado" vía código, no hace falta esta verificación.
+                // Si quieres doble seguro:
+                // if (paquetes.Count == 0) {
+                //     var nf = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("ALERTATOMASP", "PACKAGE_NO_ENCONTRADO");
+                //     return ResponseFromService<List<Medicamentos>>.Failure(nf);
+                // }
+
+                return ResponseFromService<List<Medicamentos>>.Success(paquetes, notif);
             }
-            catch
+            catch (Exception ex)
             {
-                var notif = await _catalogoNotificacionService
-                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-                return ResponseFromService<List<Medicamentos>>.Failure(notif);
+                var error = await _catalogoNotificacionService.GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<List<Medicamentos>>.Exeption(ex, error);
             }
         }
+
 
         public async Task<ResponseFromService<bool>> ActivarAlertaManualAsync(ActivarAlertaManualRequest request, Guid idUsuario)
         {
@@ -132,6 +147,7 @@ namespace RMD.Service.Receta
                         request.Frecuency,
                         request.IdFrecuencyType,
                         request.Notas,
+                        request.Activo,
                         IdUsuario = idUsuario
                     },
                     commandType: CommandType.StoredProcedure

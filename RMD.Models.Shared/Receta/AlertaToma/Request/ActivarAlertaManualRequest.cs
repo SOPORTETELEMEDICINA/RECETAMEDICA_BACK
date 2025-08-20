@@ -13,5 +13,6 @@
         public int Frecuency { get; set; }
         public int IdFrecuencyType { get; set; }
         public string? Notas { get; set; }
+        public bool Activo { get; set; } = true;
     }
 }

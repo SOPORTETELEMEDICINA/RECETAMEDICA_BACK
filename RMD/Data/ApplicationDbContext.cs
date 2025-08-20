@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using RMD.Shared.Models.GlobalResponse;
 using RMD.Shared.Models.Login;
 
 namespace RMD.Data

@@ -17,6 +17,7 @@ namespace RMD.Movil.PageModels
     {
         private readonly IRecetaControllerService _recetasService;
         private readonly IPdfService _pdfService;
+        public IAsyncRelayCommand AbrirAlertaManualCommand { get; }
 
         private const string PacientePrefKey = "Paciente";
 
@@ -31,6 +32,7 @@ namespace RMD.Movil.PageModels
             MostrarQrCommand = new AsyncRelayCommand<object?>(OnMostrarQrAsync);
             DescargarPdfCommand = new AsyncRelayCommand<object?>(OnDescargarPdfAsync);
             MostrarDetalleCommand = new AsyncRelayCommand<object?>(OnMostrarDetalleAsync);
+            AbrirAlertaManualCommand = new AsyncRelayCommand(OnAbrirAlertaManualAsync);
         }
         public IAsyncRelayCommand<object?> MostrarDetalleCommand { get; }
 
@@ -85,20 +87,26 @@ namespace RMD.Movil.PageModels
 
         private void Filtrar()
         {
-            // Activas: 1 Activa, 2 Surtida, 5 Surtida Parcial
-            // Vencidas/Canceladas: 3 Cancelada, 4 Vencida, 6 Vencida Surtida Parcial
+            // Códigos:
+            // 1 Activa
+            // 2 Surtida
+            // 3 Cancelada
+            // 4 Vencida
+            // 5 Surtida Parcial
+            // 6 Vencida Surtida Parcial
+
             if (IsActivasTab)
             {
                 RecetasFiltradas = new ObservableCollection<HeaderTextPlainResponse>(
                     Recetas
-                        .Where(r => r.Estatus == 1 || r.Estatus == 2 || r.Estatus == 5)
+                        .Where(r => r.Estatus == 1 || r.Estatus == 2 || r.Estatus == 5 || r.Estatus == 6) // incluye 6 en Activas
                         .OrderByDescending(r => r.FechaCreacion));
             }
             else
             {
                 RecetasFiltradas = new ObservableCollection<HeaderTextPlainResponse>(
                     Recetas
-                        .Where(r => r.Estatus == 3 || r.Estatus == 4 || r.Estatus == 6)
+                        .Where(r => r.Estatus == 4 || r.Estatus == 3) // solo Vencida y Cancelada
                         .OrderByDescending(r => r.FechaCreacion));
             }
         }
@@ -245,6 +253,25 @@ namespace RMD.Movil.PageModels
             {
                 await Shell.Current.GoToAsync(nameof(DetalleRecetaPage),
                     new Dictionary<string, object> { { "IdReceta", idReceta.ToString() } });
+            }
+            catch (Exception ex)
+            {
+                await MostrarAlertAsync("Error", ex.Message);
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        private async Task OnAbrirAlertaManualAsync()                                    
+        {
+            try
+            {
+                if (IsBusy) return;
+                IsBusy = true;
+
+                await Shell.Current.GoToAsync(nameof(ActivarAlertaTomaManualPage));
             }
             catch (Exception ex)
             {

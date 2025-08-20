@@ -12,16 +12,22 @@ public partial class DetalleRecetaPage : ContentPage
     {
         InitializeComponent();
 
-        var svcDetalles = App.Services.GetService<IDetalleRecetasControllerService>()
-                          ?? throw new Exception("No se pudo resolver IDetalleRecetasControllerService");
+        var detallesService = App.Services.GetService<IDetalleRecetasControllerService>()
+                              ?? throw new Exception("No se pudo resolver IDetalleRecetasControllerService");
 
-        var svcAlertasProg = App.Services.GetService<IAlertasProgramadasControllerService>()
-                             ?? throw new Exception("No se pudo resolver IAlertasProgramadasControllerService");
+        var alertasProgService = App.Services.GetService<IAlertasProgramadasControllerService>()
+                                 ?? throw new Exception("No se pudo resolver IAlertasProgramadasControllerService");
 
-        _vm = new DetalleRecetaPageModel(svcDetalles, svcAlertasProg);
+        var alertaTomaService = App.Services.GetService<IAlertaTomaControllerService>()
+                                ?? throw new Exception("No se pudo resolver IAlertaTomaControllerService");
+
+
+        // Crear y asignar ViewModel
+        _vm = new DetalleRecetaPageModel(detallesService, alertasProgService, alertaTomaService);
         BindingContext = _vm;
     }
 
+    // Recibe el parámetro desde Shell y dispara la carga
     public string? IdReceta
     {
         get => _idReceta == Guid.Empty ? null : _idReceta.ToString();

@@ -1,13 +1,11 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Maui.Storage; // Preferences
 using RMD.Movil.Core.Service.Interfaces;
-using RMD.Shared.Models.Pacientes.Response; // modelo de tu "Paciente" guardado
+using RMD.Shared.Models.Pacientes.Response;
 using RMD.Shared.Models.Receta.AlertaToma.Request;
 using RMD.Shared.Models.Receta.AlertaToma.Response;
 using System.Collections.ObjectModel;
 using System.Globalization;
-using System.Linq;
 using System.Text.Json;
 
 namespace RMD.Movil.PageModels
@@ -18,17 +16,13 @@ namespace RMD.Movil.PageModels
         private Guid _idPaciente;
         private const string PacientePrefKey = "Paciente";
 
-        private DateTime _startOfWeek;
-
         public ObservableCollection<AlertaProgramadaResponse> Medicamentos { get; } = new();
         public ObservableCollection<DiaSemanaItem> Semana { get; } = new();
 
         [ObservableProperty] private string mesSemana = string.Empty;
-        [ObservableProperty] private bool isPopupVisible;
         [ObservableProperty] private DiaSemanaItem? diaSeleccionado;
 
         public IAsyncRelayCommand LoadCommand { get; }
-        public IRelayCommand AbrirCalendarioCommand { get; }
         public IRelayCommand<DiaSemanaItem> SeleccionarDiaCommand { get; }
 
         public AvisosMedicacionPageModel(IAlertasProgramadasControllerService alertasProgramadasService)
@@ -37,13 +31,28 @@ namespace RMD.Movil.PageModels
 
             CargarIdPacienteDesdePreferences();
 
-            LoadCommand = new AsyncRelayCommand(CargarMedicamentosAsync);
-            AbrirCalendarioCommand = new RelayCommand(() => IsPopupVisible = true);
             SeleccionarDiaCommand = new RelayCommand<DiaSemanaItem>(d => SeleccionarDia(d));
+            LoadCommand = new AsyncRelayCommand(async () =>
+            {
+                if (Semana.Count == 0)
+                    ConstruirSemanaDesde(DateTime.Today);
 
-            _startOfWeek = GetStartOfWeek(DateTime.Today);
-            ConstruirSemana(_startOfWeek);
-            _ = CargarMedicamentosAsync();
+                var fecha = DiaSeleccionado?.Date ?? DateTime.Today;
+                await CargarMedicamentosEnFechaAsync(fecha);
+            });
+
+            ConstruirSemanaDesde(DateTime.Today);
+            var hoy = Semana.FirstOrDefault();
+            if (hoy != null) DiaSeleccionado = hoy; // dispara carga
+        }
+
+        // Llamado desde el popup (si tu XAML aún lo usa)
+        public void SeleccionarFechaDesdePopup(DateTime fecha)
+        {
+            ConstruirSemanaDesde(fecha.Date);
+
+            var match = Semana.FirstOrDefault(d => d.Date == fecha.Date) ?? Semana.First();
+            DiaSeleccionado = match; // setter dispara carga
         }
 
         private void CargarIdPacienteDesdePreferences()
@@ -58,65 +67,16 @@ namespace RMD.Movil.PageModels
                         _idPaciente = paciente.IdPaciente;
                 }
             }
-            catch { /* swallow: deja _idPaciente = Guid.Empty */ }
+            catch { }
         }
 
-        public void SeleccionarFechaDesdePopup(DateTime fecha)
-        {
-            IsPopupVisible = false;
-            _startOfWeek = GetStartOfWeek(fecha);
-            ConstruirSemana(_startOfWeek);
-
-            var match = Semana.FirstOrDefault(d => d.Date.Date == fecha.Date);
-            if (match != null)
-                SeleccionarDia(match);
-        }
-
-        private async Task CargarMedicamentosAsync()
-        {
-            try
-            {
-                if (_idPaciente == Guid.Empty)
-                {
-                    System.Diagnostics.Debug.WriteLine("IdPaciente no disponible en Preferences.");
-                    Medicamentos.Clear();
-                    return;
-                }
-
-                var request = new GetAlertasProgramadasRequest { IdPaciente = _idPaciente };
-                var result = await _alertasProgramadasService.GetAlertasProgramadasByIdPacienteAsync(request);
-
-                Medicamentos.Clear();
-                if (result?.Data != null && result.Data.Count > 0)
-                    foreach (var alerta in result.Data)
-                        Medicamentos.Add(alerta);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error cargando alertas: {ex.Message}");
-            }
-        }
-
-        private static DateTime GetStartOfWeek(DateTime date)
-        {
-            int diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
-            return date.AddDays(-diff).Date;
-        }
-
-        private void ConstruirSemana(DateTime inicioSemana)
+        private void ConstruirSemanaDesde(DateTime inicio)
         {
             Semana.Clear();
-            MesSemana = inicioSemana.ToString("MMMM yyyy", new CultureInfo("es-ES")).ToUpper();
+            MesSemana = inicio.ToString("MMMM yyyy", new CultureInfo("es-ES")).ToUpper();
 
             for (int i = 0; i < 7; i++)
-                Semana.Add(new DiaSemanaItem(inicioSemana.AddDays(i)));
-
-            var hoy = Semana.FirstOrDefault(d => d.Date.Date == DateTime.Today);
-            if (hoy != null)
-            {
-                SeleccionarDia(hoy, actualizarPropiedad: false);
-                DiaSeleccionado = hoy;
-            }
+                Semana.Add(new DiaSemanaItem(inicio.AddDays(i)));
         }
 
         private void SeleccionarDia(DiaSemanaItem? dia, bool actualizarPropiedad = true)
@@ -129,7 +89,32 @@ namespace RMD.Movil.PageModels
 
         partial void OnDiaSeleccionadoChanged(DiaSemanaItem? value)
         {
-            if (value != null) SeleccionarDia(value, actualizarPropiedad: false);
+            if (value == null) return;
+            SeleccionarDia(value, actualizarPropiedad: false);
+            _ = CargarMedicamentosEnFechaAsync(value.Date);
+        }
+
+        private async Task CargarMedicamentosEnFechaAsync(DateTime fecha)
+        {
+            try
+            {
+                Medicamentos.Clear();
+                if (_idPaciente == Guid.Empty) return;
+
+                var req = new GetAlertasProgramadasEnFechaRequest
+                {
+                    IdPaciente = _idPaciente,
+                    Fecha = fecha
+                };
+
+                var resp = await _alertasProgramadasService.GetAlertasProgramadasEnFechaAsync(req);
+                foreach (var a in resp?.Data ?? Enumerable.Empty<AlertaProgramadaResponse>())
+                    Medicamentos.Add(a);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error cargando alertas por fecha: {ex.Message}");
+            }
         }
     }
 
@@ -142,6 +127,7 @@ namespace RMD.Movil.PageModels
             DayNumber = date.ToString("dd");
             IsToday = date.Date == DateTime.Today;
         }
+
         public DateTime Date { get; }
         public string DayName { get; }
         public string DayNumber { get; }

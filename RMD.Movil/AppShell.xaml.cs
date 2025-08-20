@@ -17,7 +17,6 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(AvisosMedicacionPage), typeof(AvisosMedicacionPage));
         Routing.RegisterRoute(nameof(DetalleRecetaPage), typeof(DetalleRecetaPage));
         Routing.RegisterRoute(nameof(ActivarAlertaTomaPage), typeof(ActivarAlertaTomaPage));
-
-
+        Routing.RegisterRoute(nameof(ActivarAlertaTomaManualPage), typeof(ActivarAlertaTomaManualPage));
     }
 }

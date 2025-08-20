@@ -174,12 +174,13 @@
                 "Medico",
                 "Particular",
                 "Supervisor Sucursales",
-                "Responsable Farmacia"
+                "Responsable Farmacia",
+                "Paciente"
             ];
             // Permisos por endpoint
             public static readonly Dictionary<string, string[]> EndpointRolesConsultaController = new()
             {
-                { "GetIdsFromLink", ["Super Admin", "Medico", "Particular", "Supervisor Sucursales"] },
+                { "GetIdsFromLink", ["Super Admin", "Medico", "Particular", "Supervisor Sucursales","Paciente"] },
                 { "AnalyzePrescription", ["Super Admin", "Medico", "Particular"] },
                 { "AnalyzePrescriptionXML", ["Super Admin", "Medico", "Particular"] },
                 { "SearchPacienteByName", ["Super Admin", "Medico", "Particular"] },
@@ -546,7 +547,9 @@
             // Permisos por endpoint
             public static readonly Dictionary<string, string[]> EndpointRolesAlertasProgramadasController = new()
             {
-                { "GetAlertasProgramadas", ["Super Admin", "Paciente"] }
+                { "GetAlertasProgramadas", ["Super Admin", "Paciente"] },
+                { "GetAlertasProgramadasEnFecha", ["Super Admin", "Paciente"] }
+                
             };
         }
     }

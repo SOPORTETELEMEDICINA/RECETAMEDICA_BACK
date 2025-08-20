@@ -14,7 +14,6 @@
             <converters:StatusToTextConverter x:Key="StatusToTextConverter" />
             <converters:BoolNegationConverter x:Key="BoolNegationConverter" />
             <converters:DateFormatConverter x:Key="DateFormatConverter" />
-            <converters:IntToBoolConverter x:Key="IntToBoolConverter" />
             <converters:ShowQrConverter x:Key="ShowQrConverter" />
             <converters:ShowPdfConverter x:Key="ShowPdfConverter" />
         </ResourceDictionary>
@@ -26,17 +25,12 @@
         <controls:UserInfoComponent Grid.Row="0" Margin="5,20,30,0"/>
 
         <!-- Botones superiores -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="15" Padding="20,20,20,0">
+        <Grid Grid.Row="1" Padding="20,20,20,0">
             <Border StrokeThickness="0" Background="#00a4b7" StrokeShape="RoundRectangle 15" Padding="15">
-                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
-                    <Image Source="icon_receta_externa.png" HeightRequest="36" Margin="0,0,0,5" />
-                    <Label Text="Registrar Receta Externa"
-                           FontSize="14" TextColor="White"
-                           HorizontalOptions="Center"/>
-                </VerticalStackLayout>
-            </Border>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding AbrirAlertaManualCommand}" />
+                </Border.GestureRecognizers>
 
-            <Border Grid.Column="1" StrokeThickness="0" Background="#e96749" StrokeShape="RoundRectangle 15" Padding="15">
                 <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
                     <Image Source="icon_medicamento_nuevo.png" HeightRequest="36" Margin="0,0,0,5" />
                     <Label Text="Toma de Medicamentos" 
@@ -46,6 +40,7 @@
                 </VerticalStackLayout>
             </Border>
         </Grid>
+
 
         <!-- Seccion Mis Recetas (unica) -->
         <Border Grid.Row="2"
@@ -178,56 +173,68 @@
 
 
                                     <!-- Fila 0, Col 1: Botones -->
-                                    <VerticalStackLayout Grid.Row="0" Grid.Column="1"
-                                                         Spacing="6"
-                                                         VerticalOptions="Start"
-                                                         Margin="0">
-                                        <!-- Descargar PDF -->
-                                        <Border Padding="7,7"
-                                                Background="#00a4b7"
+                                    <HorizontalStackLayout Grid.Row="0" Grid.Column="1" Spacing="8" VerticalOptions="Center"  HorizontalOptions="End">
+
+                                        <!-- Botón PDF -->
+                                        <Border HeightRequest="44" WidthRequest="44"
                                                 StrokeThickness="0"
-                                                StrokeShape="RoundRectangle 10">
+                                                StrokeShape="RoundRectangle 22"
+                                                BackgroundColor="#F0F0F0"
+                                                Padding="8">
                                             <Border.IsVisible>
                                                 <MultiBinding Converter="{StaticResource ShowPdfConverter}">
+                                                    <!-- 1) Flag de servidor -->
                                                     <Binding Path="GenerarPDF"/>
+                                                    <!-- 2) Estatus -->
                                                     <Binding Path="Estatus"/>
                                                 </MultiBinding>
                                             </Border.IsVisible>
 
-                                            <Label Text="Descargar PDF"
-                                                   FontSize="11"
-                                                   TextColor="White"
-                                                   HorizontalOptions="Center" />
+                                            <Image HorizontalOptions="Center" VerticalOptions="Center">
+                                                <Image.Source>
+                                                    <FontImageSource FontFamily="FASolid"
+                                                                     Glyph="&#xf1c1;"
+                                                                     Size="20"
+                                                                     Color="#404040"/>
+                                                </Image.Source>
+                                            </Image>
                                             <Border.GestureRecognizers>
                                                 <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DescargarPdfCommand}"
                                                                       CommandParameter="{Binding IdReceta}" />
                                             </Border.GestureRecognizers>
                                         </Border>
 
-
-                                        <!-- Mostrar QR -->
-                                        <Border Padding="7,7"
-                                                Background="#e96749"
+                                        <!-- Botón QR -->
+                                        <Border HeightRequest="44" WidthRequest="44"
                                                 StrokeThickness="0"
-                                                StrokeShape="RoundRectangle 10">
+                                                StrokeShape="RoundRectangle 22"
+                                                BackgroundColor="#F0F0F0"
+                                                Padding="8">
                                             <Border.IsVisible>
                                                 <MultiBinding Converter="{StaticResource ShowQrConverter}">
+                                                    <!-- 1) Flag de servidor -->
                                                     <Binding Path="GenerarQR"/>
+                                                    <!-- 2) Estatus -->
                                                     <Binding Path="Estatus"/>
                                                 </MultiBinding>
                                             </Border.IsVisible>
-                                            <Label Text="Mostrar QR"
-                                                   FontSize="11"
-                                                   TextColor="White"
-                                                   HorizontalOptions="Center" />
-                                            <Border.GestureRecognizers>
-                                                <TapGestureRecognizer 
-                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.MostrarQrCommand}"
-                                                    CommandParameter="{Binding IdReceta}" />
 
+                                            <Image HorizontalOptions="Center" VerticalOptions="Center">
+                                                <Image.Source>
+                                                    <FontImageSource FontFamily="FASolid"
+                                                                     Glyph="&#xf029;"
+                                                                     Size="20"
+                                                                     Color="#404040"/>
+                                                </Image.Source>
+                                            </Image>
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.MostrarQrCommand}"
+                                                                      CommandParameter="{Binding IdReceta}" />
                                             </Border.GestureRecognizers>
                                         </Border>
-                                    </VerticalStackLayout>
+
+
+                                    </HorizontalStackLayout>
 
                                     <!-- Fila 1: Separador a todo el ancho -->
                                     <BoxView Grid.Row="1" Grid.ColumnSpan="2"

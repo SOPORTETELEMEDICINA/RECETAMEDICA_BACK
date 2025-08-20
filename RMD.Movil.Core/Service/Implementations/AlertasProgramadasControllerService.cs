@@ -34,5 +34,26 @@ namespace RMD.Movil.Core.Service.Implementations
                 };
             }
         }
+
+        public async Task<ResponseFromService<IEnumerable<AlertaProgramadaResponse>>> GetAlertasProgramadasEnFechaAsync(GetAlertasProgramadasEnFechaRequest filterRequest)
+        {
+            try
+            {
+                var response = await httpClient.PostAsJsonAsync("api/AlertasProgramadas/GetAlertasProgramadasEnFecha", filterRequest);
+                var json = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<ResponseFromService<IEnumerable<AlertaProgramadaResponse>>>(json, JsonOptions)!;
+            }
+            catch (Exception ex)
+            {
+                return new()
+                {
+                    Code = -999,
+                    Message = "Error al obtener alertas programadas del paciente en fecha",
+                    Toast = "error",
+                    Descripcion = [ex.Message],
+                    Data = []
+                };
+            }
+        }
     }
 }
