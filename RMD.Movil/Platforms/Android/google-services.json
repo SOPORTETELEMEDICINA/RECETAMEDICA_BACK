@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "612872844752",
+    "project_id": "rmd-movil",
+    "storage_bucket": "rmd-movil.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:612872844752:android:0269e7c5c103c6571575d5",
+        "android_client_info": {
+          "package_name": "digital.recetamedica.rmd.movil"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-0HVMyHblsPYSR2feZ-nPWJQ8uJRDPCc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

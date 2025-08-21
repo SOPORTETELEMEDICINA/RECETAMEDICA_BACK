@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.Input;
+using OneSignalSDK.DotNet;
 using RMD.Movil.Core.Service.Interfaces;
 
 namespace RMD.Movil.PageModels
@@ -12,6 +13,9 @@ namespace RMD.Movil.PageModels
 
             if ((result.Toast?.ToLower()) is "success" or "info")
             {
+                // Desasocia el dispositivo en OneSignal
+                OneSignal.Logout();
+
                 Preferences.Default.Remove("UsuarioGuardado");
                 Preferences.Default.Remove("Paciente");
                 await Shell.Current.GoToAsync(nameof(LoginPage));

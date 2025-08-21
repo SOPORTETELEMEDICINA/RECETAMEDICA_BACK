@@ -1,6 +1,7 @@
 ﻿using RMD.Movil.Core.Service.Interfaces;
 using RMD.Shared.Models.Login;
 using System.Text.Json;
+using OneSignalSDK.DotNet;
 
 namespace RMD.Movil;
 
@@ -13,6 +14,7 @@ public partial class App
     {
         InitializeComponent(); // Aquí revienta si hay errores en estilos
         Services = serviceProvider;
+        OneSignal.Initialize("e4dcd415-b4cc-4497-8462-a1241f6ee9a7");
     }
 
     protected override Window CreateWindow(IActivationState? activationState)

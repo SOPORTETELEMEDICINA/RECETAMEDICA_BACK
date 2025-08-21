@@ -9,3 +9,4 @@ RMD/obj/
 
 # Excluir la carpeta Properties/PublishProfiles (perfiles de publicación)
 RMD/Properties/PublishProfiles/FolderProfile.pubxml.user
+/RMD/Properties/PublishProfiles/FolderProfile4.pubxml.user

@@ -13,78 +13,92 @@
 		<MauiEnableXamlCBindingWithSourceCompilation>true</MauiEnableXamlCBindingWithSourceCompilation>
 
 		<ApplicationTitle>RMD.Movil</ApplicationTitle>
-		<ApplicationId>com.companyname.rmd.movil2</ApplicationId>
+		<!-- QUITA el ApplicationId global para evitar confusiones -->
+		<!-- <ApplicationId>com.companyname.rmd.movil2</ApplicationId> -->
 		<ApplicationDisplayVersion>1.1</ApplicationDisplayVersion>
 		<ApplicationVersion>1</ApplicationVersion>
-		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
+
 		<WindowsPackageType>None</WindowsPackageType>
-		<!-- Solo para Android e iOS -->
+
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">29.0</SupportedOSPlatformVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
-		
-		<Platforms>AnyCPU;ARM64;x64</Platforms>
 
+		<Platforms>AnyCPU;ARM64;x64</Platforms>
 		<DefaultLanguage>es</DefaultLanguage>
+	</PropertyGroup>
+
+	<!-- ApplicationId POR PLATAFORMA: DEBE COINCIDIR CON FIREBASE Y ONESIGNAL -->
+	<PropertyGroup Condition="'$(TargetFramework)'=='net9.0-android'">
+		<ApplicationId>digital.recetamedica.rmd.movil</ApplicationId>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(TargetFramework)'=='net9.0-ios'">
+		<ApplicationId>digital.recetamedica.rmd.movil</ApplicationId>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#17171a" />
 		<MauiSplashScreen Include="Resources\Images\splash.png" Color="#17171a" BaseSize="128,128" />
-		<!--<MauiSplashScreen Include="Resources\Splash\splash.svg" />-->
 		<MauiImage Include="Resources\Images\*" />
 		<MauiFont Include="Resources\Fonts\*" />
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <MauiImage Remove="Resources\Images\splash.png" />
+		<MauiImage Remove="Resources\Images\splash.png" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <None Remove="Resources\Images\EventosSalud\icono_evento.png" />
-	  <None Remove="Resources\Images\NavBar\button_eventos_salud.png" />
-	  <None Remove="Resources\Images\NavBar\button_eventos_salud_active.png" />
-	  <None Remove="Resources\Images\NavBar\button_home.png" />
-	  <None Remove="Resources\Images\NavBar\button_home_active.png" />
-	  <None Remove="Resources\Images\NavBar\button_medicamentos.png" />
-	  <None Remove="Resources\Images\NavBar\button_medicamentos_active.png" />
-	  <None Remove="Resources\Images\NavBar\button_receta.png" />
-	  <None Remove="Resources\Images\NavBar\button_receta_active.png" />
+		<None Remove="Resources\Images\EventosSalud\icono_evento.png" />
+		<None Remove="Resources\Images\NavBar\button_eventos_salud.png" />
+		<None Remove="Resources\Images\NavBar\button_eventos_salud_active.png" />
+		<None Remove="Resources\Images\NavBar\button_home.png" />
+		<None Remove="Resources\Images\NavBar\button_home_active.png" />
+		<None Remove="Resources\Images\NavBar\button_medicamentos.png" />
+		<None Remove="Resources\Images\NavBar\button_medicamentos_active.png" />
+		<None Remove="Resources\Images\NavBar\button_receta.png" />
+		<None Remove="Resources\Images\NavBar\button_receta_active.png" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Maui.Core" Version="12.2.0" />
 		<PackageReference Include="Microsoft.Extensions.Http" Version="9.0.8" />
-		<PackageReference Include="Microsoft.Maui.Controls" Version="9.0.90" />
+		<PackageReference Include="Microsoft.Maui.Controls" Version="9.0.100" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.8" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 		<PackageReference Include="CommunityToolkit.Maui" Version="12.2.0" />
-		<PackageReference Include="Microsoft.Maui.Graphics" Version="9.0.90" />
+		<PackageReference Include="Microsoft.Maui.Graphics" Version="9.0.100" />
+		<PackageReference Include="OneSignalSDK.DotNet" Version="5.2.1" />
 		<PackageReference Include="Syncfusion.Maui.Toolkit" Version="1.0.6" />
+		<!-- OneSignal para MAUI/.NET -->
+	</ItemGroup>
+
+	<!-- Dile a MAUI dónde está tu google-services.json -->
+	<ItemGroup>
+		<GoogleServicesJson Include="Platforms\Android\google-services.json" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<MauiXaml Update="Pages\ActivarAlertaTomaManualPage.xaml">
-		  <Generator>MSBuild:Compile</Generator>
+			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\AvisosMedicacionPage.xaml">
-		  <Generator>MSBuild:Compile</Generator>
+			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\CalendarioPopup.xaml">
-		  <Generator>MSBuild:Compile</Generator>
+			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\Controls\BottomNavBar.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\Controls\UserInfoComponent.xaml">
-		  <Generator>MSBuild:Compile</Generator>
+			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\EventosPage.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\ForgotPasswordPage.xaml">
-		  <Generator>MSBuild:Compile</Generator>
+			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\HomePage.xaml">
 			<Generator>MSBuild:Compile</Generator>
@@ -93,28 +107,28 @@
 			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\EditProfilePage.xaml">
-		  <Generator>MSBuild:Compile</Generator>
+			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\DetalleRecetaPage.xaml">
-		  <Generator>MSBuild:Compile</Generator>
+			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\ActivarAlertaTomaPage.xaml">
-		  <Generator>MSBuild:Compile</Generator>
+			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\RecetaQRPage.xaml">
-		  <Generator>MSBuild:Compile</Generator>
+			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\RegistrarEventoSaludPage.xaml">
-		  <Generator>MSBuild:Compile</Generator>
+			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\RecetasPage.xaml">
-		  <Generator>MSBuild:Compile</Generator>
+			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\RegionPage.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 		<MauiXaml Update="Pages\SplashPage.xaml">
-		  <Generator>MSBuild:Compile</Generator>
+			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
 	</ItemGroup>
 
@@ -123,23 +137,23 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <MauiImage Include="Resources\Images\EventosSalud\icono_evento.png" />
-	  <MauiImage Include="Resources\Images\Home\btn_cerrar_sesion.png" />
-	  <MauiImage Include="Resources\Images\Home\btn_evento_salud.png" />
-	  <MauiImage Include="Resources\Images\Home\btn_medicacion.png" />
-	  <MauiImage Include="Resources\Images\Home\btn_perfil_salud.png" />
-	  <MauiImage Include="Resources\Images\Home\btn_ver_recetas.png" />
-	  <MauiImage Include="Resources\Images\Home\doctor_avatar.png" />
-	  <MauiImage Include="Resources\Images\Home\logo_mid.png" />
-	  <MauiImage Include="Resources\Images\NavBar\button_eventos_salud.png" />
-	  <MauiImage Include="Resources\Images\NavBar\button_eventos_salud_active.png" />
-	  <MauiImage Include="Resources\Images\NavBar\button_home.png" />
-	  <MauiImage Include="Resources\Images\NavBar\button_home_active.png" />
-	  <MauiImage Include="Resources\Images\NavBar\button_medicamentos.png" />
-	  <MauiImage Include="Resources\Images\NavBar\button_medicamentos_active.png" />
-	  <MauiImage Include="Resources\Images\NavBar\button_receta.png" />
-	  <MauiImage Include="Resources\Images\NavBar\button_receta_active.png" />
-	  <MauiImage Include="Resources\Images\Shared\fondo_plantilla.png" />
+		<MauiImage Include="Resources\Images\EventosSalud\icono_evento.png" />
+		<MauiImage Include="Resources\Images\Home\btn_cerrar_sesion.png" />
+		<MauiImage Include="Resources\Images\Home\btn_evento_salud.png" />
+		<MauiImage Include="Resources\Images\Home\btn_medicacion.png" />
+		<MauiImage Include="Resources\Images\Home\btn_perfil_salud.png" />
+		<MauiImage Include="Resources\Images\Home\btn_ver_recetas.png" />
+		<MauiImage Include="Resources\Images\Home\doctor_avatar.png" />
+		<MauiImage Include="Resources\Images\Home\logo_mid.png" />
+		<MauiImage Include="Resources\Images\NavBar\button_eventos_salud.png" />
+		<MauiImage Include="Resources\Images\NavBar\button_eventos_salud_active.png" />
+		<MauiImage Include="Resources\Images\NavBar\button_home.png" />
+		<MauiImage Include="Resources\Images\NavBar\button_home_active.png" />
+		<MauiImage Include="Resources\Images\NavBar\button_medicamentos.png" />
+		<MauiImage Include="Resources\Images\NavBar\button_medicamentos_active.png" />
+		<MauiImage Include="Resources\Images\NavBar\button_receta.png" />
+		<MauiImage Include="Resources\Images\NavBar\button_receta_active.png" />
+		<MauiImage Include="Resources\Images\Shared\fondo_plantilla.png" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -148,24 +162,24 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Compile Update="Pages\Controls\UserInfoComponent.xaml.cs">
-	    <DependentUpon>UserInfoComponent.xaml</DependentUpon>
-	  </Compile>
-	  <Compile Update="Pages\EditProfilePage.xaml.cs">
-	    <DependentUpon>EditProfilePage.xaml</DependentUpon>
-	  </Compile>
-	  <Compile Update="Pages\DetalleRecetaPage.xaml.cs">
-	    <DependentUpon>DetalleRecetaPage.xaml</DependentUpon>
-	  </Compile>
-	  <Compile Update="Pages\ActivarAlertaTomaPage.xaml.cs">
-	    <DependentUpon>ActivarAlertaTomaPage.xaml</DependentUpon>
-	  </Compile>
-	  <Compile Update="Pages\RecetaQRPage.xaml.cs">
-	    <DependentUpon>RecetaQRPage.xaml</DependentUpon>
-	  </Compile>
-	  <Compile Update="Pages\RegistrarEventoSaludPage.xaml.cs">
-	    <DependentUpon>RegistrarEventoSaludPage.xaml</DependentUpon>
-	  </Compile>
+		<Compile Update="Pages\Controls\UserInfoComponent.xaml.cs">
+			<DependentUpon>UserInfoComponent.xaml</DependentUpon>
+		</Compile>
+		<Compile Update="Pages\EditProfilePage.xaml.cs">
+			<DependentUpon>EditProfilePage.xaml</DependentUpon>
+		</Compile>
+		<Compile Update="Pages\DetalleRecetaPage.xaml.cs">
+			<DependentUpon>DetalleRecetaPage.xaml</DependentUpon>
+		</Compile>
+		<Compile Update="Pages\ActivarAlertaTomaPage.xaml.cs">
+			<DependentUpon>ActivarAlertaTomaPage.xaml</DependentUpon>
+		</Compile>
+		<Compile Update="Pages\RecetaQRPage.xaml.cs">
+			<DependentUpon>RecetaQRPage.xaml</DependentUpon>
+		</Compile>
+		<Compile Update="Pages\RegistrarEventoSaludPage.xaml.cs">
+			<DependentUpon>RegistrarEventoSaludPage.xaml</DependentUpon>
+		</Compile>
 	</ItemGroup>
 
 </Project>

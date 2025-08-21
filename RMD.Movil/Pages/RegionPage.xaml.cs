@@ -41,6 +41,6 @@ public partial class RegionPage
 
         
         // // ? Navegar manualmente al LoginPage porque App no volverá a evaluar
-        await Shell.Current.GoToAsync("//LoginPage");
+        await Shell.Current.GoToAsync(nameof(LoginPage));
     }
 }
