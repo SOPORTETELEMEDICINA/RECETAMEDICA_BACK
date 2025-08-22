@@ -8,7 +8,7 @@ namespace RMD.Shared.Models.OneSignal.Response
 {
     public sealed class ProgramarTomaResponse
     {
-        public Guid IdAlertaToma { get; set; }
+        public Guid IdAlertaTomaProgramada { get; set; }
         public int TipoAlerta { get; set; }
         public bool Exito { get; set; }
         public string? OneSignalNotificationId { get; set; }

@@ -446,33 +446,33 @@ namespace RMD.Service.Pacientes
             };
 
         }
-        //public async Task<ResponseFromService<Guid?>> GetIdPacienteByUsuarioAsync(Guid idUsuario)
-        //{
-        //    try
-        //    {
-        //        var parameters = new { IdUsuario = idUsuario };
+        public async Task<ResponseFromService<Guid>> GetIdPacienteByUsuarioAsync(Guid idUsuario)
+        {
+            try
+            {
+                var parameters = new { IdUsuario = idUsuario };
 
-        //        using var multi = await _dapperService.QueryMultipleAsync(
-        //            "Recetas_GetPacienteByIdUsuario",
-        //            parameters
-        //        );
+                using var multi = await _dapperService.QueryMultipleAsync(
+                    "Recetas_GetPacienteByIdUsuario",
+                    parameters
+                );
 
-        //        int codigoNotificacion = multi.ReadFirstOrDefault<int>();
-        //        var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                int codigoNotificacion = multi.ReadFirstOrDefault<int>();
+                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
-        //        if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
-        //            return ResponseFromService<Guid?>.Failure(notificacion);
+                if (notificacion.ToastType.ToUpperInvariant() == "ERROR" || notificacion.ToastType.ToUpperInvariant() == "WARNING")
+                    return ResponseFromService<Guid>.Failure(notificacion);
 
-        //        var idPaciente = multi.Read<Guid?>().FirstOrDefault();
+                var idPaciente = multi.Read<Guid>().FirstOrDefault();
 
-        //        return ResponseFromService<Guid?>.Success(idPaciente, notificacion);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        var error = await _catalogoNotificacionService
-        //            .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-        //        return ResponseFromService<Guid?>.Exeption(ex, error);
-        //    }
-        //}
+                return ResponseFromService<Guid>.Success(idPaciente, notificacion);
+            }
+            catch (Exception ex)
+            {
+                var error = await _catalogoNotificacionService
+                    .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
+                return ResponseFromService<Guid>.Exeption(ex, error);
+            }
+        }
     }
 }

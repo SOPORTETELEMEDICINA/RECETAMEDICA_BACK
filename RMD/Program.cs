@@ -12,6 +12,7 @@ using RMD.Interface.Catalogo;
 using RMD.Interface.Consulta;
 using RMD.Interface.Dashboard;
 using RMD.Interface.Medicos;
+using RMD.Interface.OneSignal;
 using RMD.Interface.Pacientes;
 using RMD.Interface.PuntoVenta;
 using RMD.Interface.Receta;
@@ -26,6 +27,7 @@ using RMD.Service.Catalogo;
 using RMD.Service.Consulta;
 using RMD.Service.Dashboard;
 using RMD.Service.Medicos;
+using RMD.Service.OneSignal;
 using RMD.Service.Pacientes;
 using RMD.Service.PuntoVenta;
 using RMD.Service.Receta;
@@ -178,12 +180,13 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMedicoService, MedicoService>();
 builder.Services.AddScoped<ISucursalService, SucursalService>();
 
-
+builder.Services.AddScoped<IOneSignalNotificationService, OneSignalNotificationService>();
 
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IToolsService, ToolsService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient<ICargaCatalogosWebService, CargaCatalogosWebService>();
+
 // Aquí agrega los HttpClients personalizados
 builder.Services.AddHttpClient("VidalClientMX", client =>
 {

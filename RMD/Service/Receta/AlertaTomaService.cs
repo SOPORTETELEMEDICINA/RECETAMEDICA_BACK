@@ -1,6 +1,9 @@
-﻿using RMD.Interface.Receta;
+﻿using RMD.Interface.OneSignal;
+using RMD.Interface.Pacientes;
+using RMD.Interface.Receta;
 using RMD.Interface.Security;
 using RMD.Shared.Models.Consulta;
+using RMD.Shared.Models.OneSignal.Request;
 using RMD.Shared.Models.Receta.AlertaToma.Request;
 using System.Data;
 
@@ -11,18 +14,24 @@ namespace RMD.Service.Receta
 
         private readonly IDapperService _dapperService;
         private readonly ICatalogoNotificacionService _catalogoNotificacionService;
-
-        public AlertaTomaService(IDapperService dapperService, ICatalogoNotificacionService catalogoNotificacionService)
+        private readonly IPacienteService _pacienteService;
+        private readonly IOneSignalNotificationService _oneSignalNotificationService;
+        // Constructor
+        public AlertaTomaService(IDapperService dapperService, ICatalogoNotificacionService catalogoNotificacionService,
+            IPacienteService pacienteService, IOneSignalNotificationService oneSignalNotificationService)
         {
             _dapperService = dapperService;
             _catalogoNotificacionService = catalogoNotificacionService;
+            _pacienteService = pacienteService;
+            _oneSignalNotificationService = oneSignalNotificationService;
         }
 
-        public async Task<ResponseFromService<bool>> ActivarAlertaTomaAsync(ActivarAlertaTomaRequest request, Guid idUsuario)
+        public async Task<ResponseFromService<bool>> ActivarAlertaTomaAsync(
+        ActivarAlertaTomaRequest request, Guid idUsuario)
         {
             try
             {
-                var multi = await _dapperService.QueryMultipleAsync(
+                using var multi = await _dapperService.QueryMultipleAsync(
                     "[Receta].[ActivarAlertaToma]",
                     new
                     {
@@ -35,22 +44,36 @@ namespace RMD.Service.Receta
                     },
                     commandType: CommandType.StoredProcedure);
 
+                // 1) Primer resultset: código de notificación
                 var codigoNotificacion = await multi.ReadFirstOrDefaultAsync<int>();
-                var estatus = await multi.ReadFirstOrDefaultAsync<bool>();
-
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                var toast = (notificacion.ToastType ?? string.Empty).ToUpperInvariant();
 
-                return notificacion.ToastType.ToUpperInvariant() == "SUCCESS" || notificacion.ToastType.ToUpperInvariant() == "INFO"
-                    ? ResponseFromService<bool>.Success(estatus, notificacion)
-                    : ResponseFromService<bool>.Failure(notificacion);
+                // Si el SP regresó ERROR/WARNING, cortar
+                if (toast == "ERROR" || toast == "WARNING")
+                    return ResponseFromService<bool>.Failure(notificacion);
+
+                // 2) Segundo resultset: tomas de HOY (ProgramarTomaRequest)
+                var tomas = (await multi.ReadAsync<ProgramarTomaRequest>()).ToList();
+
+                // Si no hay tomas para hoy, el SP fue éxito; no hay nada que programar en OneSignal
+                if (tomas.Count == 0)
+                    return ResponseFromService<bool>.Success(true, notificacion);
+
+                // 4) Programar notificaciones en OneSignal (usa external_user_id = IdPaciente)
+                var resultado = await _oneSignalNotificationService.ProgramarRecordatorioTomaAsync(tomas);
+
+                // Propagar tal cual la respuesta del servicio OneSignal (SUCCESS/INFO/ERROR)
+                return resultado;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                var notificacion = await _catalogoNotificacionService
+                var notif = await _catalogoNotificacionService
                     .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-                return ResponseFromService<bool>.Failure(notificacion);
+                return ResponseFromService<bool>.Exeption(ex, notif);
             }
         }
+
 
         public async Task<ResponseFromService<bool>> DesactivarAlertaTomaAsync(DesactivarAlertaTomaRequest request, Guid idUsuario)
         {
@@ -154,12 +177,36 @@ namespace RMD.Service.Receta
                 );
 
                 var codigoNotificacion = await multi.ReadFirstOrDefaultAsync<int>();
-                var estatus = await multi.ReadFirstOrDefaultAsync<bool>();
+
+                var tomaRequests = await multi.ReadFirstOrDefaultAsync<List<ProgramarTomaRequest>>();
 
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
+                var respPaciente = await _pacienteService.GetIdPacienteByUsuarioAsync(idUsuario);
+
+                Guid idPaciente;
+                ResponseFromService<bool> estatus;
+                if (respPaciente.Toast is "success" or "info" && respPaciente.Data != Guid.Empty)
+                {
+                    idPaciente = respPaciente.Data;
+                    estatus = await _oneSignalNotificationService.ProgramarRecordatorioTomaAsync(tomaRequests);
+                }
+                else
+                {
+                    // Maneja el error/notificación como acostumbras
+                    return ResponseFromService<bool>.Failure(new CatalogoNotificacion
+                    {
+                        CodigoNotificacion = respPaciente.Code,
+                        Mensaje = respPaciente.Message,
+                        ToastType = respPaciente.Toast.ToUpperInvariant(),
+                        Descripcion = string.Join(" | ", respPaciente.Descripcion ?? new List<string>())
+                    });
+                }
+
+                var paciente = _pacienteService.GetIdPacienteByUsuarioAsync(idUsuario);
+               
                 return notificacion.ToastType.ToUpperInvariant() is "SUCCESS" or "INFO"
-                    ? ResponseFromService<bool>.Success(estatus, notificacion)
+                    ? ResponseFromService<bool>.Success(estatus.Data, notificacion)
                     : ResponseFromService<bool>.Failure(notificacion);
             }
             catch

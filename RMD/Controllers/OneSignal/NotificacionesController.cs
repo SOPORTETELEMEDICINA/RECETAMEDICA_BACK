@@ -57,7 +57,7 @@ namespace RMD.Controllers.OneSignal
             }
 
             
-            var result = await _svc.ProgramarRecordatorioTomaAsync(req, idPaciente, ct);
+            var result = await _svc.ProgramarRecordatorioTomaAsync(req, ct);
 
             // estándar: éxito si SUCCESS o INFO
             if (result.Toast == "success" || result.Toast == "info")

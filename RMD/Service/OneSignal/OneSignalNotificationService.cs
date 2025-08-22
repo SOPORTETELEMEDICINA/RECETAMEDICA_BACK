@@ -29,18 +29,10 @@ namespace RMD.Service.OneSignal
         }
 
         public async Task<ResponseFromService<bool>> ProgramarRecordatorioTomaAsync(
-            List<ProgramarTomaRequest> req, Guid idPaciente,
-            CancellationToken ct = default)
+            List<ProgramarTomaRequest> req, CancellationToken ct = default)
         {
             try
             {
-                if (idPaciente == Guid.Empty)
-                {
-                    var notif = await _catalogoNotificacionService
-                        .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
-                    return ResponseFromService<bool>.Failure(notif);
-                }
-
                 var respuestas = new List<ProgramarTomaResponse>(req.Count);
                 int ok = 0, fail = 0;
 
@@ -48,7 +40,7 @@ namespace RMD.Service.OneSignal
                 {
                     var resItem = new ProgramarTomaResponse
                     {
-                        IdAlertaToma = item.IdAlertaToma,
+                        IdAlertaTomaProgramada = item.IdAlertaTomaProgramada,
                         TipoAlerta = item.TipoAlerta
                     };
 
@@ -70,14 +62,14 @@ namespace RMD.Service.OneSignal
                         var payload = new
                         {
                             app_id = _appId,
-                            include_external_user_ids = new[] { idPaciente.ToString() }, // external_id = IdPaciente
+                            include_external_user_ids = new[] { item.IdPaciente.ToString() }, // external_id = IdPaciente
                             target_channel = "push",
                             headings = new { es = "Recordatorio de medicación" },
                             contents = new { es = contenido },
                             send_after = sendAtUtc.ToString("o"), // ISO-8601 (UTC)
                             data = new
                             {
-                                idAlertaToma = item.IdAlertaToma,
+                                idAlertaToma = item.IdAlertaTomaProgramada,
                                 tipoAlerta = item.TipoAlerta, // 1=normal, 2=manual
                                 medicamento = item.Medicamento
                             }
@@ -169,7 +161,7 @@ namespace RMD.Service.OneSignal
 
             var rows = respuestas.Select(r => new
             {
-                r.IdAlertaToma,
+                r.IdAlertaTomaProgramada,
                 TipoAlerta = (byte)r.TipoAlerta,
                 r.OneSignalNotificationId,
                 FechaEnvioProgramadoUtc = r.SendAfterUtc?.UtcDateTime,

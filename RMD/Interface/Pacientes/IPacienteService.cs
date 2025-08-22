@@ -19,5 +19,6 @@ namespace RMD.Interface.Pacientes
         Task<ResponseFromService<IEnumerable<EntidadNacimientoResponse>>> GetEntidadesFederativasAsync();
         //Task<ResponseFromService<IEnumerable<Paciente>>> GetPacientesByEntidadNacimientoAsync(int idEntidadNacimiento);
         Task<ResponseFromService<string>> GenerarQRParaPacienteAsync(Guid idPaciente);
+        Task<ResponseFromService<Guid>> GetIdPacienteByUsuarioAsync(Guid idUsuario);
     }
 }
