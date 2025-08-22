@@ -552,5 +552,24 @@
                 
             };
         }
+
+        public static class NotificacionesController
+        {
+            // Roles con acceso al controlador completo
+            public static readonly string[] RolesPermitidosNotificacionesController =
+            [
+                "Super Admin",
+                "Paciente"
+            ];
+
+            // Permisos por endpoint
+            public static readonly Dictionary<string, string[]> EndpointRolesNotificacionesController = new()
+            {
+                { "ProgramarToma", ["Super Admin", "Paciente"] }
+
+            };
+        }
+
+        
     }
 }

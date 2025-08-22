@@ -4,6 +4,8 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Windows.Input;
+using OneSignalSDK.DotNet;
+
 // 👇 para usar nameof(ForgotPasswordPage)
 
 namespace RMD.Movil.PageModels
@@ -92,6 +94,12 @@ namespace RMD.Movil.PageModels
 
                 var pacienteJson = JsonSerializer.Serialize(pacienteResponse.Data);
                 Preferences.Default.Set("Paciente", pacienteJson);
+
+                var idPaciente = pacienteResponse.Data.IdPaciente;
+                if (idPaciente != Guid.Empty)
+                {
+                    OneSignal.Login(idPaciente.ToString());
+                }
 
                 if (MainPage != null)
                     await MainPage.DisplayAlert("Bienvenido", $"Hola {result.Data.User.Nombres}", "OK");
