@@ -24,6 +24,6 @@ public partial class AvisosMedicacionPage : ContentPage
 
     private void CalendarioPopup_FechaSeleccionada(DateTime fecha)
     {
-        _vm.SeleccionarFechaDesdePopup(fecha);
+        
     }
 }

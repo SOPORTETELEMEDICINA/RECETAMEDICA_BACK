@@ -11,11 +11,13 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="TextColor" Value="#69728b"/>
         </Style>
+
         <Style x:Key="TitleLabel" TargetType="Label">
             <Setter Property="FontSize" Value="26"/>
             <Setter Property="FontAttributes" Value="Bold"/>
             <Setter Property="TextColor" Value="#1F2937"/>
         </Style>
+
         <Style x:Key="CardBorder" TargetType="Border">
             <Setter Property="BackgroundColor" Value="White"/>
             <Setter Property="Stroke" Value="#E0E3EB"/>
@@ -23,10 +25,12 @@
             <Setter Property="StrokeShape" Value="RoundRectangle 18"/>
             <Setter Property="Padding" Value="18"/>
         </Style>
+
         <Style x:Key="InputBorder" TargetType="Border" BasedOn="{StaticResource CardBorder}">
             <Setter Property="Padding" Value="10"/>
             <Setter Property="StrokeShape" Value="RoundRectangle 10"/>
         </Style>
+
         <Style x:Key="OkButton" TargetType="Button">
             <Setter Property="BackgroundColor" Value="#00A4B7"/>
             <Setter Property="TextColor" Value="White"/>
@@ -34,6 +38,7 @@
             <Setter Property="HeightRequest" Value="44"/>
             <Setter Property="FontAttributes" Value="Bold"/>
         </Style>
+
         <Style x:Key="CancelButton" TargetType="Button">
             <Setter Property="BackgroundColor" Value="#B91C1C"/>
             <Setter Property="TextColor" Value="White"/>
@@ -41,9 +46,33 @@
             <Setter Property="HeightRequest" Value="44"/>
             <Setter Property="FontAttributes" Value="Bold"/>
         </Style>
+
+        <!-- ===== Estilos y recursos para Pickers-Select ===== -->
+
+        <!-- Estilo base del Picker para verse como select -->
+        <Style x:Key="SelectPicker" TargetType="Picker">
+            <Setter Property="BackgroundColor" Value="Transparent"/>
+            <Setter Property="HeightRequest" Value="42"/>
+            <Setter Property="TextColor" Value="#111827"/>
+            <Setter Property="TitleColor" Value="#9CA3AF"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="HorizontalOptions" Value="Fill"/>
+        </Style>
+
+        <!-- Contenedor con borde tipo input -->
+        <Style x:Key="SelectContainer" TargetType="Border" BasedOn="{StaticResource InputBorder}">
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="BackgroundColor" Value="White"/>
+        </Style>
+
+        <!-- Icono de chevron usando MaterialIcons (expand_more = E5CF) -->
+        <FontImageSource x:Key="ChevronDownIcon"
+                         Glyph="&#xE5CF;"
+                         FontFamily="MaterialIcons"
+                         Size="20"
+                         Color="#6B7280"/>
     </ContentPage.Resources>
 
-    <!-- NOMBRE AL GRID RAÍZ -->
     <Grid x:Name="Root" Padding="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -157,8 +186,21 @@
 
                                     <VerticalStackLayout Grid.Column="1">
                                         <Label Text="UNIDAD:" Style="{StaticResource FieldLabel}"/>
-                                        <Picker ItemsSource="{Binding Unidades}"
-                                                SelectedItem="{Binding UnidadSeleccionada}" />
+
+                                        <!-- Select Unidad -->
+                                        <Grid>
+                                            <Border Style="{StaticResource SelectContainer}">
+                                                <Picker Style="{StaticResource SelectPicker}"
+                                                        Title="Selecciona unidad"
+                                                        ItemsSource="{Binding Unidades}"
+                                                        SelectedItem="{Binding UnidadSeleccionada}" />
+                                            </Border>
+                                            <Image Source="{StaticResource ChevronDownIcon}"
+                                                   HorizontalOptions="End"
+                                                   VerticalOptions="Center"
+                                                   Margin="0,0,12,0"
+                                                   InputTransparent="True"/>
+                                        </Grid>
                                     </VerticalStackLayout>
                                 </Grid>
 
@@ -170,10 +212,22 @@
 
                                 <VerticalStackLayout Grid.Row="1" Grid.Column="1">
                                     <Label Text="FRECUENCIA:" Style="{StaticResource FieldLabel}"/>
-                                    <Picker ItemsSource="{Binding PeriodosFrecuencia}"
-                                            SelectedItem="{Binding PeriodoFrecuenciaSeleccionado}"
-                                            ItemDisplayBinding="{Binding FrecuencyType}"
-                                            Title="Selecciona periodo" />
+
+                                    <!-- Select Frecuencia -->
+                                    <Grid>
+                                        <Border Style="{StaticResource SelectContainer}">
+                                            <Picker Style="{StaticResource SelectPicker}"
+                                                    Title="Selecciona periodo"
+                                                    ItemsSource="{Binding PeriodosFrecuencia}"
+                                                    SelectedItem="{Binding PeriodoFrecuenciaSeleccionado}"
+                                                    ItemDisplayBinding="{Binding FrecuencyType}" />
+                                        </Border>
+                                        <Image Source="{StaticResource ChevronDownIcon}"
+                                               HorizontalOptions="End"
+                                               VerticalOptions="Center"
+                                               Margin="0,0,12,0"
+                                               InputTransparent="True"/>
+                                    </Grid>
                                 </VerticalStackLayout>
 
                             </Grid>
@@ -187,25 +241,64 @@
 
                                 <VerticalStackLayout Grid.Column="1">
                                     <Label Text="PERIODO:" Style="{StaticResource FieldLabel}"/>
-                                    <Picker ItemsSource="{Binding PeriodosDuracion}"
-                                            SelectedItem="{Binding PeriodoDuracionSeleccionado}"
-                                            ItemDisplayBinding="{Binding Text}" />
+
+                                    <!-- Select Periodo Duración -->
+                                    <Grid>
+                                        <Border Style="{StaticResource SelectContainer}">
+                                            <Picker Style="{StaticResource SelectPicker}"
+                                                    Title="Selecciona periodo"
+                                                    ItemsSource="{Binding PeriodosDuracion}"
+                                                    SelectedItem="{Binding PeriodoDuracionSeleccionado}"
+                                                    ItemDisplayBinding="{Binding Text}" />
+                                        </Border>
+                                        <Image Source="{StaticResource ChevronDownIcon}"
+                                               HorizontalOptions="End"
+                                               VerticalOptions="Center"
+                                               Margin="0,0,12,0"
+                                               InputTransparent="True"/>
+                                    </Grid>
                                 </VerticalStackLayout>
 
                                 <!-- VÍA (oculta si ROUTES vacío) -->
                                 <VerticalStackLayout Grid.Row="1"
                                                      IsVisible="{Binding MostrarVia}">
                                     <Label Text="VÍA:" Style="{StaticResource FieldLabel}"/>
-                                    <Picker ItemsSource="{Binding Vias}"
-                                            SelectedItem="{Binding ViaSeleccionada}" />
+
+                                    <!-- Select Vía -->
+                                    <Grid>
+                                        <Border Style="{StaticResource SelectContainer}">
+                                            <Picker Style="{StaticResource SelectPicker}"
+                                                    Title="Selecciona vía"
+                                                    ItemsSource="{Binding Vias}"
+                                                    SelectedItem="{Binding ViaSeleccionada}" />
+                                        </Border>
+                                        <Image Source="{StaticResource ChevronDownIcon}"
+                                               HorizontalOptions="End"
+                                               VerticalOptions="Center"
+                                               Margin="0,0,12,0"
+                                               InputTransparent="True"/>
+                                    </Grid>
                                 </VerticalStackLayout>
 
                                 <!-- MOTIVO (oculta si INDICATIONS vacío) -->
                                 <VerticalStackLayout Grid.Row="1" Grid.Column="1"
                                                      IsVisible="{Binding MostrarMotivoUso}">
                                     <Label Text="MOTIVO DE USO:" Style="{StaticResource FieldLabel}"/>
-                                    <Picker ItemsSource="{Binding MotivosUso}"
-                                            SelectedItem="{Binding MotivoUsoSeleccionado}" />
+
+                                    <!-- Select Motivo -->
+                                    <Grid>
+                                        <Border Style="{StaticResource SelectContainer}">
+                                            <Picker Style="{StaticResource SelectPicker}"
+                                                    Title="Selecciona motivo"
+                                                    ItemsSource="{Binding MotivosUso}"
+                                                    SelectedItem="{Binding MotivoUsoSeleccionado}" />
+                                        </Border>
+                                        <Image Source="{StaticResource ChevronDownIcon}"
+                                               HorizontalOptions="End"
+                                               VerticalOptions="Center"
+                                               Margin="0,0,12,0"
+                                               InputTransparent="True"/>
+                                    </Grid>
                                 </VerticalStackLayout>
                             </Grid>
 

@@ -1,121 +1,79 @@
+using Microsoft.Maui.Controls.Shapes;
 using System.Globalization;
 
 namespace RMD.Movil.Pages
 {
     public partial class CalendarioPopup : ContentView
     {
-        public event Action<DateTime>? FechaSeleccionada;
-
-        private DateTime mesActual;
-
         public CalendarioPopup()
         {
             InitializeComponent();
-            mesActual = DateTime.Today;
             DibujarCalendario();
         }
 
         private void DibujarCalendario()
         {
             DiasGrid.Children.Clear();
+            DiasGrid.RowDefinitions.Clear();
+            DiasGrid.ColumnDefinitions.Clear();
 
-            // Título mes y año
-            LblMesAnio.Text = mesActual
-                .ToString("MMMM yyyy", new CultureInfo("es-ES"))
-                .ToUpper();
+            // mostrar HOY + 6 días
+            DateTime hoy = DateTime.Today;
+            var semana = Enumerable.Range(0, 7).Select(offset => hoy.AddDays(offset)).ToList();
 
-            // Encabezado días (domingo primero)
-            string[] diasSemana = { "D", "L", "M", "M", "J", "V", "S" };
+            // título mes
+            LblMesAnio.Text = hoy.ToString("MMMM yyyy", new CultureInfo("es-ES")).ToUpper();
+
+            // layout: 7 columnas, 2 filas (nombre + número)
             for (int i = 0; i < 7; i++)
+                DiasGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+            DiasGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto)); // fila nombre
+            DiasGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto)); // fila número
+
+            for (int i = 0; i < semana.Count; i++)
             {
-                var lbl = new Label
+                DateTime fecha = semana[i];
+
+                // nombre del día (LUN, MAR, ...)
+                var lblNombre = new Label
                 {
-                    Text = diasSemana[i],
-                    HorizontalOptions = LayoutOptions.Center,
-                    VerticalOptions = LayoutOptions.Center,
-                    FontFamily = "Roboto",
+                    Text = fecha.ToString("ddd", new CultureInfo("es-ES")).ToUpper(),
+                    FontSize = 12,
+                    TextColor = fecha.Date == hoy.Date ? Colors.White : Colors.Black,
+                    FontAttributes = fecha.Date == hoy.Date ? FontAttributes.Bold : FontAttributes.None,
+                    HorizontalOptions = LayoutOptions.Center
+                };
+
+                // contenedor tipo píldora
+                var border = new Border
+                {
+                    StrokeShape = new RoundRectangle { CornerRadius = 20 },
+                    StrokeThickness = 0,
+                    Padding = new Thickness(12, 8),
+                    BackgroundColor = fecha.Date == hoy.Date ? Color.FromArgb("#6f61ee") : Colors.Transparent,
+                    HorizontalOptions = LayoutOptions.Center
+                };
+
+                var lblDia = new Label
+                {
+                    Text = fecha.Day.ToString(),
                     FontSize = 14,
-                    FontAttributes = FontAttributes.Bold,
-                    TextColor = Color.FromArgb("#6f61ee")
-                };
-                DiasGrid.Children.Add(lbl);
-                Grid.SetRow(lbl, 0);
-                Grid.SetColumn(lbl, i);
-            }
-
-            // Calcular primer día del mes y offset
-            var primerDiaMes = new DateTime(mesActual.Year, mesActual.Month, 1);
-            int offset = (int)primerDiaMes.DayOfWeek; // Domingo = 0
-            int diasMes = DateTime.DaysInMonth(mesActual.Year, mesActual.Month);
-
-            int fila = 1;
-            int columna = offset;
-
-            // Pintar días
-            for (int dia = 1; dia <= diasMes; dia++)
-            {
-                var fecha = new DateTime(mesActual.Year, mesActual.Month, dia);
-
-                var btn = new Button
-                {
-                    Text = dia.ToString("00"),
-                    BackgroundColor = Colors.Transparent,
-                    TextColor = Colors.Black,
-                    FontFamily = "Roboto",
-                    CornerRadius = 20,
-                    FontSize = 9,
-                    WidthRequest = 40,
-                    HeightRequest = 40,
                     HorizontalOptions = LayoutOptions.Center,
-                    VerticalOptions = LayoutOptions.Center,
-                    CommandParameter = fecha
+                    TextColor = fecha.Date == hoy.Date ? Colors.White : Colors.Black,
+                    FontAttributes = fecha.Date == hoy.Date ? FontAttributes.Bold : FontAttributes.None
                 };
 
-                // Resaltar día actual
-                if (fecha.Date == DateTime.Today.Date)
-                {
-                    btn.BackgroundColor = Color.FromArgb("#6f61ee");
-                    btn.TextColor = Colors.White;
-                }
 
-                btn.Clicked += (s, e) =>
-                {
-                    if (s is Button b && b.CommandParameter is DateTime f)
-                    {
-                        FechaSeleccionada?.Invoke(f);
-                        IsVisible = false;
-                    }
-                };
+                border.Content = lblDia;
 
-                DiasGrid.Children.Add(btn);
-                Grid.SetRow(btn, fila);
-                Grid.SetColumn(btn, columna);
+                DiasGrid.Children.Add(lblNombre);
+                Grid.SetRow(lblNombre, 0);
+                Grid.SetColumn(lblNombre, i);
 
-                columna++;
-                if (columna > 6)
-                {
-                    columna = 0;
-                    fila++;
-                }
+                DiasGrid.Children.Add(border);
+                Grid.SetRow(border, 1);
+                Grid.SetColumn(border, i);
             }
-        }
-
-        // Botones de navegación
-        private void BtnAnterior_Clicked(object sender, EventArgs e)
-        {
-            mesActual = mesActual.AddMonths(-1);
-            DibujarCalendario();
-        }
-
-        private void BtnSiguiente_Clicked(object sender, EventArgs e)
-        {
-            mesActual = mesActual.AddMonths(1);
-            DibujarCalendario();
-        }
-
-        private void BtnCancelar_Clicked(object sender, EventArgs e)
-        {
-            IsVisible = false;
         }
     }
 }
