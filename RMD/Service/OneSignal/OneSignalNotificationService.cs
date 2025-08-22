@@ -16,7 +16,6 @@ namespace RMD.Service.OneSignal
         private readonly IDapperService _dapperService;
 
         // NUEVO: país y zona horaria resuelta a partir de appsettings: Country = "MX" | "ES"
-        private readonly string _country;
         private readonly TimeZoneInfo _tz;
 
         public OneSignalNotificationService(
@@ -31,13 +30,12 @@ namespace RMD.Service.OneSignal
             _catalogoNotificacionService = catalogoNotificacionService;
             _dapperService = dapperService;
 
-            _country = (configuration["Country"] ?? "MX").Trim().ToUpperInvariant();
+            string country = (configuration["Country"] ?? "MX").Trim().ToUpperInvariant();
 
             // Si quieres permitir override explícito:
             // var tzOverride = configuration["TimeZoneId"]; // opcional
             // _tz = !string.IsNullOrWhiteSpace(tzOverride) ? ResolveTzById(tzOverride) : ResolveTzByCountry(_country);
-
-            _tz = ResolveTzByCountry(_country);
+            _tz = ResolveTzByCountry(country);
         }
 
         // Resuelve zona horaria por país con fallback Windows/IANA
@@ -248,7 +246,7 @@ namespace RMD.Service.OneSignal
         {
             try
             {
-                if (porCancelar == null || porCancelar.Count == 0)
+                if (porCancelar.Count == 0)
                 {
                     var notifVacio = await _catalogoNotificacionService
                         .GetNotificationByTipoAndFuncionAsync("ALERTAS", "SIN_NOTIFICACIONES_A_CANCELAR");
@@ -445,7 +443,7 @@ namespace RMD.Service.OneSignal
 
                 string? osId = null;
                 int httpStatus;
-                string? httpBody = null;
+                string? httpBody;
 
                 using (var resp = await _http.SendAsync(msg))
                 {
@@ -483,15 +481,15 @@ namespace RMD.Service.OneSignal
                     "[Receta].[InsertSnoozeAlertaProgramada]",
                     new
                     {
-                        IdAlertaTomaProgramadaBase = req.IdAlertaTomaProgramadaBase,
-                        IdPaciente = req.IdPaciente,
+                        req.IdAlertaTomaProgramadaBase,
+                        req.IdPaciente,
                         TipoAlerta = (byte)req.TipoAlerta,
                         FechaHoraTomaLocal = fechaTomaLocalNueva,
-                        SnoozeMinutos = req.SnoozeMinutos,
+                        req.SnoozeMinutos,
                         OneSignalNotificationId = osId,
                         FechaEnvioProgramadoUtc = sendAfterUtc.UtcDateTime,
                         HttpStatus = httpStatus,
-                        ErrorMensaje = osId is null ? (httpBody ?? "Error al programar en OneSignal") : null
+                        ErrorMensaje = osId is null ? (httpBody) : null
                     },
                     commandType: CommandType.StoredProcedure
                 );

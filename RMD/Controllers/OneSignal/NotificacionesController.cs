@@ -49,7 +49,7 @@ namespace RMD.Controllers.OneSignal
                 return BadRequest(ResponseFromService<bool>.Failure(notif));
             }
 
-            if (idPaciente == Guid.Empty || req is null || req.Count == 0)
+            if (idPaciente == Guid.Empty || req.Count == 0)
             {
                 var notif = await _catalogoNotificacionService
                     .GetNotificationByTipoAndFuncionAsync("GENERAL", "DATOS_INVALIDOS");
@@ -75,7 +75,7 @@ namespace RMD.Controllers.OneSignal
                 return BadRequest(ResponseFromService<bool>.Failure(notif));
             }
 
-            if (!ModelState.IsValid || req is null)
+            if (!ModelState.IsValid)
             {
                 var errores = string.Join(" | ", ModelState.Values
                     .SelectMany(v => v.Errors)
