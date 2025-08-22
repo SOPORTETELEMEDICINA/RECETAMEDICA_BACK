@@ -7,6 +7,7 @@ using RMD.Shared.Models.Receta.AlertaToma.Response;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text.Json;
+using System.Diagnostics;
 
 namespace RMD.Movil.PageModels
 {
@@ -20,10 +21,11 @@ namespace RMD.Movil.PageModels
         public ObservableCollection<DiaSemanaItem> Semana { get; } = new();
 
         [ObservableProperty] private string mesSemana = string.Empty;
-        [ObservableProperty] private DiaSemanaItem? diaSeleccionado;
+
+        // Solo para depuración (puedes ocultarla en UI o dejarla para Output)
+        [ObservableProperty] private string? debugUltimaRespuesta;
 
         public IAsyncRelayCommand LoadCommand { get; }
-        public IRelayCommand<DiaSemanaItem> SeleccionarDiaCommand { get; }
 
         public AvisosMedicacionPageModel(IAlertasProgramadasControllerService alertasProgramadasService)
         {
@@ -31,28 +33,16 @@ namespace RMD.Movil.PageModels
 
             CargarIdPacienteDesdePreferences();
 
-            SeleccionarDiaCommand = new RelayCommand<DiaSemanaItem>(d => SeleccionarDia(d));
             LoadCommand = new AsyncRelayCommand(async () =>
             {
                 if (Semana.Count == 0)
                     ConstruirSemanaDesde(DateTime.Today);
 
-                var fecha = DiaSeleccionado?.Date ?? DateTime.Today;
-                await CargarMedicamentosEnFechaAsync(fecha);
+                await CargarMedicamentosEnFechaAsync(DateTime.Today);
             });
 
+            // Inicializa semana (hoy + 6)
             ConstruirSemanaDesde(DateTime.Today);
-            var hoy = Semana.FirstOrDefault();
-            if (hoy != null) DiaSeleccionado = hoy; // dispara carga
-        }
-
-        // Llamado desde el popup (si tu XAML aún lo usa)
-        public void SeleccionarFechaDesdePopup(DateTime fecha)
-        {
-            ConstruirSemanaDesde(fecha.Date);
-
-            var match = Semana.FirstOrDefault(d => d.Date == fecha.Date) ?? Semana.First();
-            DiaSeleccionado = match; // setter dispara carga
         }
 
         private void CargarIdPacienteDesdePreferences()
@@ -79,21 +69,6 @@ namespace RMD.Movil.PageModels
                 Semana.Add(new DiaSemanaItem(inicio.AddDays(i)));
         }
 
-        private void SeleccionarDia(DiaSemanaItem? dia, bool actualizarPropiedad = true)
-        {
-            if (dia == null) return;
-            foreach (var d in Semana) d.IsSelected = false;
-            dia.IsSelected = true;
-            if (actualizarPropiedad) DiaSeleccionado = dia;
-        }
-
-        partial void OnDiaSeleccionadoChanged(DiaSemanaItem? value)
-        {
-            if (value == null) return;
-            SeleccionarDia(value, actualizarPropiedad: false);
-            _ = CargarMedicamentosEnFechaAsync(value.Date);
-        }
-
         private async Task CargarMedicamentosEnFechaAsync(DateTime fecha)
         {
             try
@@ -108,12 +83,19 @@ namespace RMD.Movil.PageModels
                 };
 
                 var resp = await _alertasProgramadasService.GetAlertasProgramadasEnFechaAsync(req);
+
+                // --- Debug visible en Output y opcionalmente en UI ---
+                var opcionesJson = new JsonSerializerOptions { WriteIndented = true };
+                debugUltimaRespuesta = JsonSerializer.Serialize(resp, opcionesJson);
+                Debug.WriteLine($"[Avisos] {fecha:yyyy-MM-dd} -> {debugUltimaRespuesta}");
+
                 foreach (var a in resp?.Data ?? Enumerable.Empty<AlertaProgramadaResponse>())
                     Medicamentos.Add(a);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error cargando alertas por fecha: {ex.Message}");
+                Debug.WriteLine($"Error cargando alertas por fecha: {ex.Message}");
+                debugUltimaRespuesta = $"ERROR: {ex.Message}";
             }
         }
     }
@@ -132,6 +114,5 @@ namespace RMD.Movil.PageModels
         public string DayName { get; }
         public string DayNumber { get; }
         public bool IsToday { get; }
-        [ObservableProperty] private bool isSelected;
     }
 }
