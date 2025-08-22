@@ -14,7 +14,6 @@ namespace RMD.Service.Receta
 
         private readonly IDapperService _dapperService;
         private readonly ICatalogoNotificacionService _catalogoNotificacionService;
-        private readonly IPacienteService _pacienteService;
         private readonly IOneSignalNotificationService _oneSignalNotificationService;
         // Constructor
         public AlertaTomaService(IDapperService dapperService, ICatalogoNotificacionService catalogoNotificacionService,
@@ -22,7 +21,6 @@ namespace RMD.Service.Receta
         {
             _dapperService = dapperService;
             _catalogoNotificacionService = catalogoNotificacionService;
-            _pacienteService = pacienteService;
             _oneSignalNotificationService = oneSignalNotificationService;
         }
 
@@ -74,29 +72,55 @@ namespace RMD.Service.Receta
             }
         }
 
-
-        public async Task<ResponseFromService<bool>> DesactivarAlertaTomaAsync(DesactivarAlertaTomaRequest request, Guid idUsuario)
+        public async Task<ResponseFromService<bool>> DesactivarAlertaTomaAsync(
+            DesactivarAlertaTomaRequest request, Guid idUsuario)
         {
             try
             {
                 var multi = await _dapperService.QueryMultipleAsync(
                     "[Receta].[DesactivarAlertaToma]",
-                    new
-                    {
-                        request.IdAlertaToma,
-                        IdUsuario = idUsuario
-                    },
+                    new { request.IdAlertaToma, IdUsuario = idUsuario },
                     commandType: CommandType.StoredProcedure
                 );
 
+                // 1) Leer SOLO el código de notificación
                 var codigoNotificacion = await multi.ReadFirstOrDefaultAsync<int>();
-                var estatus = await multi.ReadFirstOrDefaultAsync<bool>();
+                var notifBase = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
 
-                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                // Si el SP devolvió un código de error, regresamos tal cual (sin intentar cancelar en OneSignal)
+                if (notifBase.ToastType.Equals("ERROR", StringComparison.OrdinalIgnoreCase))
+                    return ResponseFromService<bool>.Failure(notifBase);
 
-                return notificacion.ToastType.ToUpperInvariant() is "SUCCESS" or "INFO"
-                    ? ResponseFromService<bool>.Success(estatus, notificacion)
-                    : ResponseFromService<bool>.Failure(notificacion);
+                // 2) DESCARTAR el segundo resultset (estatus) sin usarlo
+                //    Esto solo avanza el cursor al siguiente resultset.
+                try { await multi.ReadAsync<dynamic>(); } catch { /* tolerante si no existe */ }
+
+                // 3) Leer la tabla con las notificaciones a cancelar en OneSignal
+                var porCancelar = (await multi.ReadAsync<CancelarNotificacionRequest>()).ToList();
+
+                // Si no hay nada que cancelar → 28606 (sin notificaciones a cancelar)
+                if (porCancelar.Count == 0)
+                {
+                    var notifSin = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("ALERTAS", "SIN_NOTIFICACIONES_A_CANCELAR");
+
+                    notifSin.Mensaje = $"{notifBase.Mensaje}. {notifSin.Mensaje}";
+                    return ResponseFromService<bool>.Success(true, notifSin);
+                }
+
+                // Hay notificaciones: cancelar en OneSignal y combinar mensajes
+                var resCancel = await _oneSignalNotificationService.CancelarProgramadasAsync(porCancelar);
+
+                // Construimos una respuesta combinada manteniendo el resultado de cancelación
+                var combinado = new ResponseFromService<bool>
+                {
+                    Code = resCancel.Code,
+                    Message = $"{notifBase.Mensaje}. {resCancel.Message}",
+                    Toast = resCancel.Toast,
+                    Data = resCancel.Data // true/false según cancelación (parcial/total/fracaso)
+                };
+
+                return combinado;
             }
             catch
             {
@@ -151,11 +175,12 @@ namespace RMD.Service.Receta
         }
 
 
-        public async Task<ResponseFromService<bool>> ActivarAlertaManualAsync(ActivarAlertaManualRequest request, Guid idUsuario)
+        public async Task<ResponseFromService<bool>> ActivarAlertaManualAsync(
+            ActivarAlertaManualRequest request, Guid idUsuario)
         {
             try
             {
-                var multi = await _dapperService.QueryMultipleAsync(
+                using var multi = await _dapperService.QueryMultipleAsync(
                     "[Receta].[ActivarAlertaTomaManual]",
                     new
                     {
@@ -176,49 +201,40 @@ namespace RMD.Service.Receta
                     commandType: CommandType.StoredProcedure
                 );
 
+                // 1) Primer resultset: código de notificación
                 var codigoNotificacion = await multi.ReadFirstOrDefaultAsync<int>();
-
-                var tomaRequests = await multi.ReadFirstOrDefaultAsync<List<ProgramarTomaRequest>>();
-
                 var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                var toast = (notificacion.ToastType ?? string.Empty).ToUpperInvariant();
 
-                var respPaciente = await _pacienteService.GetIdPacienteByUsuarioAsync(idUsuario);
+                // Si el SP regresó ERROR/WARNING, cortar
+                if (toast == "ERROR" || toast == "WARNING")
+                    return ResponseFromService<bool>.Failure(notificacion);
 
-                Guid idPaciente;
-                ResponseFromService<bool> estatus;
-                if (respPaciente.Toast is "success" or "info" && respPaciente.Data != Guid.Empty)
-                {
-                    idPaciente = respPaciente.Data;
-                    estatus = await _oneSignalNotificationService.ProgramarRecordatorioTomaAsync(tomaRequests);
-                }
-                else
-                {
-                    // Maneja el error/notificación como acostumbras
-                    return ResponseFromService<bool>.Failure(new CatalogoNotificacion
-                    {
-                        CodigoNotificacion = respPaciente.Code,
-                        Mensaje = respPaciente.Message,
-                        ToastType = respPaciente.Toast.ToUpperInvariant(),
-                        Descripcion = string.Join(" | ", respPaciente.Descripcion ?? new List<string>())
-                    });
-                }
+                // 2) Segundo resultset: tomas del DÍA (ProgramarTomaRequest)
+                //    ¡OJO! Con Dapper es ReadAsync<T>(), luego ToList().
+                var tomas = (await multi.ReadAsync<ProgramarTomaRequest>()).ToList();
 
-                var paciente = _pacienteService.GetIdPacienteByUsuarioAsync(idUsuario);
-               
-                return notificacion.ToastType.ToUpperInvariant() is "SUCCESS" or "INFO"
-                    ? ResponseFromService<bool>.Success(estatus.Data, notificacion)
-                    : ResponseFromService<bool>.Failure(notificacion);
+                // Si no hay tomas para hoy (p. ej. @Activo = 0), no hay nada que programar
+                if (tomas.Count == 0)
+                    return ResponseFromService<bool>.Success(true, notificacion);
+
+                // 3) Programar notificaciones en OneSignal
+                //    Asumiendo que tu ProgramarRecordatorioTomaAsync ya acepta la lista con IdPaciente dentro de cada item.
+                var resultado = await _oneSignalNotificationService.ProgramarRecordatorioTomaAsync(tomas);
+
+                // 4) Propaga tal cual la respuesta del servicio OneSignal (SUCCESS/INFO/ERROR)
+                return resultado;
             }
-            catch
+            catch (Exception ex)
             {
-                var notificacion = await _catalogoNotificacionService
+                var notif = await _catalogoNotificacionService
                     .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-                return ResponseFromService<bool>.Failure(notificacion);
+                return ResponseFromService<bool>.Exeption(ex, notif);
             }
         }
 
-
-        public async Task<ResponseFromService<bool>> DesactivarAlertaManualAsync(DesactivarAlertaManualRequest request, Guid idUsuario)
+        public async Task<ResponseFromService<bool>> DesactivarAlertaManualAsync(
+      DesactivarAlertaManualRequest request, Guid idUsuario)
         {
             try
             {
@@ -232,22 +248,39 @@ namespace RMD.Service.Receta
                     commandType: CommandType.StoredProcedure
                 );
 
+                // 1) Primer resultset: código de notificación del SP
                 var codigoNotificacion = await multi.ReadFirstOrDefaultAsync<int>();
-                var estatus = await multi.ReadFirstOrDefaultAsync<bool>();
 
-                var notificacion = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+                // 2) Segundo resultset: filas a cancelar en OneSignal
+                var porCancelar = (await multi.ReadAsync<CancelarNotificacionRequest>()).ToList();
 
-                return notificacion.ToastType.ToUpperInvariant() is "SUCCESS" or "INFO"
-                    ? ResponseFromService<bool>.Success(estatus, notificacion)
-                    : ResponseFromService<bool>.Failure(notificacion);
+                // 3) Evaluar la notificación base del SP
+                var notifBase = await _catalogoNotificacionService.GetNotificationByCodeAsync(codigoNotificacion);
+
+                // Si el SP regresó ERROR/WARNING, devolvemos tal cual
+                var toast = notifBase.ToastType?.ToUpperInvariant();
+                if (toast is "ERROR" or "WARNING")
+                    return ResponseFromService<bool>.Failure(notifBase);
+
+                // 4) Si no hay nada que cancelar en OneSignal
+                if (porCancelar.Count == 0)
+                {
+                    var notifVacio = await _catalogoNotificacionService
+                        .GetNotificationByTipoAndFuncionAsync("ALERTAS", "SIN_NOTIFICACIONES_A_CANCELAR");
+
+                    return ResponseFromService<bool>.Success(true, notifVacio);
+                }
+
+                // 5) Cancelar en OneSignal (mismo flujo para alerta normal y manual)
+                //    No pasamos CancellationToken para evitar abortos por cierre de request/app.
+                return await _oneSignalNotificationService.CancelarProgramadasAsync(porCancelar);
             }
             catch
             {
-                var notificacion = await _catalogoNotificacionService
+                var notifEx = await _catalogoNotificacionService
                     .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
-                return ResponseFromService<bool>.Failure(notificacion);
+                return ResponseFromService<bool>.Failure(notifEx);
             }
         }
-
     }
 }

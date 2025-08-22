@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RMD.Movil")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.1.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.1+151805d35034ed879441422fd7e296576a7a1fe0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.1+3e29d892ffc6951bdd1f00cfbe5582d71b964360")]
 [assembly: System.Reflection.AssemblyProductAttribute("RMD.Movil")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RMD.Movil")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.1.0.0")]

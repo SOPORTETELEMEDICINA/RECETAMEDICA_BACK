@@ -1,12 +1,49 @@
-# Excluir la carpeta .vs (Visual Studio)
-.vs
+# === Visual Studio / .NET ===
+.vs/
+**/bin/
+**/obj/
+**/out/
 
-# Excluir la carpeta bin (directorios de compilación)
-RMD/bin/
+# Archivos de usuario/perfil (no versionables)
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+*.rsuser
+*.userprefs
+*.DotSettings.user
 
-# Excluir la carpeta obj (archivos temporales de compilación)
-RMD/obj/
+# Perfiles de publicación (variantes .user)
+**/Properties/PublishProfiles/*.pubxml.user
 
-# Excluir la carpeta Properties/PublishProfiles (perfiles de publicación)
-RMD/Properties/PublishProfiles/FolderProfile.pubxml.user
-/RMD/Properties/PublishProfiles/FolderProfile4.pubxml.user
+# Resultados de pruebas / cobertura
+TestResults/
+**/TestResult*/
+*.coverage
+*.coveragexml
+
+# Paquetes/restos (proyectos antiguos)
+**/packages/
+!**/packages/build/
+!**/packages/repositories.config
+
+# IDEs
+.vscode/
+.idea/
+_ReSharper*/
+*.ncrunchsolution
+*.ncrunchproject
+
+# Logs / temporales
+*.log
+*.tlog
+*.cache
+*.tmp
+
+# macOS / Windows
+.DS_Store
+Thumbs.db
+
+# (Opcional) Configs locales: descomenta si usas estos archivos
+# appsettings.*.local.json
+# appsettings.Local.json

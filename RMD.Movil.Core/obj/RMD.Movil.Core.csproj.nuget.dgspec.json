@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Movil.Core\\RMD.Movil.Core.csproj": {}
+    "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Movil.Core\\RMD.Movil.Core.csproj": {}
   },
   "projects": {
-    "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\RMD.Shared.Models.csproj": {
+    "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\RMD.Shared.Models.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\RMD.Shared.Models.csproj",
+        "projectUniqueName": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\RMD.Shared.Models.csproj",
         "projectName": "RMD.Shared.Models",
-        "projectPath": "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\RMD.Shared.Models.csproj",
-        "packagesPath": "C:\\Users\\guz_b\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\obj\\",
+        "projectPath": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\RMD.Shared.Models.csproj",
+        "packagesPath": "C:\\NuPkgs",
+        "outputPath": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -76,14 +76,14 @@
         }
       }
     },
-    "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Movil.Core\\RMD.Movil.Core.csproj": {
+    "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Movil.Core\\RMD.Movil.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Movil.Core\\RMD.Movil.Core.csproj",
+        "projectUniqueName": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Movil.Core\\RMD.Movil.Core.csproj",
         "projectName": "RMD.Movil.Core",
-        "projectPath": "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Movil.Core\\RMD.Movil.Core.csproj",
-        "packagesPath": "C:\\Users\\guz_b\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Movil.Core\\obj\\",
+        "projectPath": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Movil.Core\\RMD.Movil.Core.csproj",
+        "packagesPath": "C:\\NuPkgs",
+        "outputPath": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Movil.Core\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -105,11 +105,11 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\RMD.Shared.Models.csproj": {
-                "projectPath": "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\RMD.Shared.Models.csproj"
+              "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\RMD.Shared.Models.csproj": {
+                "projectPath": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\RMD.Shared.Models.csproj"
               },
-              "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Utils.Shared\\RMD.Shared.Utils.csproj": {
-                "projectPath": "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Utils.Shared\\RMD.Shared.Utils.csproj"
+              "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Utils.Shared\\RMD.Shared.Utils.csproj": {
+                "projectPath": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Utils.Shared\\RMD.Shared.Utils.csproj"
               }
             }
           }
@@ -155,14 +155,14 @@
         }
       }
     },
-    "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Utils.Shared\\RMD.Shared.Utils.csproj": {
+    "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Utils.Shared\\RMD.Shared.Utils.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Utils.Shared\\RMD.Shared.Utils.csproj",
+        "projectUniqueName": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Utils.Shared\\RMD.Shared.Utils.csproj",
         "projectName": "RMD.Shared.Utils",
-        "projectPath": "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Utils.Shared\\RMD.Shared.Utils.csproj",
-        "packagesPath": "C:\\Users\\guz_b\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Utils.Shared\\obj\\",
+        "projectPath": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Utils.Shared\\RMD.Shared.Utils.csproj",
+        "packagesPath": "C:\\NuPkgs",
+        "outputPath": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Utils.Shared\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -184,8 +184,8 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\RMD.Shared.Models.csproj": {
-                "projectPath": "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\RMD.Shared.Models.csproj"
+              "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\RMD.Shared.Models.csproj": {
+                "projectPath": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.Models.Shared\\RMD.Shared.Models.csproj"
               }
             }
           }

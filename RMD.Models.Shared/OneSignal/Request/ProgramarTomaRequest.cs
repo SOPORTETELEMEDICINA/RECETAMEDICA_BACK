@@ -2,14 +2,14 @@
 {
     public sealed class ProgramarTomaRequest
     {
+        public Guid IdAlertaTomaProgramada { get; set; }   // del SP
+        public Guid IdPaciente { get; set; }               // del SP
+        public int TipoAlerta { get; set; } = 1;          // 1=normal, 2=manual (del SP)
+        public string Medicamento { get; set; } = "";      // del SP
 
-        public Guid IdAlertaTomaProgramada { get; set; }                // NUEVO: identificador de la alerta
-        public int TipoAlerta { get; set; } = 1;             // NUEVO: 1 = normal, 2 = manual
-        public Guid IdPaciente { get; set; } = Guid.Empty;  // paciente al que se le programa la toma
+        // IMPORTANTE: el SP entrega hora LOCAL (datetime), no UTC
+        public DateTime FechaHoraTomaLocal { get; set; }   // del SP: FechaHoraTomaLocal
 
-        public string Medicamento { get; set; } = "";         // texto visible
-        public DateTimeOffset FechaHoraTomaUtc { get; set; }  // hora exacta de toma (UTC)
-        public int MinutosAntes { get; set; } = 10;           // cuánto antes avisar
-
+        public int MinutosAntes { get; set; } = 10;        // del SP
     }
 }

@@ -565,8 +565,8 @@
             // Permisos por endpoint
             public static readonly Dictionary<string, string[]> EndpointRolesNotificacionesController = new()
             {
-                { "ProgramarToma", ["Super Admin", "Paciente"] }
-
+                { "ProgramarToma", ["Super Admin", "Paciente"] },
+                { "PosponerNotificacion", ["Super Admin", "Paciente"] }
             };
         }
 

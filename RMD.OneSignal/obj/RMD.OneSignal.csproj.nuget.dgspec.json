@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.OneSignal\\RMD.OneSignal.csproj": {}
+    "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.OneSignal\\RMD.OneSignal.csproj": {}
   },
   "projects": {
-    "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.OneSignal\\RMD.OneSignal.csproj": {
+    "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.OneSignal\\RMD.OneSignal.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.OneSignal\\RMD.OneSignal.csproj",
+        "projectUniqueName": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.OneSignal\\RMD.OneSignal.csproj",
         "projectName": "RMD.OneSignal",
-        "projectPath": "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.OneSignal\\RMD.OneSignal.csproj",
-        "packagesPath": "C:\\Users\\guz_b\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\guz_b\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.OneSignal\\obj\\",
+        "projectPath": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.OneSignal\\RMD.OneSignal.csproj",
+        "packagesPath": "C:\\NuPkgs",
+        "outputPath": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.OneSignal\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -50,6 +50,12 @@
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
+          "dependencies": {
+            "OneSignalSDK.DotNet": {
+              "target": "Package",
+              "version": "[5.2.1, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",

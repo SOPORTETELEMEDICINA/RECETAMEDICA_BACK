@@ -6,5 +6,8 @@ namespace RMD.Interface.OneSignal
     {
         Task<ResponseFromService<bool>> ProgramarRecordatorioTomaAsync(
             List<ProgramarTomaRequest> req, CancellationToken ct = default);
+        Task<ResponseFromService<bool>> CancelarProgramadasAsync(List<CancelarNotificacionRequest> porCancelar, CancellationToken ct = default);
+        Task<ResponseFromService<bool>> PosponerNotificacionAsync(PosponerNotificacionRequest req);
+
     }
 }

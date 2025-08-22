@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RMD.OneSignal")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+74867541eb80a30378c4e361618f3783b70950cc")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3e29d892ffc6951bdd1f00cfbe5582d71b964360")]
 [assembly: System.Reflection.AssemblyProductAttribute("RMD.OneSignal")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RMD.OneSignal")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
