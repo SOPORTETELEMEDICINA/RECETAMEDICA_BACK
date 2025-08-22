@@ -78,7 +78,7 @@ namespace RMD.Service.Receta
 
                 return ResponseFromService<IEnumerable<AlertaProgramadaResponse>>.Success(list, notif);
             }
-            catch
+            catch (Exception ex)
             {
                 var notif = await _catalogoNotificacionService
                     .GetNotificationByTipoAndFuncionAsync("GENERAL", "EXEPTIONDETECTADA");
