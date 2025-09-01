@@ -6,7 +6,7 @@ namespace RMD.Movil.Core.Service.Interfaces
 {
     public interface IRecetaControllerService
     {
-        Task<ResponseFromService<List<HeaderTextPlainResponse>>> GetRecetasByIdPacienteAsync(HeaderFilterByPacienteRequest filterRequest);
+        Task<ResponseFromService<List<HeaderTextPlainResponse>>> GetRecetasByPacienteAsync(Guid? idPaciente = null);
         Task<ResponseFromService<string>> GetQRByIdRecetaAsync(Guid idReceta);
         Task<string> GetRecetaByIdRecetaAsync(RecetaRequest request);
     }

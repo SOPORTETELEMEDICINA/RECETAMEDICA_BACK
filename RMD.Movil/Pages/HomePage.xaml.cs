@@ -17,6 +17,11 @@ namespace RMD.Movil.Pages
 
             BindingContext = new HomePageModel(authService);
         }
+
+        protected override bool OnBackButtonPressed()
+        {
+            return true; // true = cancelar acción de volver
+        }
     }
 
 }

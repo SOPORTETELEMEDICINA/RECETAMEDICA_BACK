@@ -21,8 +21,6 @@ public partial class DetalleRecetaPage : ContentPage
         var alertaTomaService = App.Services.GetService<IAlertaTomaControllerService>()
                                 ?? throw new Exception("No se pudo resolver IAlertaTomaControllerService");
 
-
-        // Crear y asignar ViewModel
         _vm = new DetalleRecetaPageModel(detallesService, alertasProgService, alertaTomaService);
         BindingContext = _vm;
     }

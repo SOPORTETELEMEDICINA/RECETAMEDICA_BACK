@@ -1,67 +1,68 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RMD.Movil.Core.Service.Interfaces;
-using RMD.Movil.PageModels.Controls; // BasePageModel
-using RMD.Shared.Models.GlobalResponse;
+using RMD.Movil.PageModels.Controls;
+using RMD.Movil.Services.Pdf;
 using RMD.Shared.Models.Pacientes.Response;
+using RMD.Shared.Models.Receta.Detalle.Response;
 using RMD.Shared.Models.Receta.Header.Request;
 using RMD.Shared.Models.Receta.Header.Responses;
 using System.Collections.ObjectModel;
 using System.Text.Json;
-using System.Linq;
-using RMD.Movil.Services.Pdf;
 
 namespace RMD.Movil.PageModels
 {
     public partial class RecetasPageModel : BasePageModel
     {
         private readonly IRecetaControllerService _recetasService;
+        private readonly IDetalleRecetasControllerService _detalleService;
         private readonly IPdfService _pdfService;
+
         public IAsyncRelayCommand AbrirAlertaManualCommand { get; }
+        public IAsyncRelayCommand<object?> MostrarQrCommand { get; }
+        public IAsyncRelayCommand<object?> DescargarPdfCommand { get; }
+        public IAsyncRelayCommand<object?> MostrarDetalleCommand { get; }
 
         private const string PacientePrefKey = "Paciente";
+        private bool _medsLoaded;
 
-        public RecetasPageModel(IRecetaControllerService recetasService, IPdfService pdfService)
+        public RecetasPageModel(IRecetaControllerService recetasService,
+                                IDetalleRecetasControllerService detalleService,
+                                IPdfService pdfService)
         {
             _recetasService = recetasService;
+            _detalleService = detalleService;
             _pdfService = pdfService;
 
-            ActivasTextColor = Color.FromArgb("#9d69ca");
-            VencidasTextColor = Color.FromArgb("#69728b");
-            // 👇 ahora aceptamos object? y parseamos dentro
+            IsRecetasTab = true;
+            RecetasTabTextColor = Color.FromArgb("#9d69ca");
+            MedicamentosTabTextColor = Color.FromArgb("#69728b");
+
             MostrarQrCommand = new AsyncRelayCommand<object?>(OnMostrarQrAsync);
             DescargarPdfCommand = new AsyncRelayCommand<object?>(OnDescargarPdfAsync);
             MostrarDetalleCommand = new AsyncRelayCommand<object?>(OnMostrarDetalleAsync);
             AbrirAlertaManualCommand = new AsyncRelayCommand(OnAbrirAlertaManualAsync);
         }
-        public IAsyncRelayCommand<object?> MostrarDetalleCommand { get; }
 
-        // en el constructor
-        [ObservableProperty]
-        private ObservableCollection<HeaderTextPlainResponse> recetas = new();
+        [ObservableProperty] private ObservableCollection<HeaderTextPlainResponse> recetas = new();
+        [ObservableProperty] private ObservableCollection<DetalleResponse> medicamentos = new();
 
-        [ObservableProperty]
-        private ObservableCollection<HeaderTextPlainResponse> recetasFiltradas = new();
-
-        [ObservableProperty]
-        private bool isActivasTab = true;
-
-        [ObservableProperty]
-        private Color activasTextColor;
-
-        [ObservableProperty]
-        private Color vencidasTextColor;
-
-        public IAsyncRelayCommand<object?> MostrarQrCommand { get; }
-        public IAsyncRelayCommand<object?> DescargarPdfCommand { get; }
+        [ObservableProperty] private bool isRecetasTab;
+        [ObservableProperty] private Color recetasTabTextColor;
+        [ObservableProperty] private Color medicamentosTabTextColor;
 
         [RelayCommand]
-        private void SwitchTab(string tab)
+        private async Task SwitchTab(string tab)
         {
-            IsActivasTab = tab == "Activas";
-            ActivasTextColor = IsActivasTab ? Color.FromArgb("#9d69ca") : Color.FromArgb("#69728b");
-            VencidasTextColor = IsActivasTab ? Color.FromArgb("#69728b") : Color.FromArgb("#9d69ca");
-            Filtrar();
+            var toRecetas = tab == "Recetas";
+            IsRecetasTab = toRecetas;
+            RecetasTabTextColor = toRecetas ? Color.FromArgb("#9d69ca") : Color.FromArgb("#69728b");
+            MedicamentosTabTextColor = toRecetas ? Color.FromArgb("#69728b") : Color.FromArgb("#9d69ca");
+
+            if (!toRecetas && !_medsLoaded)
+            {
+                await CargarMedicamentosAsync();
+            }
         }
 
         public async Task InitAsync()
@@ -71,9 +72,7 @@ namespace RMD.Movil.PageModels
                 if (IsBusy) return;
                 IsBusy = true;
 
-                var idPaciente = ResolverIdPacienteDesdePreferences();
-                await CargarRecetasAsync(idPaciente);
-                Filtrar();
+                await CargarRecetasAsync();
             }
             catch (Exception ex)
             {
@@ -85,61 +84,22 @@ namespace RMD.Movil.PageModels
             }
         }
 
-        private void Filtrar()
-        {
-            // Códigos:
-            // 1 Activa
-            // 2 Surtida
-            // 3 Cancelada
-            // 4 Vencida
-            // 5 Surtida Parcial
-            // 6 Vencida Surtida Parcial
-
-            if (IsActivasTab)
-            {
-                RecetasFiltradas = new ObservableCollection<HeaderTextPlainResponse>(
-                    Recetas
-                        .Where(r => r.Estatus == 1 || r.Estatus == 2 || r.Estatus == 5 || r.Estatus == 6) // incluye 6 en Activas
-                        .OrderByDescending(r => r.FechaCreacion));
-            }
-            else
-            {
-                RecetasFiltradas = new ObservableCollection<HeaderTextPlainResponse>(
-                    Recetas
-                        .Where(r => r.Estatus == 4 || r.Estatus == 3) // solo Vencida y Cancelada
-                        .OrderByDescending(r => r.FechaCreacion));
-            }
-        }
-
         private Guid ResolverIdPacienteDesdePreferences()
         {
             var pacienteJson = Preferences.Default.Get<string?>(PacientePrefKey, null);
             if (string.IsNullOrWhiteSpace(pacienteJson))
                 throw new Exception("No hay información de paciente en Preferences.");
 
-            PacienteConsultaResponse? pac;
-            try
-            {
-                pac = JsonSerializer.Deserialize<PacienteConsultaResponse>(pacienteJson);
-            }
-            catch
-            {
-                throw new Exception("No se pudo leer el Paciente guardado.");
-            }
-
+            var pac = JsonSerializer.Deserialize<PacienteConsultaResponse>(pacienteJson);
             if (pac == null || pac.IdPaciente == Guid.Empty)
                 throw new Exception("Paciente inválido en Preferences.");
 
             return pac.IdPaciente;
         }
 
-        private async Task CargarRecetasAsync(Guid idPaciente)
+        private async Task CargarRecetasAsync()
         {
-            var filtro = new HeaderFilterByPacienteRequest { IdPaciente = idPaciente };
-
-            ResponseFromService<List<HeaderTextPlainResponse>> result =
-                await _recetasService.GetRecetasByIdPacienteAsync(filtro);
-
+            var result = await _recetasService.GetRecetasByPacienteAsync(); // backend resuelve por token
             if (!EsOkToast(result.Toast))
             {
                 await MostrarAlertPorRespuestaAsync(result);
@@ -154,7 +114,36 @@ namespace RMD.Movil.PageModels
             Recetas = new ObservableCollection<HeaderTextPlainResponse>(lista);
         }
 
-        // === Helpers de parámetros ===
+        private async Task CargarMedicamentosAsync()
+        {
+            try
+            {
+                if (IsBusy) return;
+                IsBusy = true;
+
+                var resp = await _detalleService.GetDetalleByPacienteAsync(); // sin null
+
+                if (!EsOkToast(resp.Toast))
+                {
+                    await MostrarAlertPorRespuestaAsync(resp);
+                    Medicamentos = new ObservableCollection<DetalleResponse>();
+                    return;
+                }
+
+                Medicamentos = new ObservableCollection<DetalleResponse>(resp.Data ?? new List<DetalleResponse>());
+                _medsLoaded = true;
+            }
+            catch (Exception ex)
+            {
+                await MostrarAlertAsync("Error", ex.Message);
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        // Helpers
         private static bool TryGetGuid(object? param, out Guid id)
         {
             id = Guid.Empty;
@@ -163,7 +152,7 @@ namespace RMD.Movil.PageModels
             return false;
         }
 
-        // === Comandos ===
+        // Comandos (tu lógica actual)
         private async Task OnMostrarQrAsync(object? param)
         {
             if (!TryGetGuid(param, out var idReceta))
@@ -264,7 +253,7 @@ namespace RMD.Movil.PageModels
             }
         }
 
-        private async Task OnAbrirAlertaManualAsync()                                    
+        private async Task OnAbrirAlertaManualAsync()
         {
             try
             {

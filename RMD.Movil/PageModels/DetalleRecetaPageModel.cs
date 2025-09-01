@@ -16,7 +16,8 @@ namespace RMD.Movil.PageModels
         private readonly IDetalleRecetasControllerService _detallesService;
         private readonly IAlertasProgramadasControllerService _alertasProgService;
         private readonly IAlertaTomaControllerService _alertaTomaService;
-        // ObservableCollection para el CollectionView
+
+        // Collection para el CollectionView
         [ObservableProperty] private ObservableCollection<DetalleItemUI> detallesUI = new();
 
         // SelectedItem del CollectionView (dispara activar/desactivar)
@@ -28,7 +29,7 @@ namespace RMD.Movil.PageModels
         public DetalleRecetaPageModel(
             IDetalleRecetasControllerService detallesService,
             IAlertasProgramadasControllerService alertasProgService,
-            IAlertaTomaControllerService alertaTomaService) 
+            IAlertaTomaControllerService alertaTomaService)
         {
             _detallesService = detallesService;
             _alertasProgService = alertasProgService;
@@ -53,7 +54,7 @@ namespace RMD.Movil.PageModels
             }
 
             _ = OnActivarAlertaAsync(value);
-            SelectedItem = null; 
+            SelectedItem = null;
         }
 
         public async Task InitAsync(Guid idReceta)
@@ -82,19 +83,19 @@ namespace RMD.Movil.PageModels
                 var respAlertas = await _alertasProgService.GetAlertasProgramadasByIdPacienteAsync(filtro);
                 var alertas = respAlertas.Data ?? new List<AlertaProgramadaResponse>();
 
-                // Conjunto (IdReceta, IdDetalleReceta) activos para pintado rápido
+                // Conjunto (IdReceta, IdDetalleReceta) activos
                 var activos = alertas
                     .Select(a => (a.IdReceta.GetValueOrDefault(), a.IdDetalleReceta.GetValueOrDefault()))
                     .Where(t => t.Item1 != Guid.Empty && t.Item2 != Guid.Empty)
                     .ToHashSet();
 
-                // Índice (IdReceta, IdDetalleReceta) => AlertaProgramadaResponse para extraer IdAlerta / TipoAlerta
+                // Índice para extraer IdAlerta / TipoAlerta
                 var indexAlertas = alertas
                     .Where(a => a.IdReceta.HasValue && a.IdReceta.Value != Guid.Empty
                              && a.IdDetalleReceta.HasValue && a.IdDetalleReceta.Value != Guid.Empty)
                     .ToDictionary(a => (a.IdReceta!.Value, a.IdDetalleReceta!.Value), a => a);
 
-                // 3) Mapear a UI con marca de "activa" + IdAlerta (y TipoAlerta opcional)
+                // 3) Mapear a UI con marca de "activa" + IdAlerta
                 var ui = detalles.Select(d =>
                 {
                     var esActiva = activos.Contains((d.IdReceta, d.IdDetalleReceta));
@@ -105,7 +106,7 @@ namespace RMD.Movil.PageModels
                     if (esActiva && indexAlertas.TryGetValue((d.IdReceta, d.IdDetalleReceta), out var alerta))
                     {
                         idAlerta = alerta.IdAlerta;     // GUID del modelo compartido
-                        tipoAlerta = alerta.TipoAlerta; // 1=Normal, 2=Manual (no lo usamos para desactivar aquí)
+                        tipoAlerta = alerta.TipoAlerta; // 1=Normal, 2=Manual (no usado aquí)
                     }
 
                     return new DetalleItemUI(d)
@@ -238,6 +239,9 @@ namespace RMD.Movil.PageModels
         }
     }
 
+    // ============================
+    // UI Model (Item de la lista)
+    // ============================
     public partial class DetalleItemUI : ObservableObject
     {
         public DetalleResponse Source { get; }
@@ -253,14 +257,14 @@ namespace RMD.Movil.PageModels
             set => SetProperty(ref _idAlerta, value);
         }
 
-        private int? _tipoAlerta; // 1=Normal, 2=Manual (opcional, no usado aquí)
+        private int? _tipoAlerta; // 1=Normal, 2=Manual (opcional)
         public int? TipoAlerta
         {
             get => _tipoAlerta;
             set => SetProperty(ref _tipoAlerta, value);
         }
 
-        // Passthroughs
+        // Passthroughs al modelo original
         public Guid IdReceta => Source.IdReceta;
         public Guid IdDetalleReceta => Source.IdDetalleReceta;
         public int MedicamentoId => Source.MedicamentoId;
