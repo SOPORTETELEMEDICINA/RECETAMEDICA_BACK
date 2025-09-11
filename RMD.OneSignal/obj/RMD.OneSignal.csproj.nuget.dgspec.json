@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.OneSignal\\RMD.OneSignal.csproj": {}
+    "C:\\Users\\USER\\OneDrive\\Escritorio\\Recetas\\RMD.OneSignal\\RMD.OneSignal.csproj": {}
   },
   "projects": {
-    "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.OneSignal\\RMD.OneSignal.csproj": {
+    "C:\\Users\\USER\\OneDrive\\Escritorio\\Recetas\\RMD.OneSignal\\RMD.OneSignal.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.OneSignal\\RMD.OneSignal.csproj",
+        "projectUniqueName": "C:\\Users\\USER\\OneDrive\\Escritorio\\Recetas\\RMD.OneSignal\\RMD.OneSignal.csproj",
         "projectName": "RMD.OneSignal",
-        "projectPath": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.OneSignal\\RMD.OneSignal.csproj",
+        "projectPath": "C:\\Users\\USER\\OneDrive\\Escritorio\\Recetas\\RMD.OneSignal\\RMD.OneSignal.csproj",
         "packagesPath": "C:\\NuPkgs",
-        "outputPath": "C:\\source\\repos\\RECETAMEDICA_Cambio a Net9\\RMD.OneSignal\\obj\\",
+        "outputPath": "C:\\Users\\USER\\OneDrive\\Escritorio\\Recetas\\RMD.OneSignal\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\guz_b\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\USER\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
