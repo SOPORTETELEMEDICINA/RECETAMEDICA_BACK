@@ -1,0 +1,96 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Platforms>x64</Platforms>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+		<!-- Publicación optimizada para IIS -->
+		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+		<PublishReadyToRun>true</PublishReadyToRun>
+		<PublishSingleFile>false</PublishSingleFile>
+		<!-- ⚠️ Cambiado a false -->
+		<EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+		<TrimUnusedDependencies>true</TrimUnusedDependencies>
+		<SelfContained>false</SelfContained>
+
+		<SignAssembly>false</SignAssembly>
+		<AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+		<NoWarn>IDE0017;CS0168;IDE0059;IDE0028;1591;8625;8618;8600;8601;8602;8604</NoWarn>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+		<RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
+		<EnableNETAnalyzers>false</EnableNETAnalyzers>
+	</PropertyGroup>
+
+	<!-- Limpieza de archivos innecesarios -->
+	<ItemGroup>
+		<Compile Remove="Controllers\Catalogos\**" />
+		<Compile Remove="Interface\Catalogos\**" />
+		<Compile Remove="Models\CargaCatalogosWebService\**" />
+		<Compile Remove="Models\Catalogos\**" />
+		<Compile Remove="Service\Catalogos\**" />
+		<Content Remove="Controllers\Catalogos\**" />
+		<Content Remove="Interface\Catalogos\**" />
+		<Content Remove="Models\CargaCatalogosWebService\**" />
+		<Content Remove="Models\Catalogos\**" />
+		<Content Remove="Service\Catalogos\**" />
+		<EmbeddedResource Remove="Controllers\Catalogos\**" />
+		<EmbeddedResource Remove="Interface\Catalogos\**" />
+		<EmbeddedResource Remove="Models\CargaCatalogosWebService\**" />
+		<EmbeddedResource Remove="Models\Catalogos\**" />
+		<EmbeddedResource Remove="Service\Catalogos\**" />
+		<None Remove="Controllers\Catalogos\**" />
+		<None Remove="Interface\Catalogos\**" />
+		<None Remove="Models\CargaCatalogosWebService\**" />
+		<None Remove="Models\Catalogos\**" />
+		<None Remove="Service\Catalogos\**" />
+	</ItemGroup>
+
+
+	<!-- Referencias -->
+	<ItemGroup>
+		<PackageReference Include="Dapper" Version="2.1.66" />
+		<PackageReference Include="Hangfire" Version="1.8.20" />
+		<PackageReference Include="MailKit" Version="4.13.0" />
+		<PackageReference Include="MimeKit" Version="4.13.0" />
+		<PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.7" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.7" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.7" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.7">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.7" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="QRCoder" Version="1.6.0" />
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.3" />
+		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.13.0" />
+		<PackageReference Include="System.Text.Json" Version="9.0.7" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Using Include="Microsoft.AspNetCore.Authorization" />
+	  <Using Include="Microsoft.AspNetCore.Mvc" />
+	  <Using Include="RMD.Extensions.System" />
+	  <Using Include="RMD.Interface.Notificaciones" />
+	  <Using Include="RMD.Shared.Models.GlobalResponse;" />
+	  <Using Include="System.Net" />
+	  <Using Include="System.Security.Claims" />
+	  <Using Include="System.Text.Json" />
+	</ItemGroup>
+	<ItemGroup>
+	  <EditorConfigFiles Remove="C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD\.editorconfig" />
+	</ItemGroup>
+	<ItemGroup>
+	  <None Include="C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD\.editorconfig" />
+	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\RMD.Models.Shared\RMD.Shared.Models.csproj" />
+	  <ProjectReference Include="..\RMD.Utils.Shared\RMD.Shared.Utils.csproj" />
+	</ItemGroup>
+
+</Project>

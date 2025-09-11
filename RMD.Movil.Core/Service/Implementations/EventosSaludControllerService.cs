@@ -86,6 +86,7 @@ namespace RMD.Movil.Core.Service.Implementations
             }
         }
 
+
         public async Task<ResponseFromService<bool>> UpdateEventoPacienteAsync(EventosSaludRequest evento)
         {
             try

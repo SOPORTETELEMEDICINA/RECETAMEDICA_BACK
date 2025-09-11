@@ -15,6 +15,7 @@ public static class MauiProgram
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
+        // Preferences.Default.Clear();
 
         builder
             .UseMauiApp<App>()
@@ -27,36 +28,30 @@ public static class MauiProgram
                 fonts.AddFont("SegoeUI-Semibold.ttf", "SegoeSemibold");
                 fonts.AddFont("MaterialIcons-Regular.ttf", "MaterialIcons");
                 fonts.AddFont("FluentSystemIcons-Regular.ttf", FluentUI.FontFamily);
-                fonts.AddFont("FontAwesome.otf", "FASolid");
+                fonts.AddFont("Font Awesome 7 Free-Solid-900.otf", "FASolid");
                 fonts.AddFont("Roboto-Regular.ttf", "Roboto");
                 fonts.AddFont("Roboto-Bold.ttf", "RobotoBold");
             });
-
+        builder.UseMauiCommunityToolkit();
         // Vistas
         builder.Services.AddTransient<SplashPage>();
 
-        // Handlers (pipeline de HttpClient)
+
+        // Handlers
         builder.Services.AddTransient<AuthHeaderHandler>();
         builder.Services.AddTransient<RenewableAuthHandler>();
-        builder.Services.AddTransient<DecryptingHandler>();
 
-        // Región actual (si cambias la región en runtime tendrás que reconstruir el HttpClient)
+        // Región actual
         var region = Preferences.Default.Get<string>("RegionSeleccionada", "MX");
-        // Al final de tu CreateMauiApp(), junto al IPdfService
-#if ANDROID
-        builder.Services.AddSingleton<RMD.Movil.Core.Service.Interfaces.IAlwaysOnService, RMD.Movil.Platforms.Android.Services.AlwaysOnServiceImpl>();
-#elif IOS
-        builder.Services.AddSingleton<RMD.Movil.Core.Service.Interfaces.IAlwaysOnService, RMD.Movil.Platforms.iOS.Services.AlwaysOnServiceImpl>();
-#endif
 
-        // HttpClient global (única instancia) con pipeline de handlers
-        builder.Services.AddSingleton<HttpClient>(sp =>
+        // Helper para construir HttpClient con handlers
+        HttpClient BuildHttpClient(IServiceProvider sp)
         {
             var baseHandler = new HttpClientHandler();
 
 #if DEBUG
             baseHandler.ServerCertificateCustomValidationCallback = (_, cert, _, errors) =>
-                (cert != null && cert.Subject.Contains("CN=*.recetamedica.digital"))
+                cert != null && cert.Subject.Contains("CN=*.recetamedica.digital")
                 || errors == System.Net.Security.SslPolicyErrors.None;
 #endif
             var authHandler = sp.GetRequiredService<AuthHeaderHandler>();
@@ -65,44 +60,39 @@ public static class MauiProgram
             var renewHandler = sp.GetRequiredService<RenewableAuthHandler>();
             renewHandler.InnerHandler = authHandler;
 
-            var decryptHandler = sp.GetRequiredService<DecryptingHandler>();
-            decryptHandler.InnerHandler = renewHandler;
+            var decryptHandler = new DecryptingHandler { InnerHandler = renewHandler };
 
-            var client = new HttpClient(decryptHandler)
+            return new HttpClient(decryptHandler)
             {
                 BaseAddress = ApiConfigurationHelper.GetBaseAddressForRegion(region)
             };
+        }
 
-            return client;
-        });
-
-        // Helper genérico: cada ControllerService recibe SIEMPRE el HttpClient global
-        void RegisterControllerService<TService, TImpl>()
+        // Helper genérico para registrar servicios de controlador (inician con HttpClient)
+        void BuildControllerService<TService, TImpl>()
             where TService : class
             where TImpl : class, TService
         {
             builder.Services.AddSingleton<TService>(sp =>
-            {
-                var http = sp.GetRequiredService<HttpClient>();
-                return (TService)Activator.CreateInstance(typeof(TImpl), http)!;
-            });
+                Activator.CreateInstance(typeof(TImpl), BuildHttpClient(sp)) as TService
+                ?? throw new InvalidOperationException($"No se pudo instanciar {typeof(TImpl).Name}"));
         }
 
-        // Registrar todos los servicios (uno por controlador de tu API)
-        RegisterControllerService<IAlertasProgramadasControllerService, AlertasProgramadasControllerService>();
-        RegisterControllerService<IAlertaTomaControllerService, AlertaTomaControllerService>();
-        RegisterControllerService<IAuthControllerService, AuthControllerService>();
-        RegisterControllerService<ICatEventosSaludControllerService, CatEventosSaludControllerService>();
-        RegisterControllerService<IConsultaControllerService, ConsultaControllerService>();
-        RegisterControllerService<IDetalleRecetasControllerService, DetalleRecetasControllerService>();
-        RegisterControllerService<IEventosSaludControllerService, EventosSaludControllerService>();
-        RegisterControllerService<IPacienteControllerService, PacienteControllerService>();
-        RegisterControllerService<INotificacionesControllerService, NotificacionesControllerService>();
-        RegisterControllerService<IRecetaCatalogosControllerService, RecetaCatalogosControllerService>();
-        RegisterControllerService<IRecetaControllerService, RecetaControllerService>();
-        RegisterControllerService<IUsuariosControllerService, UsuariosControllerService>();
+        // Registrar todos los servicios
+        BuildControllerService<IAuthControllerService, AuthControllerService>();
+        BuildControllerService<IEventosSaludControllerService, EventosSaludControllerService>();
+        BuildControllerService<IUsuariosControllerService, UsuariosControllerService>();
+        BuildControllerService<IRecetaControllerService, RecetaControllerService>();
+        BuildControllerService<IDetalleRecetasControllerService, DetalleRecetasControllerService>();
+        BuildControllerService<IAlertaTomaControllerService, AlertaTomaControllerService>();
+        BuildControllerService<IPacienteControllerService, PacienteControllerService>();
+        BuildControllerService<ICatEventosSaludControllerService, CatEventosSaludControllerService>();
+        BuildControllerService<IAlertasProgramadasControllerService, AlertasProgramadasControllerService>();
+        BuildControllerService<IRecetaCatalogosControllerService, RecetaCatalogosControllerService>();
+        BuildControllerService<IConsultaControllerService, ConsultaControllerService>();
 
-        // Servicio de PDF por plataforma
+
+        // Registro del servicio de PDF por plataforma
 #if ANDROID
         builder.Services.AddSingleton<IPdfService, RMD.Movil.Platforms.Android.Services.PdfService>();
 #elif IOS

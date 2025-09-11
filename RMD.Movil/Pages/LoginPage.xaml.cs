@@ -22,11 +22,6 @@ public partial class LoginPage
         };
     }
 
-    protected override bool OnBackButtonPressed()
-    {
-        return true; // true = no navega atrás
-    }
-
     private async void AnimateLogo()
     {
         await LogoImage.ScaleTo(0.9, 1);

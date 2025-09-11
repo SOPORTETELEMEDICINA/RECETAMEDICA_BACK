@@ -3,26 +3,17 @@ using RMD.Shared.Models.Login;
 using System.Text.Json;
 using OneSignalSDK.DotNet;
 
-#if ANDROID
-using RMD.Movil.Platforms.Android.Utils; // NotificationPermissionHelper
-#endif
-
-#if IOS
-using RMD.Movil.Platforms.iOS.Utils;     // iOSNotificationHelper
-#endif
-
 namespace RMD.Movil;
 
 public partial class App
 {
+
     public static IServiceProvider Services { get; private set; } = default!;
 
     public App(IServiceProvider serviceProvider)
     {
-        InitializeComponent();
+        InitializeComponent(); // Aquí revienta si hay errores en estilos
         Services = serviceProvider;
-
-        // Nota: Este Initialize es del SDK .NET (REST). No pide permisos del SO móvil.
         OneSignal.Initialize("e4dcd415-b4cc-4497-8462-a1241f6ee9a7");
     }
 
@@ -33,14 +24,9 @@ public partial class App
 
         Task.Run(async () =>
         {
-            string rutaDestino = nameof(LoginPage); // Fallback
+            string rutaDestino = nameof(LoginPage);// Fallback por defecto
 
-            // Paso 1: inicio visual
-            await splashPage.ActualizarProgreso(0.15);
-
-            // Paso 1.1: pedir permisos y arrancar segundo plano SIN esperar login
-            await SolicitarPermisosYArrancarSegundoPlanoAsync();
-
+            // Paso 1: Inicio visual
             await splashPage.ActualizarProgreso(0.2);
             await Task.Delay(300);
 
@@ -111,6 +97,7 @@ public partial class App
                 shell.Dispatcher.Dispatch(async () =>
                 {
                     await Shell.Current.GoToAsync(rutaDestino);
+                    //await shell.GoToAsync(rutaDestino);
                 });
             });
         });
@@ -118,39 +105,4 @@ public partial class App
         return window;
     }
 
-    private static async Task SolicitarPermisosYArrancarSegundoPlanoAsync()
-    {
-        // Solo la primera vez muestra prompts “molestos”
-        bool firstRun = !Preferences.Default.ContainsKey("FirstRunDone");
-
-#if IOS
-        // iOS: pedir autorización de notificaciones + registrar APNs
-        await iOSNotificationHelper.EnsureAsync();
-#endif
-
-#if ANDROID
-        // Android: 13+ -> pedir permiso de notificaciones para poder mostrar la notificación persistente
-        await MainThread.InvokeOnMainThreadAsync(async () =>
-        {
-            await NotificationPermissionHelper.EnsureAsync();
-        });
-
-        // Arrancar/asegurar el servicio en primer plano
-        var alwaysOn = Services.GetRequiredService<IAlwaysOnService>();
-
-        if (firstRun)
-        {
-            // Sugerir ignorar optimizaciones de batería (abre Settings; el usuario decide)
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                await alwaysOn.RequestIgnoreBatteryOptimizationsAsync();
-            });
-        }
-
-        await alwaysOn.StartAsync();
-#endif
-
-        if (firstRun)
-            Preferences.Default.Set("FirstRunDone", true);
-    }
 }

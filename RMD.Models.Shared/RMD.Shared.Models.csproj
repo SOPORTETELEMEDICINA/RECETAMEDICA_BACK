@@ -16,8 +16,4 @@
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Receta\Paciente\Response\" />
-  </ItemGroup>
-
 </Project>

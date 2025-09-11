@@ -2,7 +2,6 @@
 using RMD.Shared.Models.GlobalResponse;
 using RMD.Shared.Models.Receta.Detalle.Request;
 using RMD.Shared.Models.Receta.Detalle.Response;
-using RMD.Shared.Models.Receta.Paciente.Request;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -104,41 +103,6 @@ namespace RMD.Movil.Core.Service.Implementations
                     Toast = "error",
                     Descripcion = [ex.Message],
                     Data = string.Empty
-                };
-            }
-        }
-
-        public async Task<ResponseFromService<List<DetalleResponse>>> GetDetalleByPacienteAsync(Guid? idPaciente = null)
-        {
-            try
-            {
-                // El controller resuelve IdPaciente desde el token si mandas null o {}
-                var body = new RecetasByPacienteRequest { IdPaciente = idPaciente };
-
-                var response = await httpClient.PostAsJsonAsync("api/DetalleRecetas/GetDetalleByPaciente", body);
-                var json = await response.Content.ReadAsStringAsync();
-
-                var dto = JsonSerializer.Deserialize<ResponseFromService<List<DetalleResponse>>>(json, JsonOptions)
-                          ?? new ResponseFromService<List<DetalleResponse>>
-                          {
-                              Code = (int)response.StatusCode,
-                              Toast = "error",
-                              Message = "Respuesta vacía del servidor",
-                              Data = new List<DetalleResponse>()
-                          };
-
-                // No filtramos en cliente: el SP ya aplica reglas (periodo, estatus, CantidadSurtida cuando aplica)
-                return dto;
-            }
-            catch (Exception ex)
-            {
-                return new ResponseFromService<List<DetalleResponse>>
-                {
-                    Code = -999,
-                    Message = "Error al obtener detalles por paciente",
-                    Toast = "error",
-                    Descripcion = new List<string> { ex.Message },
-                    Data = new List<DetalleResponse>()
                 };
             }
         }
