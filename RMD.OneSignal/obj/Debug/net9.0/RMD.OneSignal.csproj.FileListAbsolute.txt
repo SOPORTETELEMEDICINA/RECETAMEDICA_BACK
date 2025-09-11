@@ -1,0 +1,12 @@
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.OneSignal\bin\Debug\net9.0\RMD.OneSignal.deps.json
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.OneSignal\bin\Debug\net9.0\RMD.OneSignal.dll
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.OneSignal\bin\Debug\net9.0\RMD.OneSignal.pdb
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.OneSignal\obj\Debug\net9.0\RMD.OneSignal.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.OneSignal\obj\Debug\net9.0\RMD.OneSignal.AssemblyInfoInputs.cache
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.OneSignal\obj\Debug\net9.0\RMD.OneSignal.AssemblyInfo.cs
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.OneSignal\obj\Debug\net9.0\RMD.OneSignal.csproj.CoreCompileInputs.cache
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.OneSignal\obj\Debug\net9.0\RMD.OneSignal.sourcelink.json
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.OneSignal\obj\Debug\net9.0\RMD.OneSignal.dll
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.OneSignal\obj\Debug\net9.0\refint\RMD.OneSignal.dll
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.OneSignal\obj\Debug\net9.0\RMD.OneSignal.pdb
+C:\Users\guz_b\source\repos\RECETAMEDICA_Cambio a Net9\RMD.OneSignal\obj\Debug\net9.0\ref\RMD.OneSignal.dll
