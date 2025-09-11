@@ -33,7 +33,7 @@ namespace RMD.Movil.Core.Service.Implementations
                     Message = "Error al obtener relaciones (GetRelaciones)",
                     Toast = "error",
                     Descripcion = [ex.Message],
-                    Data = null!
+                    Data = null
                 };
             }
         }
