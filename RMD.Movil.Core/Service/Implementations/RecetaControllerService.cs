@@ -2,6 +2,7 @@
 using RMD.Shared.Models.GlobalResponse;
 using RMD.Shared.Models.Receta.Header.Request;
 using RMD.Shared.Models.Receta.Header.Responses;
+using RMD.Shared.Models.Receta.Paciente.Request;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -14,26 +15,53 @@ namespace RMD.Movil.Core.Service.Implementations
             PropertyNameCaseInsensitive = true
         };
 
-        public async Task<ResponseFromService<List<HeaderTextPlainResponse>>> GetRecetasByIdPacienteAsync(HeaderFilterByPacienteRequest filterRequest)
+        public async Task<ResponseFromService<List<HeaderTextPlainResponse>>> GetRecetasByPacienteAsync(Guid? idPaciente = null)
         {
             try
             {
-                var response = await httpClient.PostAsJsonAsync("api/Recetas/GetRecetasByIdPaciente", filterRequest);
+                _ = idPaciente; // se ignora: siempre enviamos null
+
+                var body = new RecetasByPacienteRequest { IdPaciente = null };
+
+                using var response = await httpClient.PostAsJsonAsync(
+                    "api/RecetaPacientes/GetRecetasByPaciente",
+                    body
+                );
+
                 var json = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<ResponseFromService<List<HeaderTextPlainResponse>>>(json, JsonOptions)!;
+
+                var dto = JsonSerializer.Deserialize<ResponseFromService<List<HeaderTextPlainResponse>>>(json, JsonOptions)
+                          ?? new ResponseFromService<List<HeaderTextPlainResponse>>
+                          {
+                              Code = (int)response.StatusCode,
+                              Toast = "error",
+                              Message = "Respuesta vacía del servidor",
+                              Data = new List<HeaderTextPlainResponse>()
+                          };
+
+                // si HTTP no fue 2xx y el body no trae success/info, reflejamos el status
+                if (!response.IsSuccessStatusCode &&
+                    !(string.Equals(dto.Toast, "success", StringComparison.OrdinalIgnoreCase) ||
+                      string.Equals(dto.Toast, "info", StringComparison.OrdinalIgnoreCase)))
+                {
+                    dto.Code = (int)response.StatusCode;
+                }
+
+                return dto;
             }
             catch (Exception ex)
             {
-                return new()
+                return new ResponseFromService<List<HeaderTextPlainResponse>>
                 {
                     Code = -999,
                     Message = "Error al obtener recetas del paciente",
                     Toast = "error",
-                    Descripcion = [ex.Message],
-                    Data = []
+                    Descripcion = new List<string> { ex.Message },
+                    Data = new List<HeaderTextPlainResponse>()
                 };
             }
         }
+
 
         public async Task<ResponseFromService<string>> GetQRByIdRecetaAsync(Guid idReceta)
         {

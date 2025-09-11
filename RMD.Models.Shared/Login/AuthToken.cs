@@ -31,5 +31,11 @@ namespace RMD.Shared.Models.Login
 
         [Column("LastAuth2F")]
         public DateTime? LastAuth2F { get; set; }
+
+        [Column("Auth2FIsRequired")]
+        public bool Auth2FIsRequired { get; set; }
+
+        [Column("Auth2FIsAuth")]
+        public bool Auth2FIsAuth { get; set; }
     }
 }

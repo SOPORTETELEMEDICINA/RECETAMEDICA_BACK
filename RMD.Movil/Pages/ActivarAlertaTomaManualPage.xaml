@@ -47,9 +47,6 @@
             <Setter Property="FontAttributes" Value="Bold"/>
         </Style>
 
-        <!-- ===== Estilos y recursos para Pickers-Select ===== -->
-
-        <!-- Estilo base del Picker para verse como select -->
         <Style x:Key="SelectPicker" TargetType="Picker">
             <Setter Property="BackgroundColor" Value="Transparent"/>
             <Setter Property="HeightRequest" Value="42"/>
@@ -59,13 +56,11 @@
             <Setter Property="HorizontalOptions" Value="Fill"/>
         </Style>
 
-        <!-- Contenedor con borde tipo input -->
         <Style x:Key="SelectContainer" TargetType="Border" BasedOn="{StaticResource InputBorder}">
             <Setter Property="Padding" Value="10,6"/>
             <Setter Property="BackgroundColor" Value="White"/>
         </Style>
 
-        <!-- Icono de chevron usando MaterialIcons (expand_more = E5CF) -->
         <FontImageSource x:Key="ChevronDownIcon"
                          Glyph="&#xE5CF;"
                          FontFamily="MaterialIcons"
@@ -79,7 +74,6 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- AppBar -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Padding="8,50,8,0">
             <Button
                 Text="&#xE5CB;"
@@ -88,7 +82,8 @@
                 TextColor="#111827"
                 FontSize="28"
                 WidthRequest="48" HeightRequest="48"
-                Command="{Binding BackCommand}" />
+                Command="{Binding CloseCommand}" />
+
             <Label Grid.Column="1"
                    VerticalTextAlignment="Center"
                    FontSize="22"
@@ -97,7 +92,6 @@
                    TextColor="#111827" />
         </Grid>
 
-        <!-- CONTENEDOR CON NOMBRE PARA MEDIR ANCHO DISPONIBLE -->
         <Grid Grid.Row="1" x:Name="ContentHost">
             <Border Style="{StaticResource CardBorder}"
                     HorizontalOptions="Center"
@@ -106,12 +100,10 @@
                     <Shadow Brush="#33000000" Radius="12" Offset="0,4" Opacity="0.25"/>
                 </Border.Shadow>
 
-                <!-- SOLO SCROLL VERTICAL, SIN HORIZONTAL -->
                 <ScrollView Orientation="Vertical"
                             HorizontalScrollBarVisibility="Never">
                     <VerticalStackLayout Spacing="16">
 
-                        <!-- Buscador -->
                         <VerticalStackLayout Spacing="6">
                             <Label Text="MEDICAMENTO:" Style="{StaticResource FieldLabel}"/>
 
@@ -158,22 +150,18 @@
                                    IsVisible="{Binding HayMedicamentoSeleccionado}"/>
                         </VerticalStackLayout>
 
-                        <!-- Formulario -->
                         <VerticalStackLayout Spacing="16"
                                              IsVisible="{Binding HayMedicamentoSeleccionado}">
 
-                            <!-- NUEVO: activar alerta -->
                             <HorizontalStackLayout Spacing="8">
                                 <CheckBox IsChecked="{Binding ActivarAlerta}" />
                                 <Label Text="Activar Alerta de Toma de Medicamento" VerticalTextAlignment="Center" />
                             </HorizontalStackLayout>
 
-                            <!-- Todo en filas con 2 columnas -->
                             <Grid ColumnDefinitions="*,*"
                                   RowDefinitions="Auto,Auto,Auto,Auto,Auto"
                                   ColumnSpacing="12" RowSpacing="10">
 
-                                <!-- Fila 1 REAL: Cantidad / Unidad (oculta si no hay UNITS) -->
                                 <Grid Grid.Row="0" Grid.ColumnSpan="2"
                                       ColumnDefinitions="*,*"
                                       ColumnSpacing="12"
@@ -186,8 +174,6 @@
 
                                     <VerticalStackLayout Grid.Column="1">
                                         <Label Text="UNIDAD:" Style="{StaticResource FieldLabel}"/>
-
-                                        <!-- Select Unidad -->
                                         <Grid>
                                             <Border Style="{StaticResource SelectContainer}">
                                                 <Picker Style="{StaticResource SelectPicker}"
@@ -204,7 +190,6 @@
                                     </VerticalStackLayout>
                                 </Grid>
 
-                                <!-- Fila 2: Cada / Frecuencia -->
                                 <VerticalStackLayout Grid.Row="1" Grid.Column="0">
                                     <Label Text="CADA:" Style="{StaticResource FieldLabel}"/>
                                     <Entry Keyboard="Numeric" Text="{Binding CadaValor, Mode=TwoWay}" />
@@ -212,8 +197,6 @@
 
                                 <VerticalStackLayout Grid.Row="1" Grid.Column="1">
                                     <Label Text="FRECUENCIA:" Style="{StaticResource FieldLabel}"/>
-
-                                    <!-- Select Frecuencia -->
                                     <Grid>
                                         <Border Style="{StaticResource SelectContainer}">
                                             <Picker Style="{StaticResource SelectPicker}"
@@ -232,7 +215,6 @@
 
                             </Grid>
 
-                            <!-- Duración / Periodo / Vía / Motivo -->
                             <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="10">
                                 <VerticalStackLayout>
                                     <Label Text="DURACIÓN:*" Style="{StaticResource FieldLabel}"/>
@@ -241,8 +223,6 @@
 
                                 <VerticalStackLayout Grid.Column="1">
                                     <Label Text="PERIODO:" Style="{StaticResource FieldLabel}"/>
-
-                                    <!-- Select Periodo Duración -->
                                     <Grid>
                                         <Border Style="{StaticResource SelectContainer}">
                                             <Picker Style="{StaticResource SelectPicker}"
@@ -259,12 +239,9 @@
                                     </Grid>
                                 </VerticalStackLayout>
 
-                                <!-- VÍA (oculta si ROUTES vacío) -->
                                 <VerticalStackLayout Grid.Row="1"
                                                      IsVisible="{Binding MostrarVia}">
                                     <Label Text="VÍA:" Style="{StaticResource FieldLabel}"/>
-
-                                    <!-- Select Vía -->
                                     <Grid>
                                         <Border Style="{StaticResource SelectContainer}">
                                             <Picker Style="{StaticResource SelectPicker}"
@@ -280,12 +257,9 @@
                                     </Grid>
                                 </VerticalStackLayout>
 
-                                <!-- MOTIVO (oculta si INDICATIONS vacío) -->
                                 <VerticalStackLayout Grid.Row="1" Grid.Column="1"
                                                      IsVisible="{Binding MostrarMotivoUso}">
                                     <Label Text="MOTIVO DE USO:" Style="{StaticResource FieldLabel}"/>
-
-                                    <!-- Select Motivo -->
                                     <Grid>
                                         <Border Style="{StaticResource SelectContainer}">
                                             <Picker Style="{StaticResource SelectPicker}"
@@ -302,7 +276,6 @@
                                 </VerticalStackLayout>
                             </Grid>
 
-                            <!-- Botones -->
                             <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,6,0,0">
                                 <Button Text="GUARDAR"
                                         Style="{StaticResource OkButton}"
@@ -319,7 +292,6 @@
             </Border>
         </Grid>
 
-        <!-- Overlay de loading -->
         <Grid Grid.RowSpan="2" BackgroundColor="#80000000" IsVisible="{Binding IsBusy}">
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
                                HorizontalOptions="Center" VerticalOptions="Center"/>

@@ -7,6 +7,11 @@ public partial class RegionPage
         InitializeComponent();
     }
 
+    protected override bool OnBackButtonPressed()
+    {
+        return true; // true = no navega atrás
+    }
+
     private async void OnConfirmarClicked(object sender, EventArgs e)
     {
         var regionSeleccionada = RegionPicker.SelectedItem as string;

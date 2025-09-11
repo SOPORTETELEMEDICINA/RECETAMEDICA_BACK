@@ -11,15 +11,16 @@ public partial class RecetasPage : ContentPage
     {
         InitializeComponent();
 
-        var recetasService = App.Services.GetService<IRecetaControllerService>();
-        if (recetasService == null)
-            throw new Exception("No se pudo resolver IRecetaControllerService");
+        var recetasService = App.Services.GetService<IRecetaControllerService>()
+                             ?? throw new Exception("No se pudo resolver IRecetaControllerService");
 
-        var pdfService = App.Services.GetService<IPdfService>();
-        if (pdfService == null)
-            throw new Exception("No se pudo resolver IRecetaControllerService");
+        var detalleService = App.Services.GetService<IDetalleRecetasControllerService>()
+                             ?? throw new Exception("No se pudo resolver IDetalleRecetasControllerService");
 
-        _viewModel = new RecetasPageModel(recetasService, pdfService);
+        var pdfService = App.Services.GetService<IPdfService>()
+                         ?? throw new Exception("No se pudo resolver IPdfService");
+
+        _viewModel = new RecetasPageModel(recetasService, detalleService, pdfService);
         BindingContext = _viewModel;
     }
 
@@ -27,7 +28,7 @@ public partial class RecetasPage : ContentPage
     {
         base.OnAppearing();
 
-        MainThread.BeginInvokeOnMainThread(async void () =>
+        MainThread.BeginInvokeOnMainThread(async () =>
         {
             try
             {

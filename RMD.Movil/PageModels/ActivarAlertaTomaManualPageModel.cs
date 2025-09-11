@@ -57,12 +57,13 @@ namespace RMD.Movil.PageModels
             Vias = new ObservableCollection<string>();
             MotivosUso = new ObservableCollection<string>();
 
-            PeriodoDuracionSeleccionado = PeriodosDuracion.First(o => o.Value == "DAY");
+            PeriodoDuracionSeleccionado = null;      // sin selección inicial
+            PeriodoFrecuenciaSeleccionado = null;    // sin selección inicial
 
             HayMedicamentoSeleccionado = false;
             MostrarResultados = false;
 
-            ActivarAlerta = true; // por defecto marcado
+            ActivarAlerta = true;
         }
 
         public async Task InitAsync() => await CargarFrecuencyTypesAsync();
@@ -85,7 +86,7 @@ namespace RMD.Movil.PageModels
 
                 var lista = (resp.Data ?? new()).OrderBy(x => x.IdFrecuencyType).ToList();
                 PeriodosFrecuencia = new ObservableCollection<FrecuencyTypeListModel>(lista);
-                PeriodoFrecuenciaSeleccionado = PeriodosFrecuencia.FirstOrDefault();
+                PeriodoFrecuenciaSeleccionado = null; // sin selección
             }
             catch (Exception ex)
             {
@@ -222,14 +223,11 @@ namespace RMD.Movil.PageModels
 
         [ObservableProperty] private string? indicaciones;
 
-        // NUEVO: checkbox “Activar alerta…”
         [ObservableProperty] private bool activarAlerta = true;
 
-        // ======== VISIBILIDAD SOLICITADA ========
-        [ObservableProperty] private bool mostrarVia;                   // depende de ROUTES
-        [ObservableProperty] private bool mostrarMotivoUso;             // depende de INDICATIONS
-        [ObservableProperty] private bool mostrarFilaCantidadUnidad;    // depende de UNITS
-        // ========================================
+        [ObservableProperty] private bool mostrarVia;
+        [ObservableProperty] private bool mostrarMotivoUso;
+        [ObservableProperty] private bool mostrarFilaCantidadUnidad;
 
         [ObservableProperty] private bool puedeGuardar;
         partial void OnCantidadChanged(string? value) => RecalcularPuedeGuardar();
@@ -241,7 +239,6 @@ namespace RMD.Movil.PageModels
         partial void OnViaSeleccionadaChanged(string? value) => RecalcularPuedeGuardar();
         partial void OnMotivoUsoSeleccionadoChanged(string? value) => RecalcularPuedeGuardar();
 
-        // Cuando cambian las colecciones, recalcula las banderas de visibilidad
         partial void OnUnidadesChanged(ObservableCollection<string> value) => RecalcularVisibilidades();
         partial void OnViasChanged(ObservableCollection<string> value) => RecalcularVisibilidades();
         partial void OnMotivosUsoChanged(ObservableCollection<string> value) => RecalcularVisibilidades();
@@ -255,15 +252,17 @@ namespace RMD.Movil.PageModels
 
         private void RecalcularPuedeGuardar()
         {
-            var unidadOk = !string.IsNullOrWhiteSpace(UnidadSeleccionada) &&
-                           _unidadesMap.TryGetValue(UnidadSeleccionada, out var unidadId) &&
+            var unidadKey = (UnidadSeleccionada ?? string.Empty).Trim();
+            var viaKey = (ViaSeleccionada ?? string.Empty).Trim();
+
+            var unidadOk = !string.IsNullOrEmpty(unidadKey) &&
+                           _unidadesMap.TryGetValue(unidadKey, out var unidadId) &&
                            unidadId > 0;
 
-            var viaOk = !string.IsNullOrWhiteSpace(ViaSeleccionada) &&
-                        _routesMap.TryGetValue(ViaSeleccionada, out var viaId) &&
+            var viaOk = !string.IsNullOrEmpty(viaKey) &&
+                        _routesMap.TryGetValue(viaKey, out var viaId) &&
                         viaId > 0;
 
-            // Si no hay UNITS, entonces la fila completa no existe y no se exige cantidad/unidad
             var requiereUnidad = MostrarFilaCantidadUnidad;
             var requiereVia = MostrarVia;
 
@@ -300,16 +299,22 @@ namespace RMD.Movil.PageModels
                 var cantidadDecimal = TryParseDecimal(Cantidad) ?? 0m;
 
                 var unidadId = 0;
-                if (MostrarFilaCantidadUnidad &&
-                    _unidadesMap.TryGetValue(UnidadSeleccionada ?? "", out var uId))
-                    unidadId = uId;
+                if (MostrarFilaCantidadUnidad)
+                {
+                    var key = (UnidadSeleccionada ?? string.Empty).Trim();
+                    if (!string.IsNullOrEmpty(key) && _unidadesMap.TryGetValue(key, out var uId))
+                        unidadId = uId;
+                }
 
                 var idFrecuencyType = PeriodoFrecuenciaSeleccionado!.IdFrecuencyType;
 
                 var idRutaAdmin = 0;
-                if (MostrarVia &&
-                    _routesMap.TryGetValue(ViaSeleccionada ?? "", out var raId))
-                    idRutaAdmin = raId;
+                if (MostrarVia)
+                {
+                    var key = (ViaSeleccionada ?? string.Empty).Trim();
+                    if (!string.IsNullOrEmpty(key) && _routesMap.TryGetValue(key, out var raId))
+                        idRutaAdmin = raId;
+                }
 
                 var notas = string.Join(" | ",
                     new[]
@@ -354,9 +359,6 @@ namespace RMD.Movil.PageModels
             }
         }
 
-        [RelayCommand]
-        private Task CloseAsync() => Shell.Current.GoToAsync("..");
-
         private static decimal? TryParseDecimal(string? s)
         {
             if (string.IsNullOrWhiteSpace(s)) return null;
@@ -386,12 +388,10 @@ namespace RMD.Movil.PageModels
 
                 MotivosUso = new ObservableCollection<string>(indicationsTask.Result.Items);
 
-                // Selecciones por defecto si existen
-                UnidadSeleccionada = Unidades.FirstOrDefault();
-                ViaSeleccionada = Vias.FirstOrDefault();
-                MotivoUsoSeleccionado = MotivosUso.FirstOrDefault();
+                UnidadSeleccionada = null;
+                ViaSeleccionada = null;
+                MotivoUsoSeleccionado = null;
 
-                // Recalcular banderas de visibilidad y validación
                 RecalcularVisibilidades();
                 HayMedicamentoSeleccionado = true;
                 RecalcularPuedeGuardar();
@@ -404,6 +404,25 @@ namespace RMD.Movil.PageModels
             finally
             {
                 IsBusy = false;
+            }
+        }
+
+        public IAsyncRelayCommand BackCommand => CloseCommand;
+
+        [RelayCommand]
+        private async Task CloseAsync()
+        {
+            try
+            {
+                await Shell.Current.GoToAsync("..");
+            }
+            catch
+            {
+                var nav = Shell.Current?.Navigation;
+                if (nav?.ModalStack?.Count > 0)
+                    await nav.PopModalAsync();
+                else if (nav?.NavigationStack?.Count > 1)
+                    await nav.PopAsync();
             }
         }
 
@@ -442,9 +461,12 @@ namespace RMD.Movil.PageModels
                             foreach (var prop in el.EnumerateObject())
                             {
                                 var p = prop.Name.ToLowerInvariant();
-                                if (p is "id" or "value" && prop.Value.ValueKind == JsonValueKind.Number && prop.Value.TryGetInt32(out var vid))
+                                if ((p.Contains("id") || p == "value") &&
+                                    prop.Value.ValueKind == JsonValueKind.Number &&
+                                    prop.Value.TryGetInt32(out var vid))
                                     id = vid;
-                                else if (p is "name" or "nombre" or "text" && prop.Value.ValueKind == JsonValueKind.String)
+                                else if ((p.Contains("name") || p.Contains("nombre") || p.Contains("text") || p.Contains("descripcion")) &&
+                                         prop.Value.ValueKind == JsonValueKind.String)
                                     name = prop.Value.GetString();
                             }
 
