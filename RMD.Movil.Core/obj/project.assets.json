@@ -1007,18 +1007,31 @@
         "lib/net9.0/Microsoft.Data.SqlClient.dll",
         "lib/net9.0/Microsoft.Data.SqlClient.xml",
         "lib/net9.0/cs/Microsoft.Data.SqlClient.resources.dll",
+        "lib/net9.0/cs/shrunk/Microsoft.Data.SqlClient.resources.dll",
         "lib/net9.0/de/Microsoft.Data.SqlClient.resources.dll",
+        "lib/net9.0/de/shrunk/Microsoft.Data.SqlClient.resources.dll",
         "lib/net9.0/es/Microsoft.Data.SqlClient.resources.dll",
+        "lib/net9.0/es/shrunk/Microsoft.Data.SqlClient.resources.dll",
         "lib/net9.0/fr/Microsoft.Data.SqlClient.resources.dll",
+        "lib/net9.0/fr/shrunk/Microsoft.Data.SqlClient.resources.dll",
         "lib/net9.0/it/Microsoft.Data.SqlClient.resources.dll",
+        "lib/net9.0/it/shrunk/Microsoft.Data.SqlClient.resources.dll",
         "lib/net9.0/ja/Microsoft.Data.SqlClient.resources.dll",
+        "lib/net9.0/ja/shrunk/Microsoft.Data.SqlClient.resources.dll",
         "lib/net9.0/ko/Microsoft.Data.SqlClient.resources.dll",
+        "lib/net9.0/ko/shrunk/Microsoft.Data.SqlClient.resources.dll",
         "lib/net9.0/pl/Microsoft.Data.SqlClient.resources.dll",
+        "lib/net9.0/pl/shrunk/Microsoft.Data.SqlClient.resources.dll",
         "lib/net9.0/pt-BR/Microsoft.Data.SqlClient.resources.dll",
+        "lib/net9.0/pt-BR/shrunk/Microsoft.Data.SqlClient.resources.dll",
         "lib/net9.0/ru/Microsoft.Data.SqlClient.resources.dll",
+        "lib/net9.0/ru/shrunk/Microsoft.Data.SqlClient.resources.dll",
         "lib/net9.0/tr/Microsoft.Data.SqlClient.resources.dll",
+        "lib/net9.0/tr/shrunk/Microsoft.Data.SqlClient.resources.dll",
         "lib/net9.0/zh-Hans/Microsoft.Data.SqlClient.resources.dll",
+        "lib/net9.0/zh-Hans/shrunk/Microsoft.Data.SqlClient.resources.dll",
         "lib/net9.0/zh-Hant/Microsoft.Data.SqlClient.resources.dll",
+        "lib/net9.0/zh-Hant/shrunk/Microsoft.Data.SqlClient.resources.dll",
         "lib/netstandard2.0/Microsoft.Data.SqlClient.dll",
         "lib/netstandard2.0/Microsoft.Data.SqlClient.xml",
         "microsoft.data.sqlclient.6.1.0.nupkg.sha512",
@@ -2219,11 +2232,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\USER\\OneDrive\\Escritorio\\Recetas\\RMD.Movil.Core\\RMD.Movil.Core.csproj",
+      "projectUniqueName": "C:\\Users\\USER\\source\\repos\\SOPORTETELEMEDICINA\\RECETAMEDICA_BACK\\RMD.Movil.Core\\RMD.Movil.Core.csproj",
       "projectName": "RMD.Movil.Core",
-      "projectPath": "C:\\Users\\USER\\OneDrive\\Escritorio\\Recetas\\RMD.Movil.Core\\RMD.Movil.Core.csproj",
+      "projectPath": "C:\\Users\\USER\\source\\repos\\SOPORTETELEMEDICINA\\RECETAMEDICA_BACK\\RMD.Movil.Core\\RMD.Movil.Core.csproj",
       "packagesPath": "C:\\NuPkgs",
-      "outputPath": "C:\\Users\\USER\\OneDrive\\Escritorio\\Recetas\\RMD.Movil.Core\\obj\\",
+      "outputPath": "C:\\Users\\USER\\source\\repos\\SOPORTETELEMEDICINA\\RECETAMEDICA_BACK\\RMD.Movil.Core\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -2245,11 +2258,11 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "C:\\Users\\USER\\OneDrive\\Escritorio\\Recetas\\RMD.Models.Shared\\RMD.Shared.Models.csproj": {
-              "projectPath": "C:\\Users\\USER\\OneDrive\\Escritorio\\Recetas\\RMD.Models.Shared\\RMD.Shared.Models.csproj"
+            "C:\\Users\\USER\\source\\repos\\SOPORTETELEMEDICINA\\RECETAMEDICA_BACK\\RMD.Models.Shared\\RMD.Shared.Models.csproj": {
+              "projectPath": "C:\\Users\\USER\\source\\repos\\SOPORTETELEMEDICINA\\RECETAMEDICA_BACK\\RMD.Models.Shared\\RMD.Shared.Models.csproj"
             },
-            "C:\\Users\\USER\\OneDrive\\Escritorio\\Recetas\\RMD.Utils.Shared\\RMD.Shared.Utils.csproj": {
-              "projectPath": "C:\\Users\\USER\\OneDrive\\Escritorio\\Recetas\\RMD.Utils.Shared\\RMD.Shared.Utils.csproj"
+            "C:\\Users\\USER\\source\\repos\\SOPORTETELEMEDICINA\\RECETAMEDICA_BACK\\RMD.Utils.Shared\\RMD.Shared.Utils.csproj": {
+              "projectPath": "C:\\Users\\USER\\source\\repos\\SOPORTETELEMEDICINA\\RECETAMEDICA_BACK\\RMD.Utils.Shared\\RMD.Shared.Utils.csproj"
             }
           }
         }

@@ -2,22 +2,17 @@
 
 namespace RMD.Shared.Models.Login
 {
+    /// <summary>Credenciales para autenticación.</summary>
     public class UserCredentials
     {
-        public UserCredentials()
-        {
-            Usr = string.Empty;
-            Password = string.Empty;
-        }
+        [Required, MaxLength(50)]
+        public string Usr { get; set; } = string.Empty;  // Usuario o email
 
-        [Required]
-        [MaxLength(50)]
-        public string Usr { get; set; }  // Nombre de usuario
+        [Required, MaxLength(255)]
+        public string Password { get; set; } = string.Empty;
 
-        [Required]
-        [MaxLength(255)]
-        public string Password { get; set; }  // Contraseña
-
+        /// <summary>Origen del login (WEB, APP, etc.).</summary>
+        [MaxLength(20)]
         public string Plataform { get; set; } = "WEB";
     }
 }

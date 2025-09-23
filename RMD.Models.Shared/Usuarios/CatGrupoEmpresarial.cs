@@ -8,7 +8,7 @@ namespace RMD.Shared.Models.Usuarios
     public class CatGrupoEmpresarial
     {
         [Key]
-        public Guid IdGEMP { get; set; }
+        public Guid IdGEMP { get; set; } = Guid.NewGuid();
 
         [Required]
         [StringLength(100)]

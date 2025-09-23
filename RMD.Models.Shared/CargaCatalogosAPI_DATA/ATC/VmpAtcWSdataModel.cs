@@ -4,10 +4,10 @@ namespace RMD.Shared.Models.CargaCatalogosAPI_DATA.ATC
 {
     public class VmpAtcWSdataModel
     {
-        [JsonPropertyName("atcclassid")]
+        [JsonPropertyName("atcclassId")]
         public string AtcClassId { get; set; }
 
-        [JsonPropertyName("commonnamegroupid")]
+        [JsonPropertyName("commonnamegroupId")]
         public string VmpId { get; set; }
     }
 }

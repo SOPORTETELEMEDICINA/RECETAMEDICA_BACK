@@ -13,7 +13,7 @@
         public string GalenicForm { get; set; }
         public int UcdId { get; set; }
         public string Contents { get; set; }
-        public int Contents_Unit_Id { get; set; }
+        public string Contents_Unit_Id { get; set; }
         public int UcdvId { get; set; }
         public int ContainerId { get; set; }
         public decimal ContainerQuantityValue { get; set; }

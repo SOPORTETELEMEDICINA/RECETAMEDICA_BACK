@@ -11,6 +11,6 @@ namespace RMD.Shared.Models.Receta.Header.Internos
         public string Alergias { get; set; }
         public string Molecules { get; set; }
         public string Patologias { get; set; }
-
+        public DateTime FechaNacimiento { get; set; }
     }
 }

@@ -4,10 +4,10 @@ namespace RMD.Shared.Models.CargaCatalogosAPI_DATA.GalenicForm
 {
     public class GalenicForm
     {
-        [JsonPropertyName("formid")]
+        [JsonPropertyName("formId")]
         public string FormId { get; set; }
 
-        [JsonPropertyName("parentid")]
+        [JsonPropertyName("parentId")]
         public string ParentId { get; set; }
 
         [JsonPropertyName("name")]

@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RMD.Shared.Utils")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+151805d35034ed879441422fd7e296576a7a1fe0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8e6c6d3dc9d14a9eaec6eff0ccb5b5a63c95e2a3")]
 [assembly: System.Reflection.AssemblyProductAttribute("RMD.Shared.Utils")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RMD.Shared.Utils")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

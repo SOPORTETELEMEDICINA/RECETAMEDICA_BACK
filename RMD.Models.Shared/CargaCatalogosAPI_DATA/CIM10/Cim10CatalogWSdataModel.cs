@@ -5,10 +5,10 @@ namespace RMD.Shared.Models.CargaCatalogosAPI_DATA.CIM10
 
     public class Cim10CatalogWSdataModel
     {
-        [JsonPropertyName("cim10id")]
+        [JsonPropertyName("cim10Id")]
         public string Cim10Id { get; set; }
 
-        [JsonPropertyName("parentid")]
+        [JsonPropertyName("parentId")]
         public string ParentId { get; set; }
 
         [JsonPropertyName("code")]

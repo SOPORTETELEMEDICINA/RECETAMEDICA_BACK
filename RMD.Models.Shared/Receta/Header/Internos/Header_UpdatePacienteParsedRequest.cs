@@ -63,6 +63,7 @@ namespace RMD.Shared.Models.Receta.Header.Internos
         public int PacSemAmenorrea { get; set; }
         public bool PacLactancia { get; set; }
         public decimal? PacCreatinina { get; set; }
+        public DateTime FechaNacimiento { get; set; }
         public List<RequestSearchAllergy> Alergias { get; set; } = [];
         public List<RequestSearchMolecules> Molecules { get; set; } = [];
         public List<RequestSearchCIM10> Patologias { get; set; } = [];
